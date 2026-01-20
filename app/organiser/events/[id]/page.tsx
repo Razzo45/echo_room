@@ -165,11 +165,21 @@ export default function EventDetailPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // Show detailed error message
+        const errorMsg = data.details 
+          ? `${data.error || 'Generation failed'}: ${data.details}`
+          : data.error || 'Generation failed';
+        
         setGenerationStatus({
           status: 'FAILED',
-          error: data.error || data.details || 'Generation failed',
+          error: errorMsg,
         });
         setGenerating(false);
+        
+        // Also update event status if available
+        if (event) {
+          loadEvent();
+        }
         return;
       }
 

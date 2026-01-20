@@ -14,6 +14,18 @@ export async function POST(
   try {
     await requireOrganiserAuth();
 
+    // Check OpenAI API key early
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not set');
+      return NextResponse.json(
+        { 
+          error: 'OpenAI API key is not configured',
+          details: 'Please set OPENAI_API_KEY environment variable'
+        },
+        { status: 500 }
+      );
+    }
+
     const eventId = params.id;
 
     // Fetch event
@@ -28,7 +40,7 @@ export async function POST(
       );
     }
 
-    if (!event.aiBrief) {
+    if (!event.aiBrief || !event.aiBrief.trim()) {
       return NextResponse.json(
         { error: 'AI brief is required. Please add an AI brief to the event first.' },
         { status: 400 }
@@ -64,67 +76,66 @@ export async function POST(
     });
 
     try {
-      // Call AI generation
+      console.log('Starting AI generation for event:', eventId);
+      
+      // Call AI generation FIRST (outside transaction to avoid timeout)
+      // This can take 10-30 seconds, so we don't want it inside a transaction
       const generated = await generateEventRooms({
         brief: event.aiBrief,
         eventName: event.name,
         eventDescription: event.description || undefined,
       });
 
-      // Use Prisma transaction to ensure atomicity
+      console.log('AI generation completed, regions:', generated.regions.length);
+
+      // Now do all database operations in a transaction
+      // This should be fast since AI generation is already done
+      // Set timeout to 30 seconds to handle large generations
       await prisma.$transaction(async (tx) => {
         // Delete existing AI-generated quests for this event (if any)
-        // Find all quests linked to previous generations for this event
+        // Use cascade deletes where possible to be more efficient
         const existingGenerations = await tx.eventGeneration.findMany({
-          where: { eventId },
-          include: { quests: true },
-        });
-
-        // Delete all quests from previous generations
-        for (const gen of existingGenerations) {
-          if (gen.quests.length > 0) {
-            // Delete decisions and options first (cascade should handle this, but being explicit)
-            for (const quest of gen.quests) {
-              const decisions = await tx.questDecision.findMany({
-                where: { questId: quest.id },
-              });
-              for (const decision of decisions) {
-                await tx.questOption.deleteMany({
-                  where: { decisionId: decision.id },
-                });
-              }
-              await tx.questDecision.deleteMany({
-                where: { questId: quest.id },
-              });
-            }
-            await tx.quest.deleteMany({
-              where: { eventGenerationId: gen.id },
-            });
-          }
-        }
-
-        // Delete old generations (keep only the latest)
-        await tx.eventGeneration.deleteMany({
-          where: {
+          where: { 
             eventId,
-            id: { not: generation.id },
+            id: { not: generation.id }, // Exclude current generation
           },
+          select: { id: true },
         });
 
-        // Create regions and quests
-        let sortOrder = 0;
-        for (const regionData of generated.regions) {
-          // Check if region already exists for this event
-          let region = await tx.region.findFirst({
+        // Delete all quests from previous generations (cascade will handle decisions/options)
+        if (existingGenerations.length > 0) {
+          const oldGenerationIds = existingGenerations.map(g => g.id);
+          await tx.quest.deleteMany({
             where: {
-              eventId,
-              name: regionData.name,
+              eventGenerationId: { in: oldGenerationIds },
             },
           });
 
-          if (!region) {
+          // Delete old generations
+          await tx.eventGeneration.deleteMany({
+            where: {
+              id: { in: oldGenerationIds },
+            },
+          });
+        }
+
+        // Create regions and quests efficiently
+        // First, get all existing regions for this event (single query)
+        const existingRegions = await tx.region.findMany({
+          where: { eventId },
+          select: { id: true, name: true },
+        });
+        
+        const existingRegionMap = new Map(existingRegions.map(r => [r.name, r.id]));
+        let sortOrder = 0;
+
+        // Process regions sequentially but efficiently
+        for (const regionData of generated.regions) {
+          let regionId = existingRegionMap.get(regionData.name);
+          
+          if (!regionId) {
             // Create new region
-            region = await tx.region.create({
+            const newRegion = await tx.region.create({
               data: {
                 eventId,
                 name: regionData.name,
@@ -134,10 +145,12 @@ export async function POST(
                 sortOrder: sortOrder++,
               },
             });
+            regionId = newRegion.id;
+            existingRegionMap.set(regionData.name, regionId);
           } else {
             // Update existing region
-            region = await tx.region.update({
-              where: { id: region.id },
+            await tx.region.update({
+              where: { id: regionId },
               data: {
                 displayName: regionData.displayName,
                 description: regionData.description || null,
@@ -149,7 +162,7 @@ export async function POST(
           for (const questData of regionData.quests) {
             const quest = await tx.quest.create({
               data: {
-                regionId: region.id,
+                regionId,
                 name: questData.name,
                 description: questData.description,
                 questType: 'DECISION_ROOM',
@@ -161,7 +174,7 @@ export async function POST(
               },
             });
 
-            // Create decisions for this quest
+            // Create all decisions for this quest
             for (const decisionData of questData.decisions) {
               const decision = await tx.questDecision.create({
                 data: {
@@ -173,7 +186,7 @@ export async function POST(
                 },
               });
 
-              // Create options for this decision
+              // Create all options for this decision (sequential to avoid transaction timeout)
               for (const optionData of decisionData.options) {
                 await tx.questOption.create({
                   data: {
@@ -208,6 +221,8 @@ export async function POST(
             aiGenerationVersion: 'v1',
           },
         });
+      }, {
+        timeout: 30000, // 30 second timeout for large transactions
       });
 
       return NextResponse.json({
@@ -217,35 +232,69 @@ export async function POST(
       });
     } catch (error) {
       // Update generation status to FAILED
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      await prisma.eventGeneration.update({
-        where: { id: generation.id },
-        data: {
-          status: 'FAILED',
-          error: errorMessage,
-        },
+      let errorMessage = 'Unknown error';
+      let errorDetails = '';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        errorDetails = error.stack || '';
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+
+      console.error('AI generation error:', {
+        message: errorMessage,
+        details: errorDetails,
+        eventId,
+        generationId: generation.id,
       });
 
-      await prisma.event.update({
-        where: { id: eventId },
-        data: { aiGenerationStatus: 'FAILED' },
-      });
+      // Try to update generation status (may fail if transaction already rolled back)
+      try {
+        await prisma.eventGeneration.update({
+          where: { id: generation.id },
+          data: {
+            status: 'FAILED',
+            error: errorMessage.substring(0, 1000), // Limit error length
+          },
+        });
 
-      console.error('AI generation error:', error);
+        await prisma.event.update({
+          where: { id: eventId },
+          data: { aiGenerationStatus: 'FAILED' },
+        });
+      } catch (updateError) {
+        console.error('Failed to update generation status:', updateError);
+      }
+
+      // Return user-friendly error message
+      const userMessage = errorMessage.includes('OPENAI_API_KEY')
+        ? 'OpenAI API key is not configured. Please contact the administrator.'
+        : errorMessage.includes('validation')
+        ? 'AI returned invalid content. Please try again with a different brief.'
+        : errorMessage.includes('JSON')
+        ? 'AI returned invalid JSON. Please try again.'
+        : 'Failed to generate event rooms. Please try again.';
 
       return NextResponse.json(
         {
-          error: 'Failed to generate event rooms',
-          details: errorMessage,
+          error: userMessage,
+          details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
         },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Generate event rooms error:', error);
+    console.error('Generate event rooms outer error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'An error occurred during generation' },
+      { 
+        error: 'An error occurred during generation',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
       { status: 500 }
     );
   }
