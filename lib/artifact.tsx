@@ -361,6 +361,12 @@ async function generatePDF(
   completedAt: Date,
   roomId: string
 ) {
+  // On Vercel we currently skip PDF generation to avoid runtime stream issues.
+  // The HTML artifact will still be created and viewable.
+  if (process.env.VERCEL === '1') {
+    return { pdfBase64: '', pdfPath: null as string | null };
+  }
+
   const doc = (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -439,7 +445,7 @@ async function generatePDF(
 
   // Official react-pdf API: toBuffer returns a Promise<Buffer | Uint8Array>
   const pdfResult = await (pdf(doc) as any).toBuffer();
-  const buffer = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult);
+  const buffer = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult as any);
 
   const pdfBase64 = buffer.toString('base64');
   
