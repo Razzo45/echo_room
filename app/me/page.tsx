@@ -50,6 +50,8 @@ export default function MyPage() {
     try {
       const res = await fetch('/api/data/delete', { method: 'DELETE' });
       if (res.ok) {
+        // Clear localStorage when deleting data
+        localStorage.removeItem('echo_room_event_code');
         router.push('/');
       } else {
         alert('Failed to delete data');

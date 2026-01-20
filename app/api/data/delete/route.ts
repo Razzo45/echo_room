@@ -17,6 +17,7 @@ export async function DELETE() {
     return NextResponse.json({
       success: true,
       message: 'All your data has been deleted',
+      // Note: Client should clear localStorage on success
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

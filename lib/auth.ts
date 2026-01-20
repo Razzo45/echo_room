@@ -4,11 +4,13 @@ import crypto from 'crypto';
 
 const SESSION_COOKIE_NAME = 'mmo_session';
 const SESSION_DURATION_DAYS = 7;
+const REMEMBER_ME_DURATION_DAYS = 30; // Extended session for "remember me"
 
-export async function createSession(userId: string, eventCodeId: string) {
+export async function createSession(userId: string, eventCodeId: string, rememberMe: boolean = false) {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS);
+  const durationDays = rememberMe ? REMEMBER_ME_DURATION_DAYS : SESSION_DURATION_DAYS;
+  expiresAt.setDate(expiresAt.getDate() + durationDays);
 
   const session = await prisma.session.create({
     data: {

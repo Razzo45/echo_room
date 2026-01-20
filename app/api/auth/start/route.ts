@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { code } = validation.data;
+    const { code, rememberMe } = validation.data;
 
     // Find active event code
     const eventCode = await prisma.eventCode.findUnique({
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
       data: { usedCount: { increment: 1 } },
     });
 
-    // Create session
-    await createSession(tempUser.id, eventCode.id);
+    // Create session (with optional "remember me" for extended duration)
+    await createSession(tempUser.id, eventCode.id, rememberMe || false);
 
     return NextResponse.json({
       success: true,

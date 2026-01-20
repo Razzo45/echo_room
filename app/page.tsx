@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
@@ -8,6 +8,39 @@ export default function LandingPage() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) {
+          // User is already logged in, redirect
+          if (data.needsProfile) {
+            router.push('/profile');
+          } else {
+            router.push('/world');
+          }
+          return;
+        }
+        // Not logged in, check localStorage for saved event code
+        const savedCode = localStorage.getItem('echo_room_event_code');
+        if (savedCode) {
+          setCode(savedCode);
+        }
+        setCheckingSession(false);
+      })
+      .catch(() => {
+        // Check localStorage for saved event code
+        const savedCode = localStorage.getItem('echo_room_event_code');
+        if (savedCode) {
+          setCode(savedCode);
+        }
+        setCheckingSession(false);
+      });
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +51,10 @@ export default function LandingPage() {
       const res = await fetch('/api/auth/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ 
+          code: code.trim(),
+          rememberMe: rememberMe,
+        }),
       });
 
       const data = await res.json();
@@ -29,6 +65,9 @@ export default function LandingPage() {
         return;
       }
 
+      // Save event code to localStorage for quick re-entry
+      localStorage.setItem('echo_room_event_code', code.trim().toUpperCase());
+      
       if (data.needsProfile) {
         router.push('/profile');
       } else {
@@ -39,6 +78,17 @@ export default function LandingPage() {
       setLoading(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary-50 via-blue-50 to-indigo-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary-50 via-blue-50 to-indigo-50">
@@ -76,6 +126,19 @@ export default function LandingPage() {
                 <p className="text-sm text-red-800">{error}</p>
               </div>
             )}
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              />
+              <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-600">
+                Remember me (stay logged in for 30 days)
+              </label>
+            </div>
 
             <button
               type="submit"

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const eventCodeSchema = z.object({
   code: z.string().min(1, 'Event code is required').toUpperCase(),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 export const profileSchema = z.object({
