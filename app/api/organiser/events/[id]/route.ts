@@ -16,8 +16,20 @@ export async function GET(
         eventCodes: true,
         regions: {
           include: {
-            quests: true,
+            quests: {
+              include: {
+                decisions: {
+                  include: {
+                    options: true,
+                  },
+                },
+              },
+            },
           },
+        },
+        generations: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
         },
         _count: {
           select: {
@@ -57,6 +69,7 @@ export async function PUT(
     const {
       name,
       description,
+      aiBrief,
       startDate,
       timezone,
       brandColor,
@@ -69,6 +82,7 @@ export async function PUT(
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
+        ...(aiBrief !== undefined && { aiBrief }),
         ...(startDate && { startDate: new Date(startDate) }),
         ...(timezone && { timezone }),
         ...(brandColor && { brandColor }),

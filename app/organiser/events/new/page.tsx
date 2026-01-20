@@ -9,6 +9,7 @@ export default function NewEventPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    aiBrief: '',
     startDate: '',
     timezone: 'UTC',
     brandColor: '#0ea5e9',
@@ -119,6 +120,23 @@ export default function NewEventPage() {
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
+            </div>
+
+            {/* AI Brief */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                AI Brief (Optional)
+              </label>
+              <textarea
+                value={formData.aiBrief}
+                onChange={(e) => setFormData({ ...formData, aiBrief: e.target.value })}
+                placeholder="Describe your event theme, goals, and the types of decisions you want participants to make. You can generate rooms automatically using AI after creating the event."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                You can add or edit this later. The AI will use this to generate quests, decisions, and options.
+              </p>
             </div>
 
             {/* Start Date & Timezone */}

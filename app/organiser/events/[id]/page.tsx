@@ -17,6 +17,10 @@ type Event = {
   id: string;
   name: string;
   description: string | null;
+  aiBrief: string | null;
+  aiGenerationStatus: 'IDLE' | 'GENERATING' | 'READY' | 'FAILED';
+  aiGeneratedAt: string | null;
+  aiGenerationVersion: string | null;
   startDate: string | null;
   timezone: string;
   brandColor: string;
@@ -38,10 +42,36 @@ export default function EventDetailPage() {
   const [generating, setGenerating] = useState(false);
   const [codeCount, setCodeCount] = useState(1);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [aiBrief, setAiBrief] = useState('');
+  const [savingBrief, setSavingBrief] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<{
+    status: string;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     loadEvent();
   }, [eventId]);
+
+  // Poll generation status if generating
+  useEffect(() => {
+    if (!event || event.aiGenerationStatus !== 'GENERATING') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/organiser/events/${eventId}/generation`);
+        const data = await res.json();
+        if (data.status !== 'GENERATING') {
+          setGenerationStatus({ status: data.status, error: data.generation?.error });
+          loadEvent(); // Reload event to get updated quests
+        }
+      } catch (error) {
+        console.error('Poll generation status error:', error);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [event, eventId]);
 
   const loadEvent = async () => {
     try {
@@ -54,6 +84,7 @@ export default function EventDetailPage() {
       }
 
       setEvent(data.event);
+      setAiBrief(data.event.aiBrief || '');
       setLoading(false);
     } catch (error) {
       console.error('Load event error:', error);
@@ -92,6 +123,66 @@ export default function EventDetailPage() {
     navigator.clipboard.writeText(joinLink);
     setCopiedCode(code + '-link');
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const saveAiBrief = async () => {
+    setSavingBrief(true);
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aiBrief }),
+      });
+
+      if (res.ok) {
+        await loadEvent();
+      }
+    } catch (error) {
+      console.error('Save AI brief error:', error);
+    }
+    setSavingBrief(false);
+  };
+
+  const generateRooms = async () => {
+    if (!aiBrief.trim()) {
+      alert('Please enter an AI brief first');
+      return;
+    }
+
+    setGenerating(true);
+    setGenerationStatus({ status: 'GENERATING' });
+
+    try {
+      // Save brief first if changed
+      if (aiBrief !== event?.aiBrief) {
+        await saveAiBrief();
+      }
+
+      const res = await fetch(`/api/organiser/events/${eventId}/generate`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setGenerationStatus({
+          status: 'FAILED',
+          error: data.error || data.details || 'Generation failed',
+        });
+        setGenerating(false);
+        return;
+      }
+
+      // Start polling for status
+      setGenerationStatus({ status: 'GENERATING' });
+    } catch (error) {
+      console.error('Generate rooms error:', error);
+      setGenerationStatus({
+        status: 'FAILED',
+        error: 'An error occurred during generation',
+      });
+      setGenerating(false);
+    }
   };
 
   if (loading || !event) {
@@ -134,6 +225,82 @@ export default function EventDetailPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* AI Generation Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Room Generation</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                AI Brief *
+              </label>
+              <textarea
+                value={aiBrief}
+                onChange={(e) => setAiBrief(e.target.value)}
+                placeholder="Describe your event theme, goals, and the types of decisions you want participants to make. The AI will generate quests, decisions, and options based on this brief."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                disabled={generating || savingBrief}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Example: "A smart city hackathon focused on urban sustainability. Teams will make decisions about renewable energy, public transportation, and waste management."
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={saveAiBrief}
+                disabled={savingBrief || aiBrief === event?.aiBrief || !aiBrief.trim()}
+                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg font-semibold hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingBrief ? 'Saving...' : 'Save Brief'}
+              </button>
+              <button
+                onClick={generateRooms}
+                disabled={generating || !aiBrief.trim() || event?.aiGenerationStatus === 'GENERATING'}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generating || event?.aiGenerationStatus === 'GENERATING' ? 'Generating...' : 'Generate Rooms'}
+              </button>
+            </div>
+
+            {/* Generation Status */}
+            {(event?.aiGenerationStatus !== 'IDLE' || generationStatus) && (
+              <div className={`p-4 rounded-lg border ${
+                event?.aiGenerationStatus === 'READY' || generationStatus?.status === 'READY'
+                  ? 'bg-green-50 border-green-200'
+                  : event?.aiGenerationStatus === 'GENERATING' || generationStatus?.status === 'GENERATING'
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-center">
+                  <span className="text-sm font-semibold mr-2">
+                    Status:
+                  </span>
+                  <span className="text-sm">
+                    {event?.aiGenerationStatus || generationStatus?.status}
+                  </span>
+                </div>
+                {event?.aiGeneratedAt && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    Generated: {new Date(event.aiGeneratedAt).toLocaleString()}
+                  </p>
+                )}
+                {generationStatus?.error && (
+                  <p className="text-sm text-red-800 mt-2">
+                    Error: {generationStatus.error}
+                  </p>
+                )}
+                {event?.aiGenerationStatus === 'READY' && (
+                  <p className="text-sm text-green-800 mt-2">
+                    ✓ Rooms generated successfully! Participants can now join quests.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Stats */}
           <div className="lg:col-span-1 space-y-6">

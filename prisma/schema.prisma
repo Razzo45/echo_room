@@ -11,23 +11,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AIGenerationStatus {
+  IDLE
+  GENERATING
+  READY
+  FAILED
+}
+
 model Event {
-  id            String   @id @default(cuid())
-  name          String
-  description   String?
-  startDate     DateTime?
-  endDate       DateTime?
-  timezone      String   @default("UTC")
-  brandColor    String   @default("#0ea5e9")
-  logoUrl       String?
-  sponsorLogos  String?  // JSON array of logo URLs
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String             @id @default(cuid())
+  name                String
+  description         String?
+  aiBrief             String?            // AI generation brief/description
+  aiGenerationStatus AIGenerationStatus  @default(IDLE)
+  aiGeneratedAt       DateTime?
+  aiGenerationVersion String?
+  startDate           DateTime?
+  endDate             DateTime?
+  timezone            String             @default("UTC")
+  brandColor          String             @default("#0ea5e9")
+  logoUrl             String?
+  sponsorLogos        String?            // JSON array of logo URLs
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
   
-  eventCodes    EventCode[]
-  users         User[]
-  rooms         Room[]
-  regions       Region[]
+  eventCodes          EventCode[]
+  users               User[]
+  rooms               Room[]
+  regions             Region[]
+  generations         EventGeneration[]
 }
 
 model EventCode {
@@ -99,22 +111,24 @@ enum QuestType {
 }
 
 model Quest {
-  id              String     @id @default(cuid())
-  regionId        String
-  name            String
-  description     String
-  questType       QuestType  @default(DECISION_ROOM)
-  durationMinutes Int        @default(30)
-  teamSize        Int        @default(3)
-  sortOrder       Int        @default(0)
-  isActive        Boolean    @default(true)
-  decisionsData   String?    // DEPRECATED: JSON string, use QuestDecision instead
-  createdAt       DateTime   @default(now())
+  id                  String     @id @default(cuid())
+  regionId            String
+  name                String
+  description         String
+  questType           QuestType  @default(DECISION_ROOM)
+  durationMinutes     Int        @default(30)
+  teamSize            Int        @default(3)
+  sortOrder           Int        @default(0)
+  isActive            Boolean    @default(true)
+  decisionsData       String?    // DEPRECATED: JSON string, use QuestDecision instead
+  eventGenerationId   String?    // Link to EventGeneration if AI-generated
+  createdAt           DateTime   @default(now())
   
-  region          Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
-  rooms           Room[]
-  decisions       QuestDecision[]
-  fields          QuestField[]
+  region              Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  eventGeneration     EventGeneration? @relation(fields: [eventGenerationId], references: [id], onDelete: SetNull)
+  rooms               Room[]
+  decisions           QuestDecision[]
+  fields              QuestField[]
 }
 
 model QuestDecision {
@@ -338,4 +352,22 @@ model UserBadge {
   @@index([userId])
   @@index([badgeId])
   @@index([earnedAt])
+}
+
+model EventGeneration {
+  id          String   @id @default(cuid())
+  eventId     String
+  status      AIGenerationStatus @default(GENERATING)
+  input       Json     // Snapshot of input (brief, metadata)
+  output      Json?    // Generated content (regions, quests structure)
+  model       String?  // AI model used (e.g., "gpt-4")
+  error       String?  // Error message if failed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  quests      Quest[]
+  
+  @@index([eventId])
+  @@index([status])
 }

@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     const {
       name,
       description,
+      aiBrief,
       startDate,
       timezone,
       brandColor,
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
       data: {
         name,
         description: description || null,
+        aiBrief: aiBrief || null,
         startDate: startDate ? new Date(startDate) : null,
         timezone: timezone || 'UTC',
         brandColor: brandColor || '#0ea5e9',
