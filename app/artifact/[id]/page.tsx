@@ -62,8 +62,8 @@ export default function ArtifactPage() {
           </Link>
           
           <a
-            href={artifact.pdfPath}
-            download
+            href={`/api/artifact/${artifactId}/pdf`}
+            download={`decision-map-${artifactId}.pdf`}
             className="btn btn-primary"
           >
             Download PDF

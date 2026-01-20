@@ -1,9 +1,13 @@
 import { prisma } from './db';
 import fs from 'fs/promises';
 import path from 'path';
+import { Readable } from 'stream';
+import { promisify } from 'util';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
+
+const isVercel = process.env.VERCEL === '1';
 
 type DecisionData = {
   decisions: Array<{
@@ -91,10 +95,21 @@ export async function generateArtifact(roomId: string) {
   });
 
   // Generate HTML
-  const htmlContent = generateHTML(room.quest.name, teamMembers, decisions, room.completedAt || new Date());
+  const htmlContent = generateHTML(
+    room.quest.name,
+    teamMembers,
+    decisions,
+    room.completedAt || new Date()
+  );
 
-  // Generate PDF
-  const pdfPath = await generatePDF(room.quest.name, teamMembers, decisions, room.completedAt || new Date(), roomId);
+  // Generate PDF - always generate, store as base64 for Vercel compatibility
+  const { pdfBase64, pdfPath } = await generatePDF(
+    room.quest.name,
+    teamMembers,
+    decisions,
+    room.completedAt || new Date(),
+    roomId
+  );
 
   // Save artifact
   const artifact = await prisma.artifact.create({
@@ -102,6 +117,7 @@ export async function generateArtifact(roomId: string) {
       roomId,
       htmlContent,
       pdfPath,
+      pdfContent: pdfBase64,
     },
   });
 
@@ -423,16 +439,37 @@ async function generatePDF(
     </Document>
   );
 
-  // Ensure artifacts directory exists
-  const artifactsDir = path.join(process.cwd(), 'public', 'artifacts');
-  await fs.mkdir(artifactsDir, { recursive: true });
+  // Generate PDF - react-pdf returns a ReadableStream, convert to Buffer
+  const pdfStream = await pdf(doc).toBuffer();
+  
+  // Convert ReadableStream to Buffer using Node.js stream utilities
+  const nodeStream = Readable.fromWeb(pdfStream as any);
+  const chunks: Buffer[] = [];
+  
+  for await (const chunk of nodeStream) {
+    chunks.push(Buffer.from(chunk));
+  }
+  
+  // Combine chunks into single buffer
+  const buffer = Buffer.concat(chunks);
+  const pdfBase64 = buffer.toString('base64');
+  
+  let pdfPath: string | null = null;
+  
+  // Only write to filesystem if we're not on Vercel (local dev)
+  if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'production') {
+    try {
+      const artifactsDir = path.join(process.cwd(), 'public', 'artifacts');
+      await fs.mkdir(artifactsDir, { recursive: true });
+      const pdfFileName = `artifact-${roomId}-${Date.now()}.pdf`;
+      pdfPath = path.join(artifactsDir, pdfFileName);
+      await fs.writeFile(pdfPath, buffer);
+      pdfPath = `/artifacts/${pdfFileName}`;
+    } catch (err) {
+      console.warn('Could not write PDF to filesystem, using base64 only:', err);
+    }
+  }
 
-  // Generate PDF
-  const pdfFileName = `artifact-${roomId}-${Date.now()}.pdf`;
-  const pdfPath = path.join(artifactsDir, pdfFileName);
-  const pdfBuffer = await pdf(doc).toBuffer();
-  await fs.writeFile(pdfPath, pdfBuffer);
-
-  return `/artifacts/${pdfFileName}`;
+  return { pdfBase64, pdfPath };
 }
 
