@@ -5,3 +5,5 @@ node_modules
 .env.*.local
 artifacts
 *.log
+public/sw.js
+public/workbox-*.js
