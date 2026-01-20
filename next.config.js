@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
+const isVercel = process.env.VERCEL === '1';
+
 const withPWA = require('next-pwa')({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
+  // Disable PWA on Vercel for now to avoid build issues
+  disable: isVercel || process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
   buildExcludes: [/middleware-manifest\.json$/],
@@ -9,8 +12,6 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
   reactStrictMode: true,
-  // Remove 'standalone' output for Vercel (it's for Docker)
-  // output: 'standalone',
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
