@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 
+type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+
 type Badge = {
   id: string;
   badgeType: string;
   name: string;
   description: string;
   icon: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  rarity: Rarity;
   roomId?: string | null;
   metadata?: any;
   earnedAt: string;
@@ -16,18 +18,18 @@ type Badge = {
 
 type BadgeStats = {
   total: number;
-  byRarity: Record<string, number>;
+  byRarity: Record<Rarity, number>;
   recent: Badge[];
 };
 
-const rarityColors = {
+const rarityColors: Record<Rarity, string> = {
   common: 'bg-gray-100 border-gray-300 text-gray-800',
   rare: 'bg-blue-100 border-blue-300 text-blue-800',
   epic: 'bg-purple-100 border-purple-300 text-purple-800',
   legendary: 'bg-yellow-100 border-yellow-400 text-yellow-900',
 };
 
-const rarityGradients = {
+const rarityGradients: Record<Rarity, string> = {
   common: 'from-gray-50 to-gray-100',
   rare: 'from-blue-50 to-blue-100',
   epic: 'from-purple-50 to-purple-100',
@@ -101,14 +103,17 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
             <div className="text-2xl font-bold text-primary-600">{stats.total}</div>
             <div className="text-xs text-gray-600 mt-1">Total Badges</div>
           </div>
-          {Object.entries(stats.byRarity).map(([rarity, count]) => (
-            <div key={rarity} className="card text-center">
-              <div className={`text-2xl font-bold ${rarityColors[rarity].split(' ')[2]}`}>
-                {count}
+          {Object.entries(stats.byRarity).map(([rarity, count]) => {
+            const key = rarity as Rarity;
+            return (
+              <div key={rarity} className="card text-center">
+                <div className={`text-2xl font-bold ${rarityColors[key].split(' ')[2]}`}>
+                  {count}
+                </div>
+                <div className="text-xs text-gray-600 mt-1 capitalize">{rarity}</div>
               </div>
-              <div className="text-xs text-gray-600 mt-1 capitalize">{rarity}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

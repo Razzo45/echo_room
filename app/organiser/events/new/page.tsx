@@ -90,7 +90,7 @@ export default function NewEventPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onsubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           <div className="space-y-6">
             {/* Event Name */}
             <div>

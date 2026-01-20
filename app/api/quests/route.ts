@@ -12,10 +12,8 @@ export async function GET(request: NextRequest) {
     const regionId = searchParams.get('regionId');
     const regionName = searchParams.get('regionName'); // Alternative: find by name
 
-    let quests;
-
     if (regionId) {
-      quests = await prisma.quest.findMany({
+      const quests = await prisma.quest.findMany({
         where: {
           regionId,
           region: {
@@ -30,7 +28,22 @@ export async function GET(request: NextRequest) {
           sortOrder: 'asc',
         },
       });
-    } else if (regionName) {
+
+      return NextResponse.json({
+        quests: quests.map((q) => ({
+          id: q.id,
+          name: q.name,
+          description: q.description,
+          questType: q.questType,
+          durationMinutes: q.durationMinutes,
+          teamSize: q.teamSize,
+          regionId: q.regionId,
+          regionName: q.region.name,
+        })),
+      });
+    }
+
+    if (regionName) {
       // Find region by name for current event
       const region = await prisma.region.findFirst({
         where: {
@@ -39,40 +52,53 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      if (region) {
-        quests = await prisma.quest.findMany({
-          where: {
-            regionId: region.id,
-            isActive: true,
-          },
-          include: {
-            region: true,
-          },
-          orderBy: {
-            sortOrder: 'asc',
-          },
-        });
-      } else {
-        quests = [];
+      if (!region) {
+        return NextResponse.json({ quests: [] });
       }
-    } else {
-      // Return all active quests for user's event
-      quests = await prisma.quest.findMany({
+
+      const quests = await prisma.quest.findMany({
         where: {
-          region: {
-            eventId: user.eventId,
-          },
+          regionId: region.id,
           isActive: true,
         },
         include: {
           region: true,
         },
-        orderBy: [
-          { region: { sortOrder: 'asc' } },
-          { sortOrder: 'asc' },
-        ],
+        orderBy: {
+          sortOrder: 'asc',
+        },
+      });
+
+      return NextResponse.json({
+        quests: quests.map((q) => ({
+          id: q.id,
+          name: q.name,
+          description: q.description,
+          questType: q.questType,
+          durationMinutes: q.durationMinutes,
+          teamSize: q.teamSize,
+          regionId: q.regionId,
+          regionName: q.region.name,
+        })),
       });
     }
+
+    // Return all active quests for user's event
+    const quests = await prisma.quest.findMany({
+      where: {
+        region: {
+          eventId: user.eventId,
+        },
+        isActive: true,
+      },
+      include: {
+        region: true,
+      },
+      orderBy: [
+        { region: { sortOrder: 'asc' } },
+        { sortOrder: 'asc' },
+      ],
+    });
 
     return NextResponse.json({
       quests: quests.map((q) => ({
