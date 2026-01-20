@@ -1,0 +1,340 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Use "postgresql" in production (e.g. Neon), "sqlite" only for local throwaway dev
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  startDate     DateTime?
+  endDate       DateTime?
+  timezone      String   @default("UTC")
+  brandColor    String   @default("#0ea5e9")
+  logoUrl       String?
+  sponsorLogos  String?  // JSON array of logo URLs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  eventCodes    EventCode[]
+  users         User[]
+  rooms         Room[]
+  regions       Region[]
+}
+
+model EventCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  eventId   String
+  active    Boolean  @default(true)
+  maxUses   Int?
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+  
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+}
+
+model User {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String
+  organisation String
+  role        String
+  country     String
+  skill       String
+  curiosity   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessions    Session[]
+  roomMembers RoomMember[]
+  votes       Vote[]
+  badges      UserBadge[]
+  
+  @@index([eventId])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  userId      String
+  eventCodeId String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventCode   EventCode @relation(fields: [eventCodeId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+}
+
+model Region {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String
+  displayName String
+  description String?
+  isActive    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  quests      Quest[]
+}
+
+enum QuestType {
+  DECISION_ROOM  // Team-based decision making with voting
+  FORM           // Individual form completion
+  SURVEY         // Survey/questionnaire
+}
+
+model Quest {
+  id              String     @id @default(cuid())
+  regionId        String
+  name            String
+  description     String
+  questType       QuestType  @default(DECISION_ROOM)
+  durationMinutes Int        @default(30)
+  teamSize        Int        @default(3)
+  sortOrder       Int        @default(0)
+  isActive        Boolean    @default(true)
+  decisionsData   String?    // DEPRECATED: JSON string, use QuestDecision instead
+  createdAt       DateTime   @default(now())
+  
+  region          Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  rooms           Room[]
+  decisions       QuestDecision[]
+  fields          QuestField[]
+}
+
+model QuestDecision {
+  id             String   @id @default(cuid())
+  questId        String
+  decisionNumber Int      // 1, 2, 3, etc.
+  title          String
+  context        String   @default("")
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  
+  quest          Quest    @relation(fields: [questId], references: [id], onDelete: Cascade)
+  options        QuestOption[]
+  
+  @@unique([questId, decisionNumber])
+}
+
+model QuestOption {
+  id          String   @id @default(cuid())
+  decisionId  String
+  optionKey   String   // A, B, C
+  title       String
+  description String   @default("")
+  impact      String   @default("")
+  tradeoff    String   @default("")
+  createdAt   DateTime @default(now())
+  
+  decision    QuestDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  
+  @@unique([decisionId, optionKey])
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  SELECT
+  MULTI_SELECT
+  DATE
+  NUMBER
+}
+
+model QuestField {
+  id          String    @id @default(cuid())
+  questId     String
+  fieldKey    String    // Unique identifier for this field
+  label       String
+  fieldType   FieldType @default(TEXT)
+  placeholder String?
+  required    Boolean   @default(false)
+  options     String?   // JSON array for SELECT/MULTI_SELECT
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  
+  quest       Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+  
+  @@unique([questId, fieldKey])
+}
+
+model QuestResponse {
+  id          String   @id @default(cuid())
+  questId     String
+  userId      String
+  responses   String   // JSON object with fieldKey: value pairs
+  completedAt DateTime @default(now())
+  
+  @@unique([questId, userId])
+  @@index([questId])
+  @@index([userId])
+}
+
+enum RoomStatus {
+  OPEN
+  FULL
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Room {
+  id             String     @id @default(cuid())
+  eventId        String
+  questId        String
+  roomCode       String     @unique
+  status         RoomStatus @default(OPEN)
+  currentDecision Int       @default(1)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  event          Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  quest          Quest      @relation(fields: [questId], references: [id], onDelete: Cascade)
+  members        RoomMember[]
+  votes          Vote[]
+  commits        DecisionCommit[]
+  artifact       Artifact?
+  badges         UserBadge[] // Badges earned in this room (relation defined on UserBadge)
+  
+  @@index([status, questId])
+  @@index([eventId, status])
+  @@index([completedAt])
+}
+
+model RoomMember {
+  id         String   @id @default(cuid())
+  roomId     String
+  userId     String
+  joinedAt   DateTime @default(now())
+  
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([roomId, userId])
+}
+
+model Vote {
+  id            String   @id @default(cuid())
+  roomId        String
+  userId        String
+  decisionNumber Int
+  optionKey     String   // A, B, or C
+  justification String
+  createdAt     DateTime @default(now())
+  
+  room          Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([roomId, userId, decisionNumber])
+  @@index([roomId, decisionNumber])
+}
+
+model DecisionCommit {
+  id              String   @id @default(cuid())
+  roomId          String
+  decisionNumber  Int
+  committedOption String   // A, B, or C
+  createdAt       DateTime @default(now())
+  
+  room            Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  @@unique([roomId, decisionNumber])
+}
+
+model Artifact {
+  id          String   @id @default(cuid())
+  roomId      String   @unique
+  htmlContent String   // Full HTML artifact
+  pdfPath     String   // Path to PDF file
+  shareToken  String?  @unique // For public sharing
+  createdAt   DateTime @default(now())
+  
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+enum AnalyticsEventType {
+  EVENT_CODE_VALIDATED
+  PROFILE_CREATED
+  QUEST_STARTED
+  QUEST_COMPLETED
+  ROOM_CREATED
+  ROOM_COMPLETED
+  ARTIFACT_VIEWED
+  ARTIFACT_DOWNLOADED
+}
+
+model AnalyticsEvent {
+  id          String             @id @default(cuid())
+  eventId     String
+  userId      String?
+  eventType   AnalyticsEventType
+  metadata    String?            // JSON for additional data
+  createdAt   DateTime           @default(now())
+  
+  @@index([eventId, eventType])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+// Badges System for Gamification
+enum BadgeType {
+  FIRST_QUEST_COMPLETE      // Completed first quest/room
+  TEAM_PLAYER              // Completed a team decision room
+  COLLABORATOR             // Voted in all decisions of a room
+  STORYTELLER              // Provided detailed justifications (3+ decisions)
+  DECISION_MAKER           // Committed to final decision in a room
+  ARTIFACT_CREATOR         // Generated an artifact
+  QUEST_MASTER             // Completed 5+ quests
+  SOCIAL_CONNECTOR         // Teamed with 10+ different people
+  PERFECT_TEAM             // All 3 members voted and committed
+  EARLY_BIRD               // Joined within first hour of event
+  NIGHT_OWL                // Active during late hours
+  CONSENSUS_BUILDER        // Team reached unanimous votes
+  DIVERSITY_CHAMPION       // Teamed with people from different countries
+}
+
+model Badge {
+  id          String    @id @default(cuid())
+  badgeType   BadgeType @unique
+  name        String
+  description String
+  icon        String    // Emoji or icon identifier
+  rarity      String    @default("common") // common, rare, epic, legendary
+  createdAt   DateTime  @default(now())
+  
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id          String   @id @default(cuid())
+  userId      String
+  badgeId     String
+  roomId      String?  // Optional: badge earned in specific room
+  metadata    String?  // JSON for additional context (e.g., "completed with 2 teammates")
+  earnedAt    DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  room        Room?    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, badgeId, roomId])
+  @@index([userId])
+  @@index([badgeId])
+  @@index([earnedAt])
+}

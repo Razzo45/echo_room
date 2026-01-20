@@ -1,0 +1,282 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+type EventCode = {
+  id: string;
+  code: string;
+  active: boolean;
+  usedCount: number;
+  maxUses: number | null;
+  createdAt: string;
+};
+
+type Event = {
+  id: string;
+  name: string;
+  description: string | null;
+  startDate: string | null;
+  timezone: string;
+  brandColor: string;
+  logoUrl: string | null;
+  eventCodes: EventCode[];
+  _count: {
+    users: number;
+    rooms: number;
+  };
+};
+
+export default function EventDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const eventId = params.id as string;
+  
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [codeCount, setCodeCount] = useState(1);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadEvent();
+  }, [eventId]);
+
+  const loadEvent = async () => {
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        router.push('/organiser/dashboard');
+        return;
+      }
+
+      setEvent(data.event);
+      setLoading(false);
+    } catch (error) {
+      console.error('Load event error:', error);
+      router.push('/organiser/dashboard');
+    }
+  };
+
+  const generateCodes = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}/codes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: codeCount }),
+      });
+
+      if (res.ok) {
+        await loadEvent();
+        setCodeCount(1);
+      }
+    } catch (error) {
+      console.error('Generate codes error:', error);
+    }
+    setGenerating(false);
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const copyJoinLink = (code: string) => {
+    const baseUrl = window.location.origin;
+    const joinLink = `${baseUrl}/?code=${code}`;
+    navigator.clipboard.writeText(joinLink);
+    setCopiedCode(code + '-link');
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  if (loading || !event) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center">
+            <Link
+              href="/organiser/dashboard"
+              className="text-gray-600 hover:text-gray-900 mr-4"
+            >
+              ← Dashboard
+            </Link>
+            <div className="flex-1">
+              <div className="flex items-center">
+                <h1 className="text-2xl font-bold text-gray-900">{event.name}</h1>
+                <div
+                  className="w-4 h-4 rounded-full ml-3"
+                  style={{ backgroundColor: event.brandColor }}
+                ></div>
+              </div>
+              {event.description && (
+                <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Stats */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Quick Stats */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Participants</span>
+                  <span className="text-2xl font-bold text-gray-900">{event._count.users}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Rooms</span>
+                  <span className="text-2xl font-bold text-gray-900">{event._count.rooms}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Event Codes</span>
+                  <span className="text-2xl font-bold text-gray-900">{event.eventCodes.length}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Event Info */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h3>
+              <div className="space-y-3 text-sm">
+                {event.startDate && (
+                  <div>
+                    <span className="text-gray-600">Start Date:</span>
+                    <p className="font-medium text-gray-900">
+                      {new Date(event.startDate).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-600">Timezone:</span>
+                  <p className="font-medium text-gray-900">{event.timezone}</p>
+                </div>
+                <div>
+                  <span className="text-gray-600">Brand Color:</span>
+                  <div className="flex items-center mt-1">
+                    <div
+                      className="w-6 h-6 rounded border border-gray-300 mr-2"
+                      style={{ backgroundColor: event.brandColor }}
+                    ></div>
+                    <span className="font-mono text-gray-900">{event.brandColor}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Event Codes */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Event Codes</h3>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={codeCount}
+                    onChange={(e) => setCodeCount(parseInt(e.target.value) || 1)}
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                  />
+                  <button
+                    onClick={generateCodes}
+                    disabled={generating}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+                  >
+                    {generating ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+              </div>
+
+              {event.eventCodes.length === 0 ? (
+                <div className="text-center py-12">
+                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <p className="text-gray-600 mb-4">No event codes yet</p>
+                  <p className="text-sm text-gray-500">Generate codes to allow participants to join</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {event.eventCodes.map((code) => (
+                    <div
+                      key={code.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <span className="text-2xl font-mono font-bold text-gray-900 mr-4">
+                            {code.code}
+                          </span>
+                          {code.active ? (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-semibold rounded">
+                              Inactive
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Used {code.usedCount} time{code.usedCount !== 1 ? 's' : ''}
+                          {code.maxUses && ` (max: ${code.maxUses})`}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => copyCode(code.code)}
+                          className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition"
+                        >
+                          {copiedCode === code.code ? '✓ Copied' : 'Copy Code'}
+                        </button>
+                        <button
+                          onClick={() => copyJoinLink(code.code)}
+                          className="px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg font-semibold transition"
+                        >
+                          {copiedCode === code.code + '-link' ? '✓ Copied Link' : 'Copy Join Link'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {event.eventCodes.length > 0 && (
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-2">How to Share</h4>
+                  <p className="text-sm text-blue-800">
+                    Share the <strong>event code</strong> with participants, or use the <strong>join link</strong> to 
+                    pre-fill the code. Participants visit {window.location.origin} and enter the code.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
