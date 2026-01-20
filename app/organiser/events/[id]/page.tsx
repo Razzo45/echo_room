@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import QuestReviewModal from '@/components/QuestReviewModal';
 
 type EventCode = {
   id: string;
@@ -18,7 +19,7 @@ type Event = {
   name: string;
   description: string | null;
   aiBrief: string | null;
-  aiGenerationStatus: 'IDLE' | 'GENERATING' | 'READY' | 'FAILED';
+  aiGenerationStatus: 'IDLE' | 'GENERATING' | 'DRAFT' | 'READY' | 'FAILED';
   aiGeneratedAt: string | null;
   aiGenerationVersion: string | null;
   startDate: string | null;
@@ -56,6 +57,8 @@ export default function EventDetailPage() {
     status: string;
     error?: string;
   } | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<any>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -191,13 +194,19 @@ export default function EventDetailPage() {
         return;
       }
 
-      // Check if status is already ready (fast completion)
-      if (data.status === 'READY') {
+      // If draft is returned, show review modal
+      if (data.draft && data.status === 'DRAFT') {
+        setReviewDraft(data.draft);
+        setShowReviewModal(true);
+        setGenerating(false);
+        setGenerationStatus({ status: 'DRAFT' });
+      } else if (data.status === 'READY') {
+        // Already committed
         setGenerationStatus({ status: 'READY' });
-        await loadEvent(); // Reload to get updated quests
+        await loadEvent();
         setGenerating(false);
       } else {
-        // Start polling for status
+        // Start polling for status (shouldn't happen with new flow)
         setGenerationStatus({ status: 'GENERATING' });
       }
     } catch (error) {
@@ -206,6 +215,36 @@ export default function EventDetailPage() {
         status: 'FAILED',
         error: 'An error occurred during generation',
       });
+      setGenerating(false);
+    }
+  };
+
+  const handleConfirmReview = async (editedDraft: any) => {
+    try {
+      setGenerating(true);
+      const res = await fetch(`/api/organiser/events/${eventId}/generate/commit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft: editedDraft }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Failed to save content');
+        setGenerating(false);
+        return;
+      }
+
+      // Success - close modal and reload
+      setShowReviewModal(false);
+      setReviewDraft(null);
+      setGenerationStatus({ status: 'READY' });
+      await loadEvent();
+      setGenerating(false);
+    } catch (error) {
+      console.error('Commit error:', error);
+      alert('An error occurred while saving. Please try again.');
       setGenerating(false);
     }
   };
@@ -223,6 +262,19 @@ export default function EventDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Review Modal */}
+      {showReviewModal && reviewDraft && (
+        <QuestReviewModal
+          draft={reviewDraft}
+          generationId={''}
+          onClose={() => {
+            setShowReviewModal(false);
+            setReviewDraft(null);
+            loadEvent(); // Reload to refresh status
+          }}
+          onConfirm={handleConfirmReview}
+        />
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
