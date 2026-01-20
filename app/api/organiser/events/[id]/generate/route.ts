@@ -72,7 +72,7 @@ export async function POST(
           eventName: event.name,
           eventDescription: event.description,
         },
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
       },
     });
 

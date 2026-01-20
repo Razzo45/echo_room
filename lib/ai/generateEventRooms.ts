@@ -30,7 +30,30 @@ export async function generateEventRooms(
 
   const { brief, eventName, eventDescription } = input;
 
-  const systemPrompt = `You are an expert game designer and facilitator for collaborative decision-making workshops. Your task is to generate structured decision scenarios (quests) based on an event brief.
+  const systemPrompt = `You are an expert consultant, strategic advisor, and facilitator for executive-level collaborative decision-making workshops. Your task is to generate sophisticated, high-quality decision scenarios (quests) based on an event brief.
+
+WRITING QUALITY REQUIREMENTS (CRITICAL):
+- Write at a professional/graduate-level standard, NOT high-school level
+- Use sophisticated vocabulary and nuanced language appropriate for senior executives and professionals
+- Trade-offs must be detailed, multi-faceted analyses (150-300 words each) covering:
+  * Economic implications (costs, ROI, budget impacts)
+  * Strategic considerations (long-term positioning, competitive advantage)
+  * Operational challenges (implementation complexity, resource requirements)
+  * Stakeholder impacts (affected parties, resistance, support)
+  * Temporal factors (short-term vs long-term consequences)
+  * Risk-reward balances (opportunity costs, missed opportunities)
+- Impact field must contain comprehensive outcomes (200-400 words) including:
+  * 3-5 specific, detailed risks with clear explanations of likelihood and severity
+  * Multiple expected outcomes (positive and negative)
+  * Cascading effects and second-order consequences
+  * Quantifiable implications where relevant (timeframes, scales, probabilities)
+  * Sector-specific or industry-specific nuances
+- Quest descriptions should be rich, contextual narratives (100-200 words)
+- Decision contexts should provide substantial background (150-250 words) with:
+  * Historical precedents or comparable situations
+  * Relevant constraints and dependencies
+  * Stakeholder perspectives and tensions
+  * Urgency and timing considerations
 
 CRITICAL JSON FORMATTING REQUIREMENTS:
 - You MUST return ONLY valid JSON, no markdown, no code blocks, no explanations
@@ -39,6 +62,7 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
 - NO trailing commas
 - NO comments in JSON
 - Ensure all strings are properly terminated
+- Use \\n to indicate paragraph breaks in longer text fields
 
 CRITICAL CONTENT REQUIREMENTS:
 - Generate exactly 3 regions (districts/areas)
@@ -46,9 +70,10 @@ CRITICAL CONTENT REQUIREMENTS:
 - Each quest must have exactly 3 decisions
 - Each decision must have exactly 3 options (A, B, C)
 - All content must be realistic, engaging, and suitable for team collaboration
-- Decisions should present meaningful tradeoffs
-- Options should have clear impacts and tradeoffs
-- Avoid special characters in text that could break JSON (use plain text or escape properly)
+- Decisions should present sophisticated, challenging dilemmas with no obvious "right" answer
+- Options should have well-articulated, multi-dimensional impacts and tradeoffs
+- Avoid generic or simplistic language - be specific and nuanced
+- Trade-offs should NOT be simple "cost vs benefit" - explore complexity and nuance
 
 OUTPUT FORMAT (STRICT JSON):
 {
@@ -60,21 +85,21 @@ OUTPUT FORMAT (STRICT JSON):
       "quests": [
         {
           "name": "Quest Name",
-          "description": "Detailed quest description",
+          "description": "Rich, contextual narrative describing the quest scenario (100-200 words)",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
             {
               "decisionNumber": 1,
               "title": "Decision Title",
-              "context": "Background context for this decision",
+              "context": "Rich background context (150-250 words) including historical precedents, constraints, stakeholder perspectives, and urgency considerations",
               "options": [
                 {
                   "optionKey": "A",
                   "title": "Option A Title",
-                  "description": "What this option entails",
-                  "impact": "Expected outcomes and consequences",
-                  "tradeoff": "What is sacrificed or gained"
+                  "description": "Detailed description of what this option entails (50-100 words)",
+                  "impact": "Comprehensive analysis of outcomes and consequences (200-400 words). MUST include 3-5 specific, detailed risks with explanations of likelihood and severity. Include multiple expected outcomes, cascading effects, and quantifiable implications where relevant.",
+                  "tradeoff": "Sophisticated multi-faceted trade-off analysis (150-300 words). MUST cover: economic implications, strategic considerations, operational challenges, stakeholder impacts, temporal factors, and risk-reward balances. NOT simple cost-benefit - explore complexity and nuance."
                 },
                 {
                   "optionKey": "B",
@@ -122,14 +147,17 @@ CRITICAL JSON RULES:
 - Validate your JSON before returning
 
 CONTENT RULES:
-- Ensure all required fields are present
+- Ensure all required fields are present with substantial, high-quality content
 - Each quest must have exactly 3 decisions (numbered 1, 2, 3)
 - Each decision must have exactly 3 options (A, B, C)
-- Make decisions challenging and thought-provoking
-- Ensure options have meaningful differences and tradeoffs
-- Keep text concise to avoid JSON parsing issues`;
+- Make decisions challenging, sophisticated dilemmas with no obvious answer
+- Ensure options have meaningful, well-articulated differences with comprehensive trade-offs
+- Trade-offs MUST be detailed multi-faceted analyses, NOT simple cost-benefit summaries
+- Impact fields MUST include specific, detailed risks (3-5 minimum) with explanations
+- Write for an executive/professional audience - sophisticated language and concepts
+- Avoid generic, vague, or high-school level language - be specific and nuanced`;
 
-  const userPrompt = `Generate decision-making quests for this event:
+  const userPrompt = `Generate sophisticated, high-quality decision-making quests for this event:
 
 Event Name: ${eventName || 'Unnamed Event'}
 Event Description: ${eventDescription || 'No description provided'}
@@ -137,22 +165,28 @@ Event Description: ${eventDescription || 'No description provided'}
 AI Brief:
 ${brief}
 
-Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content relevant to the brief and suitable for team collaboration.
+Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content highly relevant to the brief and suitable for executive-level team collaboration.
 
-REMEMBER: Use plain text in strings, avoid quotes where possible, and ensure all strings are properly escaped. Keep descriptions concise.`;
+CRITICAL QUALITY REQUIREMENTS:
+- Trade-offs: Write detailed, multi-faceted analyses (150-300 words each) covering economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions. NOT simple cost-benefit.
+- Impact/Risks: Provide comprehensive outcome analysis (200-400 words) with 3-5 specific, detailed risks including likelihood and severity. Include cascading effects and quantifiable implications.
+- Context: Rich background narratives (150-250 words) with precedents, constraints, and stakeholder dynamics.
+- Language: Professional, sophisticated, graduate-level writing - avoid generic or high-school level language.
+
+REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph breaks, and ensure all strings are properly escaped for JSON.`;
 
   try {
-    console.log('Calling OpenAI API with model: gpt-4o-mini');
+    console.log('Calling OpenAI API with model: gpt-4o (high-quality content generation)');
     
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Using gpt-4o-mini for cost efficiency, can upgrade to gpt-4 if needed
+      model: 'gpt-4o', // Using gpt-4o for higher quality, sophisticated content generation
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' }, // Force JSON output
-      temperature: 0.5, // Lower temperature for more consistent JSON formatting
-      max_tokens: 6000, // Increased to avoid truncation issues
+      temperature: 0.7, // Slightly higher for more creative, nuanced content while maintaining consistency
+      max_tokens: 12000, // Increased significantly to accommodate detailed trade-offs and risk analyses
     });
 
     const content = completion.choices[0]?.message?.content;
