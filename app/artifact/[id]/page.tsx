@@ -7,7 +7,6 @@ import Link from 'next/link';
 type Artifact = {
   id: string;
   htmlContent: string;
-  pdfPath: string;
   questName: string;
   createdAt: string;
 };
@@ -50,7 +49,7 @@ export default function ArtifactPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-5xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <Link
             href="/me"
             className="inline-flex items-center text-primary-600 hover:text-primary-700"
@@ -60,14 +59,6 @@ export default function ArtifactPage() {
             </svg>
             Back to My Rooms
           </Link>
-          
-          <a
-            href={`/api/artifact/${artifactId}/pdf`}
-            download={`decision-map-${artifactId}.pdf`}
-            className="btn btn-primary"
-          >
-            Download PDF
-          </a>
         </div>
 
         <div
