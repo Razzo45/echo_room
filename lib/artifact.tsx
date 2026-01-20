@@ -437,45 +437,10 @@ async function generatePDF(
     </Document>
   );
 
-  // Generate PDF - react-pdf toBuffer() returns a Promise<Buffer> directly
-  // If it returns a ReadableStream, we'll handle it
-  let buffer: Buffer;
-  
-  try {
-    const pdfResult = await pdf(doc).toBuffer();
-    
-    // Check if it's already a Buffer
-    if (Buffer.isBuffer(pdfResult)) {
-      buffer = pdfResult;
-    } else if (pdfResult instanceof ReadableStream) {
-      // Convert ReadableStream to Buffer
-      const reader = pdfResult.getReader();
-      const chunks: Uint8Array[] = [];
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value) chunks.push(value);
-      }
-      
-      // Combine chunks
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      const combined = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        combined.set(chunk, offset);
-        offset += chunk.length;
-      }
-      buffer = Buffer.from(combined);
-    } else {
-      // Try to convert whatever it is
-      buffer = Buffer.from(pdfResult as any);
-    }
-  } catch (error) {
-    console.error('Error generating PDF buffer:', error);
-    throw new Error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-  
+  // Official react-pdf API: toBuffer returns a Promise<Buffer | Uint8Array>
+  const pdfResult = await (pdf(doc) as any).toBuffer();
+  const buffer = Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult);
+
   const pdfBase64 = buffer.toString('base64');
   
   let pdfPath: string | null = null;
