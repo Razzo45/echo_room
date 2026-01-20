@@ -36,11 +36,13 @@ type Decision = {
 
 type RoomData = {
   id: string;
+  status: string;
   currentDecision: number;
   members: Array<{ id: string; name: string }>;
   votes: Vote[];
   commits: Commit[];
   decisionsData?: { decisions: Decision[] } | null;
+  artifactId?: string;
 };
 
 export default function QuestPlayPage() {
@@ -99,22 +101,9 @@ export default function QuestPlayPage() {
 
       setRoom(data.room);
       setLoading(false);
-
-      // Redirect if completed
-      if (data.room.status === 'COMPLETED') {
-        // Generate artifact then redirect
-        fetch('/api/artifact/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomId }),
-        })
-          .then((r) => r.json())
-          .then((artifactData) => {
-            if (artifactData.artifactId) {
-              router.push(`/artifact/${artifactData.artifactId}`);
-            }
-          });
-      }
+      
+      // Note: Redirect logic is handled in the render function above
+      // to ensure it happens immediately when status changes to COMPLETED
     } catch (err) {
       console.error('Failed to load room:', err);
     }
@@ -183,6 +172,50 @@ export default function QuestPlayPage() {
       alert('Failed to commit decision');
     }
   };
+
+  // Immediately redirect if room is completed
+  if (room && room.status === 'COMPLETED') {
+    // Check if we already have an artifact
+    if (room.artifactId) {
+      router.push(`/artifact/${room.artifactId}`);
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Generating your decision map...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Generate artifact if not already generated
+    fetch('/api/artifact/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId }),
+    })
+      .then((r) => r.json())
+      .then((artifactData) => {
+        if (artifactData.artifactId) {
+          router.push(`/artifact/${artifactData.artifactId}`);
+        } else {
+          console.error('Failed to generate artifact:', artifactData);
+        }
+      })
+      .catch((err) => {
+        console.error('Error generating artifact:', err);
+      });
+    
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Quest Complete!</h3>
+          <p className="text-gray-600">Generating your decision map...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !room) {
     if (roomError) {
@@ -302,6 +335,22 @@ export default function QuestPlayPage() {
   const currentVotes = room.votes.filter((v) => v.decisionNumber === room.currentDecision);
   const hasVoted = currentVotes.some((v) => v.userId === userId);
   const allVoted = currentVotes.length === room.members.length;
+  
+  // If decision 3 is committed, room should be completed - show loading state
+  const decision3Committed = room.commits.some((c) => c.decisionNumber === 3);
+  if (decision3Committed && room.status !== 'COMPLETED') {
+    // Room is completing, reload to get updated status
+    setTimeout(() => loadRoom(), 1000);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Quest Complete!</h3>
+          <p className="text-gray-600">Preparing your decision map...</p>
+        </div>
+      </div>
+    );
+  }
 
   const voteCounts = { A: 0, B: 0, C: 0 };
   currentVotes.forEach((v) => {
