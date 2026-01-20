@@ -55,6 +55,8 @@ export default function WorldPage() {
     );
   }
 
+  // Filter to only show active regions with quests
+  const activeRegions = regions.filter((r) => r.isActive && r.questCount > 0);
   const cityDistrict = regions.find((r) => r.name === 'city-district');
 
   return (
@@ -67,83 +69,88 @@ export default function WorldPage() {
           <p className="text-blue-200">Select a region to begin your quest</p>
         </div>
 
-        {/* City District Image Container */}
-        <div className="relative mb-8 bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl mx-auto">
-          <Image
-            src="/city-district.png"
-            alt="Isometric illustration of a smart city pilot district"
-            width={1024}
-            height={1536}
-            className="w-full h-auto"
-            priority
-            onClick={() => setShowCityInfo(true)}
-          />
-
-          {/* City District Active Overlay - Always Visible */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <button
-              onClick={() => router.push('/district')}
-              className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl px-8 py-6 pointer-events-auto hover:bg-white transition transform hover:scale-105 active:scale-95"
-            >
-              <div className="flex items-center gap-4 mb-3">
-                <span className="text-5xl">🏙️</span>
-                <div className="text-left">
-                  <h2 className="text-2xl font-bold text-gray-900">City District</h2>
-                  <p className="text-sm text-gray-600">Smart City Pilot Zone</p>
+        {/* Dynamic Regions List - Show all active regions */}
+        {activeRegions.length > 0 ? (
+          <div className="space-y-4 mb-8">
+            {activeRegions.map((region) => (
+              <div
+                key={region.id}
+                onClick={() => router.push(`/district?regionId=${region.id}`)}
+                className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 cursor-pointer hover:bg-white transition transform hover:scale-105 active:scale-95"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <span className="text-4xl">📍</span>
+                    <div className="text-left">
+                      <h2 className="text-2xl font-bold text-gray-900">{region.displayName}</h2>
+                      {region.description && (
+                        <p className="text-sm text-gray-600 mt-1">{region.description}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">{region.questCount} quest{region.questCount !== 1 ? 's' : ''} available</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="px-4 py-1.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                      ✓ ACTIVE
+                    </span>
+                    <span className="text-blue-600 font-semibold text-base flex items-center gap-2">
+                      Enter
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-6">
-                <span className="px-4 py-1.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                  ✓ ACTIVE
-                </span>
-                <span className="text-blue-600 font-semibold text-base flex items-center gap-2">
-                  Tap to Enter
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
+            ))}
+          </div>
+        ) : (
+          /* Fallback: Show city-district image if no active regions or legacy support */
+          cityDistrict && (
+            <div className="relative mb-8 bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl mx-auto">
+              <Image
+                src="/city-district.png"
+                alt="Isometric illustration of a smart city pilot district"
+                width={1024}
+                height={1536}
+                className="w-full h-auto"
+                priority
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <button
+                  onClick={() => router.push('/district?regionName=city-district')}
+                  className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl px-8 py-6 pointer-events-auto hover:bg-white transition transform hover:scale-105 active:scale-95"
+                >
+                  <div className="flex items-center gap-4 mb-3">
+                    <span className="text-5xl">🏙️</span>
+                    <div className="text-left">
+                      <h2 className="text-2xl font-bold text-gray-900">{cityDistrict.displayName || 'City District'}</h2>
+                      <p className="text-sm text-gray-600">Smart City Pilot Zone</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-6">
+                    <span className="px-4 py-1.5 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
+                      ✓ ACTIVE
+                    </span>
+                    <span className="text-blue-600 font-semibold text-base flex items-center gap-2">
+                      Tap to Enter
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </div>
+                </button>
               </div>
-            </button>
-          </div>
-
-          {/* Locked Zone Labels - Non-interactive */}
-          <div className="absolute top-6 left-6 bg-gray-800/85 backdrop-blur-sm text-gray-300 px-4 py-2.5 rounded-lg text-sm shadow-lg pointer-events-none">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🏭</span>
-              <span className="font-semibold">Factory Hub</span>
             </div>
-            <div className="text-xs text-gray-400 pl-7">Unlocks later in 2026</div>
-          </div>
-
-          <div className="absolute top-6 right-6 bg-gray-800/85 backdrop-blur-sm text-gray-300 px-4 py-2.5 rounded-lg text-sm shadow-lg pointer-events-none">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🎓</span>
-              <span className="font-semibold">Campus Zone</span>
-            </div>
-            <div className="text-xs text-gray-400 pl-7">Unlocks later in 2026</div>
-          </div>
-
-          <div className="absolute bottom-32 right-6 bg-gray-800/85 backdrop-blur-sm text-gray-300 px-4 py-2.5 rounded-lg text-sm shadow-lg pointer-events-none">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🏛️</span>
-              <span className="font-semibold">Policy Hall</span>
-            </div>
-            <div className="text-xs text-gray-400 pl-7">Unlocks later in 2026</div>
-          </div>
-
-          <div className="absolute bottom-6 left-6 bg-gray-800/85 backdrop-blur-sm text-gray-300 px-4 py-2.5 rounded-lg text-sm shadow-lg pointer-events-none">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🚢</span>
-              <span className="font-semibold">Border Port</span>
-            </div>
-            <div className="text-xs text-gray-400 pl-7">Unlocks later in 2026</div>
-          </div>
-        </div>
+          )
+        )}
 
         {/* Info Card */}
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white text-center max-w-2xl mx-auto mb-6">
-          <p className="text-sm mb-2">📍 You are viewing the Smart City World Map</p>
-          <p className="text-xs text-blue-200">Tap the City District to explore available quests</p>
+          <p className="text-sm mb-2">📍 Explore available regions and quests</p>
+          {activeRegions.length === 0 && (
+            <p className="text-xs text-blue-200">No active regions available. Check back later.</p>
+          )}
         </div>
 
         {/* Navigation */}

@@ -294,11 +294,14 @@ export async function POST(
 
       console.log('Generation successful, returning response');
 
+      // Return immediately to avoid Vercel timeout
+      // Status is already READY from transaction, client polls /generation endpoint
       return NextResponse.json({
         success: true,
-        message: 'Event rooms generated successfully',
+        message: 'Generation completed successfully',
         generationId: generation.id,
         questsCreated: createdQuests,
+        status: 'READY', // Include status so client doesn't need to poll immediately
       });
     } catch (error) {
       // Update generation status to FAILED

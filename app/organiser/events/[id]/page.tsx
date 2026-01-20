@@ -191,8 +191,15 @@ export default function EventDetailPage() {
         return;
       }
 
-      // Start polling for status
-      setGenerationStatus({ status: 'GENERATING' });
+      // Check if status is already ready (fast completion)
+      if (data.status === 'READY') {
+        setGenerationStatus({ status: 'READY' });
+        await loadEvent(); // Reload to get updated quests
+        setGenerating(false);
+      } else {
+        // Start polling for status
+        setGenerationStatus({ status: 'GENERATING' });
+      }
     } catch (error) {
       console.error('Generate rooms error:', error);
       setGenerationStatus({

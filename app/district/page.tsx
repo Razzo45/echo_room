@@ -17,12 +17,23 @@ export default function DistrictPage() {
   const router = useRouter();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [regionName, setRegionName] = useState<string>('City District');
 
   useEffect(() => {
-    // Fetch quests for the City District region
+    // Get regionId or regionName from URL query params
+    const params = new URLSearchParams(window.location.search);
+    const regionId = params.get('regionId');
+    const regionName = params.get('regionName') || 'city-district'; // Fallback for legacy
+
+    // Build quests API URL
+    const questsUrl = regionId 
+      ? `/api/quests?regionId=${regionId}`
+      : `/api/quests?regionName=${regionName}`;
+
+    // Fetch quests for the specified region
     Promise.all([
       fetch('/api/auth/me').then((r) => r.json()),
-      fetch('/api/quests?regionName=city-district').then((r) => r.json()),
+      fetch(questsUrl).then((r) => r.json()),
     ])
       .then(([userData, questsData]) => {
         if (userData.error) {
@@ -40,6 +51,12 @@ export default function DistrictPage() {
           (q: Quest) => !q.questType || q.questType === 'DECISION_ROOM'
         );
         setQuests(decisionRoomQuests);
+        
+        // Set region name from first quest if available
+        if (decisionRoomQuests.length > 0 && (decisionRoomQuests[0] as any).regionName) {
+          setRegionName((decisionRoomQuests[0] as any).regionName);
+        }
+        
         setLoading(false);
       })
       .catch((err) => {
@@ -72,7 +89,7 @@ export default function DistrictPage() {
             </svg>
             Back to World Map
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">City District</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{regionName}</h1>
           <p className="text-gray-600">Choose a quest to begin</p>
         </div>
 
