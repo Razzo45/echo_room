@@ -20,6 +20,19 @@ export async function POST(request: NextRequest) {
 
     const { questId } = validation.data;
 
+    // First get quest to know team size
+    const quest = await prisma.quest.findUnique({
+      where: { id: questId },
+      select: { teamSize: true },
+    });
+
+    if (!quest) {
+      return NextResponse.json(
+        { error: 'Quest not found' },
+        { status: 404 }
+      );
+    }
+
     // Check if user already in a room for this quest
     const existingMembership = await prisma.roomMember.findFirst({
       where: {
@@ -62,8 +75,9 @@ export async function POST(request: NextRequest) {
 
     let room;
 
-    if (openRoom && openRoom._count.members < 3) {
+    if (openRoom && openRoom._count.members < quest.teamSize) {
       // Join existing room
+      console.log(`Joining existing room ${openRoom.id} with ${openRoom._count.members} members (max: ${quest.teamSize})`);
       room = openRoom;
       
       await prisma.roomMember.create({
@@ -75,7 +89,7 @@ export async function POST(request: NextRequest) {
 
       // Update room status if now full
       const memberCount = openRoom._count.members + 1;
-      if (memberCount === 3) {
+      if (memberCount >= quest.teamSize) {
         await prisma.room.update({
           where: { id: room.id },
           data: { status: 'FULL' },
@@ -83,6 +97,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Create new room
+      console.log(`Creating new room for quest ${questId} (no open rooms with space)`);
       const roomCode = `ROOM-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
       
       room = await prisma.room.create({
