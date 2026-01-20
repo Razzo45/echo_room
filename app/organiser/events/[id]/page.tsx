@@ -26,6 +26,14 @@ type Event = {
   brandColor: string;
   logoUrl: string | null;
   eventCodes: EventCode[];
+  regions: Array<{
+    id: string;
+    name: string;
+    displayName: string;
+    _count: {
+      quests: number;
+    };
+  }>;
   _count: {
     users: number;
     rooms: number;
@@ -323,8 +331,14 @@ export default function EventDetailPage() {
                   <span className="text-2xl font-bold text-gray-900">{event._count.users}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Rooms</span>
+                  <span className="text-sm text-gray-600">Rooms (Active)</span>
                   <span className="text-2xl font-bold text-gray-900">{event._count.rooms}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Quests</span>
+                  <span className="text-2xl font-bold text-gray-900">
+                    {event.regions.reduce((sum, r) => sum + r._count.quests, 0)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Event Codes</span>
