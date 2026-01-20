@@ -21,7 +21,18 @@ export async function generateArtifact(roomId: string) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
-      quest: true,
+      quest: {
+        include: {
+          decisions: {
+            include: {
+              options: {
+                orderBy: { optionKey: 'asc' },
+              },
+            },
+            orderBy: { decisionNumber: 'asc' },
+          },
+        },
+      },
       members: {
         include: {
           user: true,
@@ -44,12 +55,62 @@ export async function generateArtifact(roomId: string) {
     throw new Error('Room not found');
   }
 
-  if (!room.quest.decisionsData) {
-    throw new Error('Quest has no decision data');
+  // Try to parse from deprecated decisionsData field first (for backward compatibility)
+  let decisionsData: DecisionData | null = null;
+  
+  if (room.quest.decisionsData) {
+    try {
+      const parsed = JSON.parse(room.quest.decisionsData as string) as DecisionData;
+      
+      // Validate that we have all required decision data
+      if (parsed.decisions && parsed.decisions.length > 0) {
+        decisionsData = parsed;
+      }
+    } catch (e) {
+      console.error('Failed to parse decisionsData for quest', room.quest.id, e);
+      // Will rebuild from tables below
+    }
+  }
+  
+  // If decisionsData is missing or incomplete, build it from QuestDecision/QuestOption tables
+  if (!decisionsData) {
+    const decisions = room.quest.decisions || [];
+    
+    if (decisions.length === 0) {
+      throw new Error('Quest has no decision data (neither JSON nor database records)');
+    }
+    
+    decisionsData = {
+      decisions: decisions.map((d) => ({
+        number: d.decisionNumber,
+        title: d.title,
+        description: d.context || d.title,
+        options: d.options.reduce((acc, opt) => {
+          // Parse impact field - it might be a string or contain structured info
+          // For artifact generation, we split impact into risks and outcomes
+          // The impact field typically contains outcomes, and we use tradeoff for tradeoffs
+          const impactText = opt.impact || '';
+          const impactParts = impactText.split(/[.;]\s+/).filter(Boolean);
+          
+          acc[opt.optionKey as 'A' | 'B' | 'C'] = {
+            label: opt.title,
+            tradeoffs: opt.tradeoff || opt.description || '',
+            // For now, use impact parts as both risks and outcomes
+            // This can be refined later if we add separate risk/outcome fields
+            risks: impactParts.length > 0 ? impactParts.slice(0, Math.ceil(impactParts.length / 2)) : [],
+            outcomes: impactParts.length > 0 ? impactParts.slice(Math.ceil(impactParts.length / 2)) : impactParts,
+          };
+          return acc;
+        }, {} as Record<'A' | 'B' | 'C', any>),
+      })),
+    };
   }
 
-  const decisionsData: DecisionData = JSON.parse(room.quest.decisionsData as string);
-  
+  // At this point, decisionsData should never be null (we throw if we can't build it)
+  if (!decisionsData) {
+    throw new Error('Failed to build decision data');
+  }
+
   // Build artifact data
   const teamMembers = room.members.map((m) => ({
     name: m.user.name,
