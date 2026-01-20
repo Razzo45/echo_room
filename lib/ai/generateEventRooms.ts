@@ -113,7 +113,7 @@ OUTPUT FORMAT (STRICT JSON):
 
 CRITICAL JSON RULES:
 - Return ONLY raw JSON object, NO markdown code blocks
-- NO backticks, NO ```json, NO explanations before or after
+- NO backticks, NO code fences, NO explanations before or after
 - Escape all quotes in strings: use \\" not "
 - Escape all backslashes: use \\\\
 - No newlines in string values (use \\n if needed)
