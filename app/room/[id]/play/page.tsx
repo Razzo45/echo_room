@@ -200,10 +200,12 @@ export default function QuestPlayPage() {
           router.push(`/artifact/${artifactData.artifactId}`);
         } else {
           console.error('Failed to generate artifact:', artifactData);
+          alert(`Failed to generate artifact: ${artifactData.error || 'Unknown error'}`);
         }
       })
       .catch((err) => {
         console.error('Error generating artifact:', err);
+        alert(`Error generating artifact: ${err.message || 'Unknown error'}`);
       });
     
     return (

@@ -64,8 +64,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     console.error('Generate artifact error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred while generating artifact';
     return NextResponse.json(
-      { error: 'An error occurred while generating artifact' },
+      { error: errorMessage, details: error instanceof Error ? error.stack : undefined },
       { status: 500 }
     );
   }
