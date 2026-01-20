@@ -238,7 +238,64 @@ export default function QuestPlayPage() {
   );
 
   if (!currentDecisionData) {
-    return <div>Decision not found</div>;
+    console.error('Decision not found:', {
+      currentDecision: room.currentDecision,
+      availableDecisions: room.decisionsData.decisions.map(d => d.number)
+    });
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Decision not found</h1>
+          <p className="text-gray-600 mb-4">
+            Decision {room.currentDecision} is not available in this quest.
+          </p>
+          <button
+            onClick={() => router.push('/district')}
+            className="btn btn-primary"
+          >
+            Back to City District
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if options exist
+  if (!currentDecisionData.options || !currentDecisionData.options.A || !currentDecisionData.options.B || !currentDecisionData.options.C) {
+    console.error('Decision options missing:', {
+      decisionNumber: room.currentDecision,
+      decisionTitle: currentDecisionData.title,
+      hasOptions: !!currentDecisionData.options,
+      hasA: !!currentDecisionData.options?.A,
+      hasB: !!currentDecisionData.options?.B,
+      hasC: !!currentDecisionData.options?.C,
+      fullDecision: currentDecisionData
+    });
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Decision options missing</h1>
+          <p className="text-gray-600 mb-4">
+            Decision {room.currentDecision}: "{currentDecisionData.title}" is missing its options.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            This is a data issue. Please contact support or try refreshing.
+          </p>
+          <details className="text-left text-xs text-gray-400 mb-4">
+            <summary className="cursor-pointer">Debug info</summary>
+            <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto">
+              {JSON.stringify(currentDecisionData, null, 2)}
+            </pre>
+          </details>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn btn-primary"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const isCommitted = room.commits.some((c) => c.decisionNumber === room.currentDecision);

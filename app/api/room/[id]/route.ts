@@ -40,11 +40,51 @@ export async function GET(
     // For DECISION_ROOM quests we expect structured decisionsData JSON.
     // For other quest types (FORM, SURVEY), this may be null.
     let decisionsData: any = null;
+    
+    // Try to parse from deprecated decisionsData field first
     if (room.quest.decisionsData) {
       try {
         decisionsData = JSON.parse(room.quest.decisionsData);
       } catch (e) {
         console.error('Failed to parse decisionsData for quest', room.quest.id, e);
+      }
+    }
+    
+    // If decisionsData is missing or incomplete, build it from QuestDecision/QuestOption tables
+    // Also rebuild if any decision is missing options A, B, or C
+    const needsRebuild = !decisionsData || 
+      !decisionsData.decisions || 
+      decisionsData.decisions.length === 0 ||
+      decisionsData.decisions.some((d: any) => !d.options || !d.options.A || !d.options.B || !d.options.C);
+    
+    if (needsRebuild) {
+      const decisions = await prisma.questDecision.findMany({
+        where: { questId: room.quest.id },
+        include: {
+          options: {
+            orderBy: { optionKey: 'asc' },
+          },
+        },
+        orderBy: { decisionNumber: 'asc' },
+      });
+      
+      if (decisions.length > 0) {
+        decisionsData = {
+          decisions: decisions.map((d) => ({
+            number: d.decisionNumber,
+            title: d.title,
+            description: d.context || d.title,
+            options: d.options.reduce((acc, opt) => {
+              acc[opt.optionKey as 'A' | 'B' | 'C'] = {
+                label: opt.title,
+                tradeoffs: opt.tradeoff || opt.description,
+                risks: opt.impact ? opt.impact.split('. ').filter(Boolean) : [],
+                outcomes: opt.impact ? opt.impact.split('. ').filter(Boolean) : [],
+              };
+              return acc;
+            }, {} as Record<'A' | 'B' | 'C', any>),
+          })),
+        };
       }
     }
 
