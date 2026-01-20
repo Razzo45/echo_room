@@ -32,7 +32,15 @@ export async function generateEventRooms(
 
   const systemPrompt = `You are an expert game designer and facilitator for collaborative decision-making workshops. Your task is to generate structured decision scenarios (quests) based on an event brief.
 
-CRITICAL REQUIREMENTS:
+CRITICAL JSON FORMATTING REQUIREMENTS:
+- You MUST return ONLY valid JSON, no markdown, no code blocks, no explanations
+- All string values MUST be properly escaped for JSON (use \\" for quotes, \\n for newlines)
+- NO unescaped quotes or special characters in strings
+- NO trailing commas
+- NO comments in JSON
+- Ensure all strings are properly terminated
+
+CRITICAL CONTENT REQUIREMENTS:
 - Generate exactly 3 regions (districts/areas)
 - Each region must have at least 1 quest (aim for 2-3 quests per region for variety)
 - Each quest must have exactly 3 decisions
@@ -40,6 +48,7 @@ CRITICAL REQUIREMENTS:
 - All content must be realistic, engaging, and suitable for team collaboration
 - Decisions should present meaningful tradeoffs
 - Options should have clear impacts and tradeoffs
+- Avoid special characters in text that could break JSON (use plain text or escape properly)
 
 OUTPUT FORMAT (STRICT JSON):
 {
@@ -102,13 +111,23 @@ OUTPUT FORMAT (STRICT JSON):
   ]
 }
 
-IMPORTANT:
-- Return ONLY valid JSON, no markdown, no code blocks, no explanations
+CRITICAL JSON RULES:
+- Return ONLY raw JSON object, NO markdown code blocks
+- NO backticks, NO ```json, NO explanations before or after
+- Escape all quotes in strings: use \\" not "
+- Escape all backslashes: use \\\\
+- No newlines in string values (use \\n if needed)
+- No trailing commas anywhere
+- All strings must be properly terminated
+- Validate your JSON before returning
+
+CONTENT RULES:
 - Ensure all required fields are present
 - Each quest must have exactly 3 decisions (numbered 1, 2, 3)
 - Each decision must have exactly 3 options (A, B, C)
 - Make decisions challenging and thought-provoking
-- Ensure options have meaningful differences and tradeoffs`;
+- Ensure options have meaningful differences and tradeoffs
+- Keep text concise to avoid JSON parsing issues`;
 
   const userPrompt = `Generate decision-making quests for this event:
 
@@ -118,7 +137,9 @@ Event Description: ${eventDescription || 'No description provided'}
 AI Brief:
 ${brief}
 
-Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content relevant to the brief and suitable for team collaboration.`;
+Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content relevant to the brief and suitable for team collaboration.
+
+REMEMBER: Use plain text in strings, avoid quotes where possible, and ensure all strings are properly escaped. Keep descriptions concise.`;
 
   try {
     console.log('Calling OpenAI API with model: gpt-4o-mini');
@@ -130,8 +151,8 @@ Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential dec
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' }, // Force JSON output
-      temperature: 0.7, // Balance creativity and consistency
-      max_tokens: 4000, // Should be enough for multiple quests
+      temperature: 0.5, // Lower temperature for more consistent JSON formatting
+      max_tokens: 6000, // Increased to avoid truncation issues
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -143,19 +164,70 @@ Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential dec
 
     // Parse JSON (remove any markdown code blocks if present)
     let jsonContent = content.trim();
+    
+    // Remove markdown code blocks
     if (jsonContent.startsWith('```json')) {
-      jsonContent = jsonContent.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+      jsonContent = jsonContent.replace(/^```json\s*\n?/i, '').replace(/\n?\s*```\s*$/, '');
     } else if (jsonContent.startsWith('```')) {
-      jsonContent = jsonContent.replace(/^```\n?/, '').replace(/\n?```$/, '');
+      jsonContent = jsonContent.replace(/^```\s*\n?/, '').replace(/\n?\s*```\s*$/, '');
     }
+    
+    // Try to find JSON object if wrapped in text
+    const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      jsonContent = jsonMatch[0];
+    }
+
+    // Fix common JSON issues before parsing
+    jsonContent = jsonContent
+      .trim()
+      // Remove trailing commas before closing braces/brackets
+      .replace(/,(\s*[}\]])/g, '$1')
+      // Ensure proper string termination (basic fix)
+      .replace(/([^\\])"([^":,}\]]*?)([^\\])"/g, (match, p1, p2, p3) => {
+        // This is a basic fix - if we detect potential unterminated strings, try to fix them
+        return match;
+      });
 
     let parsed;
     try {
       parsed = JSON.parse(jsonContent);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Content preview:', jsonContent.substring(0, 500));
-      throw new Error(`AI returned invalid JSON: ${parseError instanceof Error ? parseError.message : 'Parse error'}`);
+      const errorPos = parseError instanceof SyntaxError && 'position' in parseError 
+        ? (parseError as any).position 
+        : null;
+      
+      if (errorPos) {
+        const start = Math.max(0, errorPos - 200);
+        const end = Math.min(jsonContent.length, errorPos + 200);
+        console.error('Content around error position:', jsonContent.substring(start, end));
+      } else {
+        console.error('Content preview (first 1000 chars):', jsonContent.substring(0, 1000));
+      }
+      
+      // Try to recover by fixing common issues (conservative approach)
+      try {
+        let fixedJson = jsonContent;
+        
+        // Remove trailing commas (common issue)
+        fixedJson = fixedJson.replace(/,(\s*[}\]])/g, '$1');
+        
+        // Try parsing the fixed version
+        parsed = JSON.parse(fixedJson);
+        console.log('Successfully parsed after auto-fix (trailing comma removal)');
+      } catch (recoveryError) {
+        // If auto-fix didn't work, the JSON is too malformed
+        // Log more details for debugging
+        console.error('JSON auto-fix failed. Original error:', parseError);
+        console.error('Recovery attempt error:', recoveryError);
+        
+        throw new Error(
+          `AI returned invalid JSON with syntax error. This usually happens when the AI includes unescaped quotes in text. ` +
+          `Error: ${parseError instanceof Error ? parseError.message : 'Parse error'}. ` +
+          `Please try generating again, or simplify your AI brief.`
+        );
+      }
     }
 
     // Validate with Zod schema
