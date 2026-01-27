@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,18 +19,18 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email: email || undefined, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Invalid password');
+        setError(data.error || 'Invalid credentials');
         setLoading(false);
         return;
       }
 
-      router.push('/admin/rooms');
+      router.push('/admin');
     } catch (err) {
       setError('An error occurred');
       setLoading(false);
@@ -47,6 +48,18 @@ export default function AdminLoginPage() {
         <div className="card">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
+              <label className="label">Email (optional)</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input"
+                placeholder="admin@example.com"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-1">Leave empty to use admin password</p>
+            </div>
+            <div>
               <label className="label">Password</label>
               <input
                 type="password"
@@ -54,7 +67,6 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="input"
                 required
-                autoFocus
               />
             </div>
 

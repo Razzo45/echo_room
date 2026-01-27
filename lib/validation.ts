@@ -32,6 +32,7 @@ export const commitSchema = z.object({
 });
 
 export const adminLoginSchema = z.object({
+  email: z.string().email('Valid email is required').optional(),
   password: z.string().min(1, 'Password is required'),
 });
 

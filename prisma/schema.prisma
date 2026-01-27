@@ -372,3 +372,39 @@ model EventGeneration {
   @@index([eventId])
   @@index([status])
 }
+
+enum OrganiserRole {
+  ORGANISER
+  ADMIN
+  SUPER_ADMIN
+}
+
+model Organiser {
+  id          String        @id @default(cuid())
+  email       String        @unique
+  name        String
+  passwordHash String       // bcrypt hashed password
+  role        OrganiserRole @default(ORGANISER)
+  isActive    Boolean       @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  sessions    OrganiserSession[]
+  
+  @@index([email])
+  @@index([role])
+}
+
+model OrganiserSession {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  organiserId String
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  
+  organiser   Organiser @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([organiserId])
+}

@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isAdminAuthenticated } from '@/lib/auth';
+import { requireAdminAuth } from '@/lib/auth-organiser';
 
 export async function GET() {
   try {
-    const isAdmin = await isAdminAuthenticated();
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requireAdminAuth();
 
     const rooms = await prisma.room.findMany({
       include: {
@@ -62,10 +59,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await isAdminAuthenticated();
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requireAdminAuth();
 
     const body = await request.json();
     const { action, roomId, userId, targetRoomId } = body;
