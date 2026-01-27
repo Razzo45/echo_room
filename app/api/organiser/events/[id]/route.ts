@@ -105,7 +105,7 @@ export async function PUT(
       },
     });
 
-    if (event === 0) {
+    if (event.count === 0) {
       return NextResponse.json(
         { error: 'Event not found or not accessible' },
         { status: 404 }
@@ -143,7 +143,7 @@ export async function DELETE(
       },
     });
 
-    if (deleted === 0) {
+    if (deleted.count === 0) {
       return NextResponse.json(
         { error: 'Event not found or not accessible' },
         { status: 404 }
