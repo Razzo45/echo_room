@@ -32,6 +32,21 @@ export async function POST(
 
     const generated = validation.data;
 
+    // Enforce a minimum amount of AI-generated quests for this event
+    // to avoid committing a trivial single-quest configuration.
+    const totalQuests =
+      generated.regions?.reduce((sum, region) => sum + region.quests.length, 0) ?? 0;
+    if (totalQuests < 2) {
+      return NextResponse.json(
+        {
+          error:
+            'Too few quests generated. Please regenerate or edit the draft so there are at least 2 quests before committing.',
+          details: { totalQuests },
+        },
+        { status: 400 }
+      );
+    }
+
     // Find the latest DRAFT generation for this event
     const generation = await prisma.eventGeneration.findFirst({
       where: {
