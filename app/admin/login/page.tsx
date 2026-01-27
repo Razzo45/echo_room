@@ -19,7 +19,10 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email || undefined, password }),
+        body: JSON.stringify({ 
+          email: email.trim() === '' ? undefined : email, 
+          password 
+        }),
       });
 
       const data = await res.json();
@@ -31,8 +34,9 @@ export default function AdminLoginPage() {
       }
 
       router.push('/admin');
-    } catch (err) {
-      setError('An error occurred');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'An error occurred. Please check the console for details.');
       setLoading(false);
     }
   };
