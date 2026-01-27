@@ -8,10 +8,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
-    const event = await prisma.event.findUnique({
-      where: { id: params.id },
+    const event = await prisma.event.findFirst({
+      where: {
+        id: params.id,
+        ...(organiser.role === 'SUPER_ADMIN'
+          ? {}
+          : { organiserId: organiser.id }),
+      },
       include: {
         eventCodes: true,
         regions: {
@@ -67,7 +72,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const body = await request.json();
     const {
@@ -81,8 +86,13 @@ export async function PUT(
       sponsorLogos,
     } = body;
 
-    const event = await prisma.event.update({
-      where: { id: params.id },
+    const event = await prisma.event.updateMany({
+      where: {
+        id: params.id,
+        ...(organiser.role === 'SUPER_ADMIN'
+          ? {}
+          : { organiserId: organiser.id }),
+      },
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
@@ -95,7 +105,18 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({ event });
+    if (event === 0) {
+      return NextResponse.json(
+        { error: 'Event not found or not accessible' },
+        { status: 404 }
+      );
+    }
+
+    const updated = await prisma.event.findUnique({
+      where: { id: params.id },
+    });
+
+    return NextResponse.json({ event: updated });
   } catch (error) {
     console.error('Update event error:', error);
     return NextResponse.json(
@@ -111,11 +132,23 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
-    await prisma.event.delete({
-      where: { id: params.id },
+    const deleted = await prisma.event.deleteMany({
+      where: {
+        id: params.id,
+        ...(organiser.role === 'SUPER_ADMIN'
+          ? {}
+          : { organiserId: organiser.id }),
+      },
     });
+
+    if (deleted === 0) {
+      return NextResponse.json(
+        { error: 'Event not found or not accessible' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

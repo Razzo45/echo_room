@@ -11,13 +11,18 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const eventId = params.id;
 
     // Fetch event with latest generation
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
+    const event = await prisma.event.findFirst({
+      where: {
+        id: eventId,
+        ...(organiser.role === 'SUPER_ADMIN'
+          ? {}
+          : { organiserId: organiser.id }),
+      },
       include: {
         generations: {
           orderBy: { createdAt: 'desc' },

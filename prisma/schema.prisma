@@ -23,6 +23,7 @@ model Event {
   id                  String             @id @default(cuid())
   name                String
   description         String?
+  organiserId         String?
   aiBrief             String?            // AI generation brief/description
   aiGenerationStatus AIGenerationStatus  @default(IDLE)
   aiGeneratedAt       DateTime?
@@ -35,7 +36,9 @@ model Event {
   sponsorLogos        String?            // JSON array of logo URLs
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
-  
+ 
+  organiser           Organiser?         @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+ 
   eventCodes          EventCode[]
   users               User[]
   rooms               Room[]
@@ -306,6 +309,24 @@ model AnalyticsEvent {
   @@index([eventId, eventType])
   @@index([createdAt])
   @@index([userId])
+}
+
+enum OrganiserRole {
+  ORGANISER
+  SUPER_ADMIN
+}
+
+model Organiser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         OrganiserRole @default(ORGANISER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  events       Event[]
 }
 
 // Badges System for Gamification

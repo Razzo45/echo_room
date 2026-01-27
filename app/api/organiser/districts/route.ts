@@ -5,7 +5,7 @@ import { requireOrganiserAuth } from '@/lib/auth-organiser';
 // GET /api/organiser/districts?eventId=xxx
 export async function GET(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -18,7 +18,12 @@ export async function GET(request: Request) {
     }
 
     const districts = await prisma.region.findMany({
-      where: { eventId },
+      where: {
+        eventId,
+        event: organiser.role === 'SUPER_ADMIN'
+          ? {}
+          : { organiserId: organiser.id },
+      },
       include: {
         _count: {
           select: { quests: true },
@@ -40,7 +45,7 @@ export async function GET(request: Request) {
 // POST /api/organiser/districts
 export async function POST(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const body = await request.json();
     const { eventId, name, displayName, description, isActive, sortOrder } = body;
@@ -49,6 +54,23 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Event ID, name, and display name are required' },
         { status: 400 }
+      );
+    }
+
+    // Ensure organiser owns the event (or is super admin)
+    const event = await prisma.event.findFirst({
+      where: {
+        id: eventId,
+        ...(organiser.role === 'SUPER_ADMIN'
+          ? {}
+          : { organiserId: organiser.id }),
+      },
+    });
+
+    if (!event) {
+      return NextResponse.json(
+        { error: 'Event not found or not accessible' },
+        { status: 404 }
       );
     }
 

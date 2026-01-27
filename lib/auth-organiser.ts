@@ -1,33 +1,71 @@
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
+import { prisma } from './db';
+import type { Organiser } from '@prisma/client';
 
 const ORGANISER_SESSION_COOKIE = 'organiser_session';
-const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
-export function verifyOrganiserPassword(password: string): boolean {
-  const correctPassword = process.env.ORGANISER_PASSWORD;
-  if (!correctPassword) {
-    throw new Error('ORGANISER_PASSWORD not configured');
+type OrganiserSessionPayload = {
+  organiserId: string;
+};
+
+export async function verifyOrganiserCredentials(
+  email: string,
+  password: string
+): Promise<Organiser | null> {
+  const organiser = await prisma.organiser.findOne({
+    where: { email },
+  });
+
+  if (!organiser || !organiser.isActive) {
+    return null;
   }
-  return password === correctPassword;
+
+  const isValid = await bcrypt.compare(password, organiser.passwordHash);
+  if (!isValid) {
+    return null;
+  }
+
+  return organiser;
 }
 
-export async function createOrganiserSession(): Promise<void> {
+export async function createOrganiserSession(organiserId: string): Promise<void> {
   const cookieStore = await cookies();
-  const sessionToken = generateSessionToken();
-  
-  cookieStore.set(ORGANISER_SESSION_COOKIE, sessionToken, {
+  const payload: OrganiserSessionPayload = { organiserId };
+  const token = Buffer.from(JSON.stringify(payload)).toString('base64url');
+
+  cookieStore.set(ORGANISER_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: SESSION_DURATION / 1000,
+    maxAge: SESSION_DURATION_SECONDS,
     path: '/',
   });
 }
 
-export async function getOrganiserSession(): Promise<string | null> {
+export async function getOrganiserFromSession(): Promise<Organiser | null> {
   const cookieStore = await cookies();
-  const session = cookieStore.get(ORGANISER_SESSION_COOKIE);
-  return session?.value || null;
+  const raw = cookieStore.get(ORGANISER_SESSION_COOKIE)?.value;
+  if (!raw) return null;
+
+  try {
+    const decoded = Buffer.from(raw, 'base64url').toString('utf8');
+    const payload = JSON.parse(decoded) as OrganiserSessionPayload;
+    if (!payload.organiserId) return null;
+
+    const organiser = await prisma.organiser.findUnique({
+      where: { id: payload.organiserId },
+    });
+
+    if (!organiser || !organiser.isActive) {
+      return null;
+    }
+
+    return organiser;
+  } catch {
+    return null;
+  }
 }
 
 export async function destroyOrganiserSession(): Promise<void> {
@@ -35,13 +73,10 @@ export async function destroyOrganiserSession(): Promise<void> {
   cookieStore.delete(ORGANISER_SESSION_COOKIE);
 }
 
-export async function requireOrganiserAuth(): Promise<void> {
-  const session = await getOrganiserSession();
-  if (!session) {
+export async function requireOrganiserAuth(): Promise<Organiser> {
+  const organiser = await getOrganiserFromSession();
+  if (!organiser) {
     throw new Error('Organiser authentication required');
   }
-}
-
-function generateSessionToken(): string {
-  return `org_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  return organiser;
 }

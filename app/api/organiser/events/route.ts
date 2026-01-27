@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
 
-// GET /api/organiser/events - List all events
+// GET /api/organiser\events - List all events for current organiser
 export async function GET(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const events = await prisma.event.findMany({
+      where: organiser.role === 'SUPER_ADMIN'
+        ? {}
+        : { organiserId: organiser.id },
       include: {
         eventCodes: {
           where: { active: true },
@@ -37,7 +40,7 @@ export async function GET(request: Request) {
 // POST /api/organiser/events - Create new event
 export async function POST(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const body = await request.json();
     const {
@@ -61,6 +64,7 @@ export async function POST(request: Request) {
     const event = await prisma.event.create({
       data: {
         name,
+        organiserId: organiser.id,
         description: description || null,
         aiBrief: aiBrief || null,
         startDate: startDate ? new Date(startDate) : null,

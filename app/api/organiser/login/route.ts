@@ -1,28 +1,28 @@
 import { NextResponse } from 'next/server';
-import { verifyOrganiserPassword, createOrganiserSession } from '@/lib/auth-organiser';
+import { verifyOrganiserCredentials, createOrganiserSession } from '@/lib/auth-organiser';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { password } = body;
+    const { email, password } = body as { email?: string; password?: string };
 
-    if (!password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Password is required' },
+        { error: 'Email and password are required' },
         { status: 400 }
       );
     }
 
-    const isValid = verifyOrganiserPassword(password);
-    
-    if (!isValid) {
+    const organiser = await verifyOrganiserCredentials(email, password);
+
+    if (!organiser) {
       return NextResponse.json(
-        { error: 'Invalid password' },
+        { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
-    await createOrganiserSession();
+    await createOrganiserSession(organiser.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

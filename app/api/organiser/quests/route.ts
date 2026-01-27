@@ -5,7 +5,7 @@ import { requireOrganiserAuth } from '@/lib/auth-organiser';
 // GET /api/organiser/quests?eventId=xxx or ?districtId=xxx
 export async function GET(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -15,7 +15,14 @@ export async function GET(request: Request) {
 
     if (districtId) {
       quests = await prisma.quest.findMany({
-        where: { regionId: districtId },
+        where: {
+          regionId: districtId,
+          region: {
+            event: organiser.role === 'SUPER_ADMIN'
+              ? {}
+              : { organiserId: organiser.id },
+          },
+        },
         include: {
           region: true,
           decisions: {
@@ -36,7 +43,12 @@ export async function GET(request: Request) {
     } else if (eventId) {
       quests = await prisma.quest.findMany({
         where: {
-          region: { eventId },
+          region: {
+            eventId,
+            event: organiser.role === 'SUPER_ADMIN'
+              ? {}
+              : { organiserId: organiser.id },
+          },
         },
         include: {
           region: true,
@@ -70,7 +82,7 @@ export async function GET(request: Request) {
 // POST /api/organiser/quests
 export async function POST(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const body = await request.json();
     const {

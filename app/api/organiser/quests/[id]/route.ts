@@ -8,10 +8,17 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
-    const quest = await prisma.quest.findUnique({
-      where: { id: params.id },
+    const quest = await prisma.quest.findFirst({
+      where: {
+        id: params.id,
+        region: {
+          event: organiser.role === 'SUPER_ADMIN'
+            ? {}
+            : { organiserId: organiser.id },
+        },
+      },
       include: {
         region: true,
         decisions: {
