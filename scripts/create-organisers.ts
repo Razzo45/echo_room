@@ -11,13 +11,13 @@ async function main() {
       email: 'organiser@test.com',
       name: 'Organiser One',
       password: 'organiser2026',
-      role: OrganiserRole.ORGANISER as const,
+      role: OrganiserRole.ORGANISER,
     },
     {
       email: 'organiser2@test.com',
       name: 'Organiser Two',
       password: 'organiser22026',
-      role: OrganiserRole.ORGANISER as const,
+      role: OrganiserRole.ORGANISER,
     },
   ];
 
