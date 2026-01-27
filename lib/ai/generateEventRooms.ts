@@ -34,26 +34,25 @@ export async function generateEventRooms(
 
 WRITING QUALITY REQUIREMENTS (CRITICAL):
 - Write at a professional/graduate-level standard, NOT high-school level
-- Use sophisticated vocabulary and nuanced language appropriate for senior executives and professionals
-- Trade-offs must be detailed, multi-faceted analyses (150-300 words each) covering:
+- Use clear, confident, executive-friendly language
+- Be concise: aim for about 60–120 words per narrative field (avoid long essays)
+- Trade-offs must be multi-faceted analyses covering:
   * Economic implications (costs, ROI, budget impacts)
   * Strategic considerations (long-term positioning, competitive advantage)
   * Operational challenges (implementation complexity, resource requirements)
   * Stakeholder impacts (affected parties, resistance, support)
   * Temporal factors (short-term vs long-term consequences)
   * Risk-reward balances (opportunity costs, missed opportunities)
-- Impact field must contain comprehensive outcomes (200-400 words) including:
-  * 3-5 specific, detailed risks with clear explanations of likelihood and severity
-  * Multiple expected outcomes (positive and negative)
-  * Cascading effects and second-order consequences
-  * Quantifiable implications where relevant (timeframes, scales, probabilities)
-  * Sector-specific or industry-specific nuances
-- Quest descriptions should be rich, contextual narratives (100-200 words)
-- Decision contexts should provide substantial background (150-250 words) with:
-  * Historical precedents or comparable situations
-  * Relevant constraints and dependencies
-  * Stakeholder perspectives and tensions
-  * Urgency and timing considerations
+- Impact field must contain focused outcomes including:
+  * 2-3 specific, concrete risks with brief explanations of likelihood and severity
+  * Key expected outcomes (positive and negative)
+  * Any important cascading or second-order consequences
+  * Quantifiable implications where relevant (timeframes, rough scales, probabilities)
+- Quest descriptions should be vivid but efficient (80-150 words)
+- Decision contexts should provide enough background to decide (100-180 words) with:
+  * Key constraints and dependencies
+  * The core tension or dilemma
+  * The main stakeholders and what they care about
 
 CRITICAL JSON FORMATTING REQUIREMENTS:
 - You MUST return ONLY valid JSON, no markdown, no code blocks, no explanations
@@ -85,48 +84,48 @@ OUTPUT FORMAT (STRICT JSON):
       "quests": [
         {
           "name": "Quest Name",
-          "description": "Rich, contextual narrative describing the quest scenario (100-200 words)",
+          "description": "Concise, contextual narrative describing the quest scenario (80-150 words)",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
             {
               "decisionNumber": 1,
               "title": "Decision Title",
-              "context": "Rich background context (150-250 words) including historical precedents, constraints, stakeholder perspectives, and urgency considerations",
+              "context": "Focused background context (100-180 words) including key constraints, stakeholder perspectives, and urgency considerations",
               "options": [
                 {
                   "optionKey": "A",
                   "title": "Option A Title",
-                  "description": "Detailed description of what this option entails (50-100 words)",
-                  "impact": "Comprehensive analysis of outcomes and consequences (200-400 words). MUST include 3-5 specific, detailed risks with explanations of likelihood and severity. Include multiple expected outcomes, cascading effects, and quantifiable implications where relevant.",
-                  "tradeoff": "Sophisticated multi-faceted trade-off analysis (150-300 words). MUST cover: economic implications, strategic considerations, operational challenges, stakeholder impacts, temporal factors, and risk-reward balances. NOT simple cost-benefit - explore complexity and nuance."
+                  "description": "Clear description of what this option entails (40-80 words)",
+                  "impact": "Concise analysis of outcomes and consequences (120-200 words). MUST include 2-3 specific risks with brief explanations, plus key expected outcomes and any important follow-on effects.",
+                  "tradeoff": "Multi-faceted trade-off analysis (80-150 words). MUST cover economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions in a concise way. Not a simple cost-benefit."
                 },
                 {
                   "optionKey": "B",
                   "title": "Option B Title",
-                  "description": "What this option entails",
-                  "impact": "Expected outcomes and consequences",
-                  "tradeoff": "What is sacrificed or gained"
+                  "description": "What this option entails (keep it focused and concrete)",
+                  "impact": "Expected outcomes and consequences in 3-5 sentences.",
+                  "tradeoff": "What is sacrificed or gained, in a concise way."
                 },
                 {
                   "optionKey": "C",
                   "title": "Option C Title",
-                  "description": "What this option entails",
-                  "impact": "Expected outcomes and consequences",
-                  "tradeoff": "What is sacrificed or gained"
+                  "description": "What this option entails (keep it focused and concrete)",
+                  "impact": "Expected outcomes and consequences in 3-5 sentences.",
+                  "tradeoff": "What is sacrificed or gained, in a concise way."
                 }
               ]
             },
             {
               "decisionNumber": 2,
               "title": "Decision 2 Title",
-              "context": "Background context",
+              "context": "Focused background context for this decision",
               "options": [/* 3 options A, B, C */]
             },
             {
               "decisionNumber": 3,
               "title": "Decision 3 Title",
-              "context": "Background context",
+              "context": "Focused background context for this decision",
               "options": [/* 3 options A, B, C */]
             }
           ]
@@ -157,7 +156,7 @@ CONTENT RULES:
 - Write for an executive/professional audience - sophisticated language and concepts
 - Avoid generic, vague, or high-school level language - be specific and nuanced`;
 
-  const userPrompt = `Generate sophisticated, high-quality decision-making quests for this event:
+  const userPrompt = `Generate sophisticated, high-quality but concise decision-making quests for this event:
 
 Event Name: ${eventName || 'Unnamed Event'}
 Event Description: ${eventDescription || 'No description provided'}
@@ -168,10 +167,11 @@ ${brief}
 Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content highly relevant to the brief and suitable for executive-level team collaboration.
 
 CRITICAL QUALITY REQUIREMENTS:
-- Trade-offs: Write detailed, multi-faceted analyses (150-300 words each) covering economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions. NOT simple cost-benefit.
-- Impact/Risks: Provide comprehensive outcome analysis (200-400 words) with 3-5 specific, detailed risks including likelihood and severity. Include cascading effects and quantifiable implications.
-- Context: Rich background narratives (150-250 words) with precedents, constraints, and stakeholder dynamics.
-- Language: Professional, sophisticated, graduate-level writing - avoid generic or high-school level language.
+- Be concise: aim for roughly 60–120 words per narrative section (no long essays).
+- Trade-offs: Provide multi-faceted analyses (80-150 words) covering economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions. NOT simple cost-benefit.
+- Impact/Risks: Provide focused outcome analysis (120-200 words) with 2-3 specific, detailed risks (1-2 sentences each) plus key outcomes. Avoid repetition.
+- Context: Focused background narratives (100-180 words) with only the most relevant constraints, tensions, and decision drivers.
+- Language: Professional and sophisticated, but direct, punchy, and easy to scan for busy executives.
 
 REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph breaks, and ensure all strings are properly escaped for JSON.`;
 
@@ -185,8 +185,8 @@ REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' }, // Force JSON output
-      temperature: 0.7, // Slightly higher for more creative, nuanced content while maintaining consistency
-      max_tokens: 12000, // Increased significantly to accommodate detailed trade-offs and risk analyses
+      temperature: 0.7, // Slightly higher for nuanced content while staying concise
+      max_tokens: 6000, // Lower to encourage more focused, concise content
     });
 
     const content = completion.choices[0]?.message?.content;
