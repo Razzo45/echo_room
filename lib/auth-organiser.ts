@@ -14,7 +14,7 @@ export async function verifyOrganiserCredentials(
   email: string,
   password: string
 ): Promise<Organiser | null> {
-  const organiser = await prisma.organiser.findOne({
+  const organiser = await prisma.organiser.findUnique({
     where: { email },
   });
 
