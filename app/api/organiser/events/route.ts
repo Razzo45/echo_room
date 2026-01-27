@@ -29,6 +29,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ events });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Get events error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch events' },
@@ -77,6 +83,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ event });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Create event error:', error);
     return NextResponse.json(
       { error: 'Failed to create event' },

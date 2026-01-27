@@ -58,6 +58,12 @@ export async function GET(
 
     return NextResponse.json({ event });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Get event error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch event' },
@@ -118,6 +124,12 @@ export async function PUT(
 
     return NextResponse.json({ event: updated });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Update event error:', error);
     return NextResponse.json(
       { error: 'Failed to update event' },
@@ -152,6 +164,12 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Delete event error:', error);
     return NextResponse.json(
       { error: 'Failed to delete event' },

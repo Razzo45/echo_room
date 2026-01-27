@@ -31,7 +31,7 @@ export async function verifyOrganiserCredentials(
 }
 
 export async function createOrganiserSession(organiserId: string): Promise<void> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const payload: OrganiserSessionPayload = { organiserId };
   const token = Buffer.from(JSON.stringify(payload)).toString('base64url');
 
@@ -45,14 +45,18 @@ export async function createOrganiserSession(organiserId: string): Promise<void>
 }
 
 export async function getOrganiserFromSession(): Promise<Organiser | null> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const raw = cookieStore.get(ORGANISER_SESSION_COOKIE)?.value;
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
 
   try {
     const decoded = Buffer.from(raw, 'base64url').toString('utf8');
     const payload = JSON.parse(decoded) as OrganiserSessionPayload;
-    if (!payload.organiserId) return null;
+    if (!payload.organiserId) {
+      return null;
+    }
 
     const organiser = await prisma.organiser.findUnique({
       where: { id: payload.organiserId },
@@ -63,13 +67,15 @@ export async function getOrganiserFromSession(): Promise<Organiser | null> {
     }
 
     return organiser;
-  } catch {
+  } catch (error) {
+    // Invalid cookie format - treat as unauthenticated
+    console.error('Failed to parse organiser session cookie:', error);
     return null;
   }
 }
 
 export async function destroyOrganiserSession(): Promise<void> {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   cookieStore.delete(ORGANISER_SESSION_COOKIE);
 }
 

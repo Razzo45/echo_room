@@ -34,6 +34,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ districts });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Get districts error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch districts' },
@@ -87,6 +93,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ district });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Create district error:', error);
     return NextResponse.json(
       { error: 'Failed to create district' },

@@ -71,6 +71,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ quests });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     console.error('Get quests error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch quests' },
