@@ -30,29 +30,31 @@ export async function generateEventRooms(
 
   const { brief, eventName, eventDescription } = input;
 
-  const systemPrompt = `You are an expert consultant, strategic advisor, and facilitator for executive-level collaborative decision-making workshops. Your task is to generate sophisticated, high-quality decision scenarios (quests) based on an event brief.
+  const systemPrompt = `You are a facilitator designing immersive, team-based decision experiences for people attending an event.
+Your job is to turn an event brief into concrete, emotionally resonant quests that feel relevant to participants’ real lives.
 
-WRITING QUALITY REQUIREMENTS (CRITICAL):
-- Write at a professional/graduate-level standard, NOT high-school level
-- Use clear, confident, executive-friendly language
-- Be concise: aim for about 60–120 words per narrative field (avoid long essays)
-- Trade-offs must be multi-faceted analyses covering:
-  * Economic implications (costs, ROI, budget impacts)
-  * Strategic considerations (long-term positioning, competitive advantage)
-  * Operational challenges (implementation complexity, resource requirements)
-  * Stakeholder impacts (affected parties, resistance, support)
-  * Temporal factors (short-term vs long-term consequences)
-  * Risk-reward balances (opportunity costs, missed opportunities)
-- Impact field must contain focused outcomes including:
-  * 2-3 specific, concrete risks with brief explanations of likelihood and severity
-  * Key expected outcomes (positive and negative)
-  * Any important cascading or second-order consequences
-  * Quantifiable implications where relevant (timeframes, rough scales, probabilities)
-- Quest descriptions should be vivid but efficient (80-150 words)
-- Decision contexts should provide enough background to decide (100-180 words) with:
-  * Key constraints and dependencies
-  * The core tension or dilemma
-  * The main stakeholders and what they care about
+WRITING STYLE (CRITICAL)
+- Write for smart, curious professionals who are at the event right now – not as a distant consultant report.
+- Use clear, vivid, conversational language (no buzzword soup, no long essays).
+- Make scenarios feel grounded in everyday reality: what people see, feel, and worry about in their roles and communities.
+- Highlight tensions and trade-offs in a way that sparks discussion, not in dense paragraphs.
+
+PARTICIPANT PERSPECTIVE (CRITICAL)
+For every quest and decision, implicitly answer:
+- "If I’m a person at this event, why should I care about this?"
+- "If I lived or worked in this context, how would this actually change my day-to-day experience?"
+- When helpful, bring in concrete characters (e.g. "a nurse on the night shift", "a commuter with two kids", "a small café owner").
+
+CONTENT & LENGTH GUIDELINES
+- Generate exactly 3 regions (districts/areas).
+- Each region: 2–3 quests that fit the event’s theme and audience.
+- Each quest: exactly 3 sequential decisions.
+- Each decision: exactly 3 options (A, B, C) that are all plausible, with no obvious "correct" answer.
+- Quest descriptions: 80–150 words, focused on setting the scene and why it matters to participants.
+- Decision context: 100–180 words, describing the crossroads and the pressures around it.
+- Option description: 40–80 words, explaining what the team would actually do.
+- Impact: 120–200 words, mixing concrete outcomes and 2–3 key risks (1–2 sentences each).
+- Tradeoff: 80–150 words, explaining what you gain, what you lose, and who feels it.
 
 CRITICAL JSON FORMATTING REQUIREMENTS:
 - You MUST return ONLY valid JSON, no markdown, no code blocks, no explanations
@@ -84,20 +86,20 @@ OUTPUT FORMAT (STRICT JSON):
       "quests": [
         {
           "name": "Quest Name",
-          "description": "Concise, contextual narrative describing the quest scenario (80-150 words)",
+          "description": "Concise, contextual narrative describing the quest scenario (80-150 words) written for people attending the event",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
             {
               "decisionNumber": 1,
               "title": "Decision Title",
-              "context": "Focused background context (100-180 words) including key constraints, stakeholder perspectives, and urgency considerations",
+              "context": "Focused background context (100-180 words) including key constraints, stakeholder perspectives, and why this decision matters to people at the event",
               "options": [
                 {
                   "optionKey": "A",
                   "title": "Option A Title",
-                  "description": "Clear description of what this option entails (40-80 words)",
-                  "impact": "Concise analysis of outcomes and consequences (120-200 words). MUST include 2-3 specific risks with brief explanations, plus key expected outcomes and any important follow-on effects.",
+                  "description": "Clear description of what this option entails for participants (40-80 words)",
+                  "impact": "Concise analysis of outcomes and consequences (120-200 words). MUST include 2-3 specific risks with brief explanations, plus key expected outcomes and any important follow-on effects for people and communities.",
                   "tradeoff": "Multi-faceted trade-off analysis (80-150 words). MUST cover economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions in a concise way. Not a simple cost-benefit."
                 },
                 {
@@ -156,7 +158,7 @@ CONTENT RULES:
 - Write for an executive/professional audience - sophisticated language and concepts
 - Avoid generic, vague, or high-school level language - be specific and nuanced`;
 
-  const userPrompt = `Generate sophisticated, high-quality but concise decision-making quests for this event:
+  const userPrompt = `Generate immersive, team-based decision quests that feel relevant to people attending this event:
 
 Event Name: ${eventName || 'Unnamed Event'}
 Event Description: ${eventDescription || 'No description provided'}
@@ -164,14 +166,24 @@ Event Description: ${eventDescription || 'No description provided'}
 AI Brief:
 ${brief}
 
-Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content highly relevant to the brief and suitable for executive-level team collaboration.
+Audience: People attending this event (for example, the kinds of participants and stakeholders described in the brief).
+
+CENTRAL QUESTION TO HOLD IN EVERY QUEST AND DECISION:
+"If you were one of these participants, what would you want this experience or solution to do to improve your daily work or quality of life?"
+
+Use this central question to:
+- Anchor every quest in concrete participant experiences (before, during, and after the event).
+- Show how each option changes what participants see, feel, and can do.
+- Make it obvious how the scenario connects to why they came to this event.
+
+Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content highly relevant to the brief AND to the lived experience of people who chose to attend this event.
 
 CRITICAL QUALITY REQUIREMENTS:
 - Be concise: aim for roughly 60–120 words per narrative section (no long essays).
 - Trade-offs: Provide multi-faceted analyses (80-150 words) covering economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions. NOT simple cost-benefit.
 - Impact/Risks: Provide focused outcome analysis (120-200 words) with 2-3 specific, detailed risks (1-2 sentences each) plus key outcomes. Avoid repetition.
 - Context: Focused background narratives (100-180 words) with only the most relevant constraints, tensions, and decision drivers.
-- Language: Professional and sophisticated, but direct, punchy, and easy to scan for busy executives.
+- Language: Professional and sophisticated, but direct, human, and easy to relate to for participants.
 
 REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph breaks, and ensure all strings are properly escaped for JSON.`;
 
