@@ -31,6 +31,11 @@ type Event = {
     id: string;
     name: string;
     displayName: string;
+    quests?: Array<{
+      id: string;
+      name: string;
+      _count: { rooms: number };
+    }>;
     _count: {
       quests: number;
     };
@@ -480,8 +485,9 @@ export default function EventDetailPage() {
             </div>
           </div>
 
-          {/* Right Column - Event Codes */}
-          <div className="lg:col-span-2">
+          {/* Right Column - Event Codes & Quests */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Event Codes */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Event Codes</h3>
@@ -589,6 +595,65 @@ export default function EventDetailPage() {
                     Share the <strong>event code</strong> with participants, or use the <strong>join link</strong> to 
                     pre-fill the code. Participants visit {window.location.origin} and enter the code.
                   </p>
+                </div>
+              )}
+            </div>
+
+            {/* Quests & Script Editing */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quests & Scripts</h3>
+              {event.regions.length === 0 ? (
+                <p className="text-sm text-gray-600">
+                  No districts or quests yet. Once rooms are generated with AI or quests are created manually,
+                  you can fine-tune their copy here.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {event.regions.map((region) => (
+                    <div key={region.id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-md font-semibold text-gray-800">
+                            {region.displayName}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            {(region.quests?.length ?? 0)} quest(s)
+                          </p>
+                        </div>
+                      </div>
+                      {region.quests && region.quests.length > 0 ? (
+                        <div className="space-y-2">
+                          {region.quests.map((quest) => (
+                            <div
+                              key={quest.id}
+                              className="flex items-center justify-between rounded border border-gray-200 px-3 py-2"
+                            >
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {quest.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {(quest._count?.rooms ?? 0)} room(s) created
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Link
+                                  href={`/organiser/quests/${quest.id}`}
+                                  className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
+                                >
+                                  Edit script
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          No quests in this district yet.
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

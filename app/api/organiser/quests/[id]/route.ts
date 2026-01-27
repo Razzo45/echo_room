@@ -59,18 +59,102 @@ export async function PUT(
       teamSize,
       sortOrder,
       isActive,
-    } = body;
+      decisions,
+    } = body as {
+      name?: string;
+      description?: string;
+      durationMinutes?: number;
+      teamSize?: number;
+      sortOrder?: number;
+      isActive?: boolean;
+      decisions?: Array<{
+        id: string;
+        title?: string;
+        context?: string;
+        options?: Array<{
+          id: string;
+          title?: string;
+          description?: string;
+          impact?: string;
+          tradeoff?: string;
+        }>;
+      }>;
+    };
 
-    const quest = await prisma.quest.update({
-      where: { id: params.id },
-      data: {
-        ...(name && { name }),
-        ...(description !== undefined && { description }),
-        ...(durationMinutes && { durationMinutes }),
-        ...(teamSize && { teamSize }),
-        ...(sortOrder !== undefined && { sortOrder }),
-        ...(isActive !== undefined && { isActive }),
-      },
+    const quest = await prisma.$transaction(async (tx) => {
+      // Update top-level quest fields
+      await tx.quest.update({
+        where: { id: params.id },
+        data: {
+          ...(name && { name }),
+          ...(description !== undefined && { description }),
+          ...(durationMinutes !== undefined && { durationMinutes }),
+          ...(teamSize !== undefined && { teamSize }),
+          ...(sortOrder !== undefined && { sortOrder }),
+          ...(isActive !== undefined && { isActive }),
+          // Clear deprecated decisionsData so API builds from QuestDecision/QuestOption
+          ...(Array.isArray(decisions) && decisions.length > 0
+            ? { decisionsData: null }
+            : {}),
+        },
+      });
+
+      // Apply nested decision/option updates if provided
+      if (Array.isArray(decisions) && decisions.length > 0) {
+        for (const d of decisions) {
+          if (!d.id) continue;
+
+          // Ensure decision belongs to this quest
+          const existingDecision = await tx.questDecision.findFirst({
+            where: {
+              id: d.id,
+              questId: params.id,
+            },
+          });
+          if (!existingDecision) continue;
+
+          await tx.questDecision.update({
+            where: { id: d.id },
+            data: {
+              ...(d.title !== undefined && { title: d.title }),
+              ...(d.context !== undefined && { context: d.context }),
+            },
+          });
+
+          if (Array.isArray(d.options) && d.options.length > 0) {
+            for (const o of d.options) {
+              if (!o.id) continue;
+              await tx.questOption.updateMany({
+                where: {
+                  id: o.id,
+                  decisionId: d.id,
+                },
+                data: {
+                  ...(o.title !== undefined && { title: o.title }),
+                  ...(o.description !== undefined && { description: o.description }),
+                  ...(o.impact !== undefined && { impact: o.impact }),
+                  ...(o.tradeoff !== undefined && { tradeoff: o.tradeoff }),
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // Return full quest with decisions/options for editor
+      return tx.quest.findUnique({
+        where: { id: params.id },
+        include: {
+          region: true,
+          decisions: {
+            include: { options: true },
+            orderBy: { decisionNumber: 'asc' },
+          },
+          fields: {
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      });
     });
 
     return NextResponse.json({ quest });

@@ -18,12 +18,11 @@ export async function GET(
           include: {
             quests: {
               include: {
-                decisions: {
-                  include: {
-                    options: true,
-                  },
+                _count: {
+                  select: { rooms: true },
                 },
               },
+              orderBy: { sortOrder: 'asc' },
             },
             _count: {
               select: {
