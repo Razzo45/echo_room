@@ -2,30 +2,50 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
 
-// GET /api/organiser\events - List all events for current organiser
+// GET /api/organiser/events - List all events for current organiser
 export async function GET(request: Request) {
   try {
-    const organiser = await requireOrganiserAuth();
+    let organiser;
+    try {
+      organiser = await requireOrganiserAuth();
+    } catch (authError) {
+      console.error('Auth error in GET /api/organiser/events:', authError);
+      if (authError instanceof Error && authError.message === 'Organiser authentication required') {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+      throw authError;
+    }
 
-    const events = await prisma.event.findMany({
-      where: organiser.role === 'SUPER_ADMIN'
-        ? {}
-        : { organiserId: organiser.id },
-      include: {
-        eventCodes: {
-          where: { active: true },
-        },
-        _count: {
-          select: {
-            users: true,
-            rooms: true,
+    const whereClause = organiser.role === 'SUPER_ADMIN'
+      ? {}
+      : { organiserId: organiser.id };
+
+    let events;
+    try {
+      events = await prisma.event.findMany({
+        where: whereClause,
+        include: {
+          eventCodes: {
+            where: { active: true },
+          },
+          _count: {
+            select: {
+              users: true,
+              rooms: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } catch (dbError) {
+      console.error('Database error in GET /api/organiser/events:', dbError);
+      throw dbError;
+    }
 
     return NextResponse.json({ events });
   } catch (error) {
@@ -40,14 +60,16 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
+    
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
     
+    // In production, include error message in response for debugging
     return NextResponse.json(
       { 
         error: 'Failed to fetch events',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
+        message: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
       },
       { status: 500 }
     );

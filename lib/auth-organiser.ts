@@ -63,7 +63,13 @@ export async function getOrganiserFromSession(): Promise<Organiser | null> {
         where: { id: payload.organiserId },
       });
 
-      if (!organiser || !organiser.isActive) {
+      if (!organiser) {
+        console.error(`Organiser not found with ID: ${payload.organiserId}`);
+        return null;
+      }
+
+      if (!organiser.isActive) {
+        console.error(`Organiser ${organiser.email} is not active`);
         return null;
       }
 
@@ -81,8 +87,12 @@ export async function getOrganiserFromSession(): Promise<Organiser | null> {
 }
 
 export async function destroyOrganiserSession(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(ORGANISER_SESSION_COOKIE);
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete(ORGANISER_SESSION_COOKIE);
+  } catch (error) {
+    console.error('Failed to destroy organiser session:', error);
+  }
 }
 
 export async function requireOrganiserAuth(): Promise<Organiser> {
