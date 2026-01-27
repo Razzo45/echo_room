@@ -50,6 +50,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [codeCount, setCodeCount] = useState(1);
+  const [customCode, setCustomCode] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [aiBrief, setAiBrief] = useState('');
   const [savingBrief, setSavingBrief] = useState(false);
@@ -122,10 +123,53 @@ export default function EventDetailPage() {
     setGenerating(false);
   };
 
+  const createCustomCode = async () => {
+    if (!customCode.trim()) return;
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}/codes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customCodes: [customCode] }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to create custom code');
+      } else {
+        await loadEvent();
+        setCustomCode('');
+      }
+    } catch (error) {
+      console.error('Create custom code error:', error);
+      alert('Failed to create custom code');
+    }
+    setGenerating(false);
+  };
+
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const toggleCodeActive = async (codeId: string, active: boolean) => {
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}/codes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codeId, active }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to update code state');
+        return;
+      }
+      await loadEvent();
+    } catch (error) {
+      console.error('Toggle code active error:', error);
+      alert('Failed to update code state');
+    }
   };
 
   const copyJoinLink = (code: string) => {
@@ -441,22 +485,40 @@ export default function EventDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Event Codes</h3>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={codeCount}
-                    onChange={(e) => setCodeCount(parseInt(e.target.value) || 1)}
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
-                  />
-                  <button
-                    onClick={generateCodes}
-                    disabled={generating}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
-                  >
-                    {generating ? 'Generating...' : 'Generate'}
-                  </button>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 gap-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={codeCount}
+                      onChange={(e) => setCodeCount(parseInt(e.target.value) || 1)}
+                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                    />
+                    <button
+                      onClick={generateCodes}
+                      disabled={generating}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+                    >
+                      {generating ? 'Generating...' : 'Generate'}
+                    </button>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      placeholder="Custom code (e.g. SMARTCITY26)"
+                      value={customCode}
+                      onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                    <button
+                      onClick={createCustomCode}
+                      disabled={generating || !customCode.trim()}
+                      className="px-3 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition disabled:opacity-50"
+                    >
+                      Add Custom
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -507,6 +569,12 @@ export default function EventDetailPage() {
                           className="px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg font-semibold transition"
                         >
                           {copiedCode === code.code + '-link' ? '✓ Copied Link' : 'Copy Join Link'}
+                        </button>
+                        <button
+                          onClick={() => toggleCodeActive(code.id, !code.active)}
+                          className="px-3 py-2 text-sm rounded-lg transition border"
+                        >
+                          {code.active ? 'Deactivate' : 'Activate'}
                         </button>
                       </div>
                     </div>
