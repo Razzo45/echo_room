@@ -31,7 +31,7 @@ export async function verifyOrganiserCredentials(
 }
 
 export async function createOrganiserSession(organiserId: string): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const payload: OrganiserSessionPayload = { organiserId };
   const token = Buffer.from(JSON.stringify(payload)).toString('base64url');
 
@@ -45,37 +45,43 @@ export async function createOrganiserSession(organiserId: string): Promise<void>
 }
 
 export async function getOrganiserFromSession(): Promise<Organiser | null> {
-  const cookieStore = cookies();
-  const raw = cookieStore.get(ORGANISER_SESSION_COOKIE)?.value;
-  if (!raw) {
-    return null;
-  }
-
   try {
-    const decoded = Buffer.from(raw, 'base64url').toString('utf8');
-    const payload = JSON.parse(decoded) as OrganiserSessionPayload;
-    if (!payload.organiserId) {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get(ORGANISER_SESSION_COOKIE)?.value;
+    if (!raw) {
       return null;
     }
 
-    const organiser = await prisma.organiser.findUnique({
-      where: { id: payload.organiserId },
-    });
+    try {
+      const decoded = Buffer.from(raw, 'base64url').toString('utf8');
+      const payload = JSON.parse(decoded) as OrganiserSessionPayload;
+      if (!payload.organiserId) {
+        return null;
+      }
 
-    if (!organiser || !organiser.isActive) {
+      const organiser = await prisma.organiser.findUnique({
+        where: { id: payload.organiserId },
+      });
+
+      if (!organiser || !organiser.isActive) {
+        return null;
+      }
+
+      return organiser;
+    } catch (error) {
+      // Invalid cookie format - treat as unauthenticated
+      console.error('Failed to parse organiser session cookie:', error);
       return null;
     }
-
-    return organiser;
   } catch (error) {
-    // Invalid cookie format - treat as unauthenticated
-    console.error('Failed to parse organiser session cookie:', error);
+    // cookies() call failed - treat as unauthenticated
+    console.error('Failed to get cookies:', error);
     return null;
   }
 }
 
 export async function destroyOrganiserSession(): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.delete(ORGANISER_SESSION_COOKIE);
 }
 

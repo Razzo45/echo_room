@@ -29,15 +29,26 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ events });
   } catch (error) {
+    console.error('Get events error:', error);
+    console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    
     if (error instanceof Error && error.message === 'Organiser authentication required') {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    console.error('Get events error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
     return NextResponse.json(
-      { error: 'Failed to fetch events' },
+      { 
+        error: 'Failed to fetch events',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
+      },
       { status: 500 }
     );
   }
