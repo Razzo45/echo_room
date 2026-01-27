@@ -15,24 +15,26 @@ Echo Room is a lightweight decision environment where teams of 3 collaborate on 
 ### Modular Monolith Design
 - **Next.js 14** with App Router for server-side rendering and API routes
 - **TypeScript** for type safety
-- **Prisma ORM** with SQLite (dev) / PostgreSQL (production)
+- **Prisma ORM** with PostgreSQL (production) / SQLite (dev)
 - **Tailwind CSS** for mobile-first styling
-- **React PDF** for artifact generation
 - **PWA** with offline support for static assets
+- **OpenAI API** for AI-powered quest generation
 
 ### Key Modules
-- **Auth Module**: Event code validation, session management
+- **Auth Module**: Event code validation, session management, role-based access control
+- **Organiser Module**: Event management, quest editing, code generation
+- **Admin Module**: System-wide management, organiser accounts, participant oversight
 - **World Module**: Map regions, quest catalog
 - **Room Module**: Matchmaking, team formation
 - **Quest Module**: Decision flow, voting logic
 - **Artifact Module**: Deterministic report generation
-- **Admin Module**: Room management, overrides
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
+- PostgreSQL database (for production) or SQLite (for local dev)
 
 ### Local Development
 
@@ -49,122 +51,188 @@ cp .env.example .env
 # Edit .env and set your values
 ```
 
-Default environment variables:
+Required environment variables:
 ```bash
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://user:pass@host:5432/db"  # or "file:./dev.db" for SQLite
 NEXT_PUBLIC_APP_NAME="Echo Room"
 SESSION_SECRET="dev-secret-change-in-production-32chars"
-ADMIN_PASSWORD="admin123"
-ORGANISER_PASSWORD="organiser2026"
+ADMIN_PASSWORD="admin123"  # Legacy admin login (optional)
+OPENAI_API_KEY="sk-..."  # Required for AI quest generation
 ```
 
 3. **Initialize Database**
 ```bash
 # Generate Prisma Client
-PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma generate
+npx prisma generate
 
-# Push schema to database
-PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma db push
+# Run migrations
+npx prisma migrate dev
 
-# Seed demo data
+# Seed demo data (optional)
 npm run prisma:seed
 ```
 
-4. **Start Development Server**
+4. **Create Organiser Accounts**
+```bash
+# Run the organiser creation script
+npx tsx scripts/create-organisers.ts
+```
+
+This creates test organisers:
+- `organiser@test.com` / `organiser2026` (ORGANISER role)
+- `organiser2@test.com` / `organiser22026` (ORGANISER role)
+
+5. **Start Development Server**
 ```bash
 npm run dev
 ```
 
-5. **Access the Application**
+6. **Access the Application**
 - **Participants:** http://localhost:3000
 - **Organisers:** http://localhost:3000/organiser
-- **Admins:** http://localhost:3000/admin/login
+- **Admin Panel:** http://localhost:3000/admin/login
 
 ### Demo Credentials
 
 - **Event Code:** `SMARTCITY26`
-- **Organiser Password:** `organiser2026`
-- **Admin Password:** `admin123`
-```
+- **Organiser Login:** 
+  - Email: `organiser@test.com`
+  - Password: `organiser2026`
+- **Admin Login:** 
+  - Password: `admin123` (legacy password-based, or use SUPER_ADMIN organiser account)
 
-This will:
-- Install dependencies
-- Generate Prisma client
-- Run migrations
-- Seed test data
+## 👥 User Roles & Access
 
-4. **Start Development Server**
-```bash
-npm run dev
-```
+### Participants
+- Join events with event codes
+- Create profiles
+- Form teams and complete quests
+- Generate decision map artifacts
 
-Visit http://localhost:3000
+### Organisers
+- **Role:** `ORGANISER`
+- **Access:** `/organiser` portal
+- **Capabilities:**
+  - Create and manage their own events
+  - Generate custom event codes
+  - Edit quest scripts manually
+  - View event statistics
+  - Trigger AI quest generation
+  - Revert quests to AI baseline
 
-### Test Credentials
-- **Event Code**: `SMARTCITY26`
-- **Admin Password**: `admin123` (change in production!)
+### Admins
+- **Role:** `ADMIN` or `SUPER_ADMIN`
+- **Access:** `/admin` panel (requires ADMIN/SUPER_ADMIN role)
+- **Capabilities:**
+  - View system-wide dashboard
+  - Manage all organisers (create, edit, delete, activate/deactivate)
+  - View all events across all organisers
+  - View all participants
+  - Manage rooms (force start, view status)
+  - System configuration
+
+### Super Admins
+- **Role:** `SUPER_ADMIN`
+- **Additional Capabilities:**
+  - Access to all events (not just their own)
+  - Full system administration
+  - Can manage other SUPER_ADMIN accounts
 
 ## 📁 Project Structure
 
 ```
-micro-mmo-mvp/
+echo-room/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API routes
-│   │   ├── auth/          # Authentication endpoints
+│   │   ├── auth/          # Participant authentication
+│   │   ├── organiser/     # Organiser API endpoints
+│   │   │   ├── login/     # Organiser login
+│   │   │   ├── events/    # Event management
+│   │   │   ├── quests/    # Quest management & editing
+│   │   │   └── districts/ # Region management
+│   │   ├── admin/         # Admin API endpoints
+│   │   │   ├── login/     # Admin login
+│   │   │   ├── dashboard/ # Dashboard stats
+│   │   │   ├── organisers/ # Organiser CRUD
+│   │   │   ├── events/    # Event management
+│   │   │   ├── participants/ # Participant management
+│   │   │   ├── rooms/     # Room management
+│   │   │   └── config/    # System configuration
 │   │   ├── room/          # Room management
 │   │   ├── vote/          # Voting
-│   │   ├── commit/        # Decision commits
 │   │   ├── artifact/      # Artifact generation
-│   │   └── admin/         # Admin endpoints
+│   │   └── ...
+│   ├── organiser/         # Organiser portal
+│   │   ├── page.tsx       # Login page
+│   │   ├── dashboard/     # Event dashboard
+│   │   ├── events/        # Event management
+│   │   └── quests/        # Quest script editor
+│   ├── admin/             # Admin panel
+│   │   ├── login/         # Admin login
+│   │   ├── page.tsx       # Dashboard
+│   │   ├── organisers/    # Organiser management
+│   │   ├── events/        # Event management
+│   │   ├── participants/  # Participant management
+│   │   ├── rooms/         # Room management
+│   │   └── config/        # System config
 │   ├── profile/           # Profile creation
 │   ├── world/             # World map
 │   ├── district/          # Quest list
 │   ├── room/              # Room lobby & quest play
-│   ├── artifact/          # Artifact viewer
-│   ├── me/                # User's rooms
-│   └── admin/             # Admin interface
+│   └── artifact/          # Artifact viewer
 ├── lib/                   # Core utilities
 │   ├── db.ts              # Prisma client
-│   ├── auth.ts            # Session management
+│   ├── auth.ts            # Participant session management
+│   ├── auth-organiser.ts  # Organiser authentication & RBAC
 │   ├── validation.ts      # Zod schemas
 │   ├── artifact.ts        # PDF/HTML generation
+│   ├── ai/                # AI generation logic
 │   └── rate-limit.ts      # Rate limiting
 ├── prisma/
 │   ├── schema.prisma      # Data model
+│   ├── migrations/        # Database migrations
 │   └── seed.ts            # Seed script
-├── public/
-│   ├── manifest.json      # PWA manifest
-│   └── artifacts/         # Generated PDFs
+├── scripts/
+│   └── create-organisers.ts # Create test organiser accounts
 └── package.json
 ```
 
 ## 🗄️ Data Model
 
 ### Core Entities
-- **Event**: Hackathon event container
-- **EventCode**: Access codes for events
-- **User**: Player profiles
-- **Session**: Authentication tokens
+- **Event**: Event container with organiser ownership
+- **EventCode**: Access codes for events (custom or auto-generated)
+- **Organiser**: Organiser accounts with roles (ORGANISER, ADMIN, SUPER_ADMIN)
+- **OrganiserSession**: Database-backed organiser sessions
+- **User**: Participant profiles
+- **Session**: Participant authentication tokens
 - **Region**: Map regions (districts)
-- **Quest**: Challenges within regions
+- **Quest**: Challenges within regions (AI-generated or manual)
+- **QuestDecision**: Decisions within quests
+- **QuestOption**: Options for each decision
 - **Room**: 3-player team instances
 - **RoomMember**: Room membership
 - **Vote**: Individual votes on decisions
 - **DecisionCommit**: Final team choices
 - **Artifact**: Generated decision maps
+- **EventGeneration**: AI generation tracking and baselines
 
 ### Key Relationships
+- Organiser → Event (one-to-many, with ownership)
+- Event → EventCode (one-to-many)
 - User → Event (many-to-one)
 - Room → Quest + Event (many-to-one)
 - RoomMember → Room + User (enforces max 3)
 - Vote → Room + User + Decision
 - Artifact → Room (one-to-one)
+- Quest → EventGeneration (optional, for AI-generated quests)
 
 ## 🎮 User Flow
 
+### Participant Flow
 1. **Landing**: Enter event code
 2. **Profile**: Create player profile
-3. **World Map**: View regions (City District active, others locked)
+3. **World Map**: View regions (districts)
 4. **Quest List**: See available challenges
 5. **Room Matching**: Join existing room or create new (auto-matchmaking)
 6. **Room Lobby**: Wait for 3 members
@@ -172,16 +240,51 @@ micro-mmo-mvp/
    - Each member votes (A/B/C) with justification
    - Team sees all votes
    - Team commits to final choice
-8. **Artifact**: View/download decision map PDF
+8. **Artifact**: View/download decision map
 
-## 🔐 Security Features
+### Organiser Flow
+1. **Login**: Email/password authentication
+2. **Dashboard**: View all owned events
+3. **Create Event**: Set up new event with branding
+4. **Generate Codes**: Create custom or random event codes
+5. **AI Generation**: Trigger AI quest generation from brief
+6. **Edit Quests**: Manually edit quest scripts
+7. **Monitor**: View participant stats and room status
 
-- **httpOnly cookies** for session tokens
-- **Rate limiting** on event code attempts
-- **Input validation** with Zod
-- **No email required** (privacy-first)
-- **Data deletion** endpoint
-- **Admin password** via environment variable
+### Admin Flow
+1. **Login**: Use SUPER_ADMIN organiser account or legacy password
+2. **Dashboard**: System-wide statistics
+3. **Manage Organisers**: Create, edit, activate/deactivate organiser accounts
+4. **View Events**: See all events across all organisers
+5. **Manage Participants**: View and manage participant data
+6. **Room Management**: Force start rooms, view status
+
+## 🔐 Authentication & Security
+
+### Participant Authentication
+- Event code validation
+- httpOnly cookie sessions
+- No email required (privacy-first)
+
+### Organiser Authentication
+- **Email/password** authentication
+- **Database-backed sessions** (stored in `OrganiserSession` table)
+- **Role-based access control** (ORGANISER, ADMIN, SUPER_ADMIN)
+- **Per-organiser event scoping** (organisers only see their own events unless SUPER_ADMIN)
+- **Password hashing** with bcrypt
+
+### Admin Authentication
+- **Legacy:** Password-based via `ADMIN_PASSWORD` env var
+- **Modern:** SUPER_ADMIN organiser accounts (recommended)
+- Database-backed sessions for SUPER_ADMIN accounts
+
+### Security Features
+- httpOnly cookies for all sessions
+- Rate limiting on event code attempts
+- Input validation with Zod
+- Database-backed sessions (more secure than cookie-only)
+- Role-based access control
+- Per-organiser data isolation
 
 ## 📱 PWA Features
 
@@ -193,93 +296,66 @@ micro-mmo-mvp/
 ## 🛠️ Development Commands
 
 ```bash
-npm run dev           # Start development server
-npm run build         # Build for production
-npm run start         # Start production server
-npm run lint          # Run ESLint
-npm run prisma:generate   # Generate Prisma client
-npm run prisma:migrate    # Run migrations
-npm run prisma:seed       # Seed database
-npm run prisma:studio     # Open Prisma Studio
-```
-
-## 🐳 Docker Deployment
-
-### Build Image
-```bash
-docker build -t micro-mmo:latest .
-```
-
-### Run Container
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -e DATABASE_URL="file:./prod.db" \
-  -e ADMIN_PASSWORD="your-secure-password" \
-  -e SESSION_SECRET="your-32-char-secret" \
-  --name micro-mmo \
-  micro-mmo:latest
-```
-
-### Docker Compose
-```yaml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://user:pass@db:5432/micrommo
-      - ADMIN_PASSWORD=admin123
-      - SESSION_SECRET=change-this-secret
-      - NEXT_PUBLIC_APP_URL=https://yourdomain.com
-    depends_on:
-      - db
-  
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_PASSWORD=yourpassword
-      - POSTGRES_DB=micrommo
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+npm run dev                    # Start development server
+npm run build                  # Build for production
+npm run start                  # Start production server
+npm run lint                   # Run ESLint
+npm run prisma:generate        # Generate Prisma client
+npm run prisma:migrate         # Run migrations (dev)
+npm run prisma:migrate:deploy  # Deploy migrations (production)
+npm run prisma:seed            # Seed database
+npm run prisma:studio          # Open Prisma Studio
 ```
 
 ## 🚢 Production Deployment
 
 ### Environment Variables
+
 ```env
+# Database
 DATABASE_URL="postgresql://user:pass@host:5432/db"
+
+# Security
 SESSION_SECRET="generate-a-32-character-random-string"
-ADMIN_PASSWORD="strong-password-here"
+ADMIN_PASSWORD="strong-password-here"  # Optional, legacy admin login
+
+# App Configuration
 NEXT_PUBLIC_APP_NAME="Echo Room"
 NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+
+# AI Generation
+OPENAI_API_KEY="sk-..."  # Required for AI quest generation
 ```
 
 ### Database Setup
-For PostgreSQL in production:
 
-1. Update `prisma/schema.prisma`:
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-
-2. Run migrations:
+1. **Run migrations:**
 ```bash
 npx prisma migrate deploy
-npx prisma db seed
 ```
+
+2. **Create initial organiser accounts:**
+```bash
+# Edit scripts/create-organisers.ts with production credentials
+npx tsx scripts/create-organisers.ts
+```
+
+Or create via admin panel after first SUPER_ADMIN login.
+
+### Vercel Deployment
+
+The build script automatically runs migrations:
+```json
+"build": "prisma generate && prisma migrate deploy && next build"
+```
+
+Ensure `DATABASE_URL` is set in Vercel environment variables.
 
 ## 🧪 Testing
 
 ### Manual Testing Checklist
+
+**Participant Features:**
 - [ ] Event code validation works
 - [ ] Profile saves correctly
 - [ ] Room join creates/joins appropriately
@@ -288,44 +364,112 @@ npx prisma db seed
 - [ ] Commit locks decision
 - [ ] Artifact generates with correct data
 - [ ] PDF downloads successfully
-- [ ] Admin can force start rooms
-- [ ] Data deletion works
 - [ ] PWA installs on mobile
 
-## 📊 Admin Tools
+**Organiser Features:**
+- [ ] Email/password login works
+- [ ] Can create events
+- [ ] Can generate custom event codes
+- [ ] Can edit quest scripts
+- [ ] Can revert to AI baseline
+- [ ] Can trigger AI generation
+- [ ] Only sees own events (unless SUPER_ADMIN)
 
-Access admin panel at `/admin/login`
+**Admin Features:**
+- [ ] SUPER_ADMIN can access admin panel
+- [ ] Can create/edit/delete organisers
+- [ ] Can view all events
+- [ ] Can view all participants
+- [ ] Can manage rooms
+- [ ] Dashboard shows correct stats
 
-**Capabilities:**
+## 📊 Admin Panel Features
+
+Access admin panel at `/admin/login` (requires ADMIN or SUPER_ADMIN role)
+
+**Dashboard:**
+- System-wide statistics (events, organisers, participants, rooms)
+- Active room count
+- Quick navigation to all sections
+
+**Organiser Management:**
+- Create new organiser accounts
+- Edit organiser details (email, name, role)
+- Activate/deactivate accounts
+- View last login times
+- Assign roles (ORGANISER, ADMIN, SUPER_ADMIN)
+
+**Event Management:**
+- View all events across all organisers
+- See event ownership
+- View event statistics
+
+**Participant Management:**
+- View all participants
+- Filter by event
+- View participant profiles
+
+**Room Management:**
 - View all rooms and statuses
 - Force start rooms (bypass 3-member requirement)
 - Mark rooms as completed
 - View generated artifacts
 
+**System Configuration:**
+- System settings
+- Configuration management
+
 ## 🎨 Customization
 
+### Creating Organiser Accounts
+
+**Via Script:**
+```bash
+# Edit scripts/create-organisers.ts
+npx tsx scripts/create-organisers.ts
+```
+
+**Via Admin Panel:**
+1. Login as SUPER_ADMIN
+2. Navigate to `/admin/organisers`
+3. Click "Create Organiser"
+4. Fill in email, name, password, and role
+
 ### Adding New Quests
-Edit `prisma/seed.ts` to add quest definitions with decisions and options.
+
+**AI Generation:**
+1. Create event as organiser
+2. Add AI brief
+3. Click "Generate Rooms" in event detail page
+4. Review and commit generated content
+
+**Manual Creation:**
+1. Create regions (districts) for event
+2. Create quests within regions
+3. Add decisions and options manually
+4. Or edit AI-generated quests
 
 ### Styling
+
 Modify `tailwind.config.js` and `app/globals.css` for theme changes.
 
 ### Decision Templates
+
 Update artifact generation templates in `lib/artifact.ts`.
 
 ## 🐛 Troubleshooting
 
 ### Port Already in Use
 ```bash
-# Kill process on port 3000
-lsof -ti:3000 | xargs kill -9
+# Windows PowerShell
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process
 ```
 
 ### Database Issues
 ```bash
-# Reset database
-rm prisma/dev.db
-npm run setup
+# Reset database (dev only!)
+npx prisma migrate reset
+npm run prisma:seed
 ```
 
 ### Build Errors
@@ -334,6 +478,18 @@ npm run setup
 rm -rf .next
 npm run build
 ```
+
+### Organiser Login Issues
+- Ensure organiser account exists in database
+- Check password hash is set correctly
+- Verify `OrganiserSession` table exists
+- Check database connection
+
+### Migration Issues
+If migrations fail:
+1. Check database connection
+2. Verify schema matches database state
+3. Use `npx prisma migrate resolve --applied <migration-name>` if migration was applied manually
 
 ## 📝 License
 
