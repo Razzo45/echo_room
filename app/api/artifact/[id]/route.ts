@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/auth';
+import { getCurrentUser, requireAuth } from '@/lib/auth';
+import { getCurrentOrganiser } from '@/lib/auth-organiser';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
     const artifactId = params.id;
 
     const artifact = await prisma.artifact.findUnique({
@@ -15,6 +15,7 @@ export async function GET(
       include: {
         room: {
           include: {
+            event: { select: { organiserId: true } },
             members: true,
             quest: true,
           },
@@ -26,9 +27,18 @@ export async function GET(
       return NextResponse.json({ error: 'Artifact not found' }, { status: 404 });
     }
 
-    // Verify user is a member of the room
-    const isMember = artifact.room.members.some((m) => m.userId === user.id);
-    if (!isMember) {
+    const user = await getCurrentUser();
+    const organiser = await getCurrentOrganiser();
+
+    const isRoomMember = user && artifact.room.members.some((m) => m.userId === user.id);
+    const isEventOrganiser =
+      organiser &&
+      (organiser.role === 'SUPER_ADMIN' || artifact.room.event.organiserId === organiser.id);
+
+    if (!isRoomMember && !isEventOrganiser) {
+      if (!user && !organiser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
       return NextResponse.json(
         { error: 'Not authorized to view this artifact' },
         { status: 403 }
