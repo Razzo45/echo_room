@@ -375,7 +375,7 @@ export default function OrganiserInsightsPage() {
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap items-center gap-3">
                               <Link
-                                href={`/artifact/${a.id}`}
+                                href={`/artifact/${a.id}?from=insights`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"

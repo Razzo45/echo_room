@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Artifact = {
@@ -14,7 +14,9 @@ type Artifact = {
 export default function ArtifactPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const artifactId = params.id as string;
+  const fromInsights = searchParams.get('from') === 'insights';
 
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,13 +53,13 @@ export default function ArtifactPage() {
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <Link
-            href="/me"
+            href={fromInsights ? '/organiser/insights' : '/me'}
             className="inline-flex items-center text-primary-600 hover:text-primary-700"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to My Rooms
+            {fromInsights ? 'Back to Insights' : 'Back to My Rooms'}
           </Link>
         </div>
 
