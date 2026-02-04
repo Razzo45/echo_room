@@ -239,7 +239,7 @@ export default function OrganiserInsightsPage() {
             letterRendering: true,
             logging: false,
           },
-          jsPDF: { unit: 'mm', format: 'a4', hotfixes: ['px_scaling'] },
+          jsPDF: { unit: 'mm', format: 'a4' },
           pagebreak: { mode: ['avoid-all', 'css'], avoid: ['.decision', '.team-member', '.header-with-image', 'h2', '.justification'] },
         })
         .from(element)
