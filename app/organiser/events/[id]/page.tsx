@@ -65,6 +65,8 @@ export default function EventDetailPage() {
   } | null>(null);
   const [reviewDraft, setReviewDraft] = useState<any>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
+  const [deletingRegionId, setDeletingRegionId] = useState<string | null>(null);
 
   useEffect(() => {
     loadEvent();
@@ -107,6 +109,53 @@ export default function EventDetailPage() {
       console.error('Load event error:', error);
       router.push('/organiser/dashboard');
     }
+  };
+
+  const deleteQuest = async (quest: { id: string; name: string; _count?: { rooms: number } }) => {
+    const roomCount = quest._count?.rooms ?? 0;
+    if (roomCount > 0) {
+      alert(`This quest has ${roomCount} room(s). Remove or complete them before deleting the quest.`);
+      return;
+    }
+    if (!confirm(`Delete quest "${quest.name}"? This cannot be undone.`)) return;
+    setDeletingQuestId(quest.id);
+    try {
+      const res = await fetch(`/api/organiser/quests/${quest.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await loadEvent();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to delete quest.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete quest.');
+    }
+    setDeletingQuestId(null);
+  };
+
+  const deleteRegionQuestsWithNoRooms = async (region: { id: string; displayName: string; quests?: Array<{ id: string; name: string; _count?: { rooms: number } }> }) => {
+    const quests = region.quests ?? [];
+    const safeToDelete = quests.filter((q) => (q._count?.rooms ?? 0) === 0);
+    if (safeToDelete.length === 0) {
+      alert('No quests in this district can be deleted (all have active rooms).');
+      return;
+    }
+    if (!confirm(`Delete ${safeToDelete.length} quest(s) in "${region.displayName}"? This cannot be undone.`)) return;
+    setDeletingRegionId(region.id);
+    try {
+      let failed = 0;
+      for (const quest of safeToDelete) {
+        const res = await fetch(`/api/organiser/quests/${quest.id}`, { method: 'DELETE' });
+        if (!res.ok) failed++;
+      }
+      await loadEvent();
+      if (failed > 0) alert(`${failed} delete(s) failed.`);
+    } catch (e) {
+      console.error(e);
+      alert('Something went wrong while deleting.');
+    }
+    setDeletingRegionId(null);
   };
 
   const generateCodes = async () => {
@@ -633,7 +682,8 @@ export default function EventDetailPage() {
 
             {/* Quests & Script Editing */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quests & Scripts</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Quests & Scripts</h3>
+              <p className="text-sm text-gray-600 mb-4">Manage and remove generated quests by district. Deleting a quest is permanent.</p>
               {event.regions.length === 0 ? (
                 <p className="text-sm text-gray-600">
                   No districts or quests yet. Once rooms are generated with AI or quests are created manually,
@@ -641,51 +691,74 @@ export default function EventDetailPage() {
                 </p>
               ) : (
                 <div className="space-y-6">
-                  {event.regions.map((region) => (
-                    <div key={region.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-md font-semibold text-gray-800">
-                            {region.displayName}
-                          </h4>
-                          <p className="text-xs text-gray-500">
-                            {(region.quests?.length ?? 0)} quest(s)
-                          </p>
+                  {event.regions.map((region) => {
+                    const regionQuests = region.quests ?? [];
+                    const hasDeletableQuests = regionQuests.some((q) => (q._count?.rooms ?? 0) === 0);
+                    return (
+                      <div key={region.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                          <div>
+                            <h4 className="text-md font-semibold text-gray-800">
+                              {region.displayName}
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              {(region.quests?.length ?? 0)} quest(s)
+                            </p>
+                          </div>
+                          {hasDeletableQuests && (
+                            <button
+                              type="button"
+                              onClick={() => deleteRegionQuestsWithNoRooms(region)}
+                              disabled={deletingRegionId === region.id}
+                              className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                            >
+                              {deletingRegionId === region.id ? 'Deleting…' : 'Delete all quests with no rooms'}
+                            </button>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          {regionQuests.length === 0 ? (
+                            <p className="text-xs text-gray-500">No quests in this district yet.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {regionQuests.map((quest) => (
+                                <div
+                                  key={quest.id}
+                                  className="flex items-center justify-between rounded border border-gray-200 px-3 py-2"
+                                >
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {quest.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {(quest._count?.rooms ?? 0)} room(s) created
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Link
+                                      href={`/organiser/quests/${quest.id}`}
+                                      className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
+                                    >
+                                      Edit script
+                                    </Link>
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteQuest(quest)}
+                                      disabled={deletingQuestId === quest.id || (quest._count?.rooms ?? 0) > 0}
+                                      className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title={(quest._count?.rooms ?? 0) > 0 ? 'Remove or complete rooms first' : 'Delete this quest'}
+                                    >
+                                      {deletingQuestId === quest.id ? 'Deleting…' : 'Delete'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {region.quests && region.quests.length > 0 ? (
-                        <div className="space-y-2">
-                          {region.quests.map((quest) => (
-                            <div
-                              key={quest.id}
-                              className="flex items-center justify-between rounded border border-gray-200 px-3 py-2"
-                            >
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">
-                                  {quest.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {(quest._count?.rooms ?? 0)} room(s) created
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Link
-                                  href={`/organiser/quests/${quest.id}`}
-                                  className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
-                                >
-                                  Edit script
-                                </Link>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-gray-500">
-                          No quests in this district yet.
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
