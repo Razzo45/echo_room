@@ -67,6 +67,7 @@ export default function EventDetailPage() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
   const [deletingRegionId, setDeletingRegionId] = useState<string | null>(null);
+  const [deletingDistrictId, setDeletingDistrictId] = useState<string | null>(null);
 
   useEffect(() => {
     loadEvent();
@@ -156,6 +157,28 @@ export default function EventDetailPage() {
       alert('Something went wrong while deleting.');
     }
     setDeletingRegionId(null);
+  };
+
+  const removeDistrict = async (region: { id: string; displayName: string; _count: { quests: number } }) => {
+    if (region._count.quests > 0) {
+      alert('Remove or delete all quests in this district first.');
+      return;
+    }
+    if (!confirm(`Remove district "${region.displayName}"? This cannot be undone.`)) return;
+    setDeletingDistrictId(region.id);
+    try {
+      const res = await fetch(`/api/organiser/districts/${region.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await loadEvent();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Failed to remove district.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to remove district.');
+    }
+    setDeletingDistrictId(null);
   };
 
   const generateCodes = async () => {
@@ -705,16 +728,27 @@ export default function EventDetailPage() {
                               {(region.quests?.length ?? 0)} quest(s)
                             </p>
                           </div>
-                          {hasDeletableQuests && (
+                          <div className="flex items-center gap-3">
+                            {hasDeletableQuests && (
+                              <button
+                                type="button"
+                                onClick={() => deleteRegionQuestsWithNoRooms(region)}
+                                disabled={deletingRegionId === region.id}
+                                className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                              >
+                                {deletingRegionId === region.id ? 'Deleting…' : 'Delete all quests with no rooms'}
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => deleteRegionQuestsWithNoRooms(region)}
-                              disabled={deletingRegionId === region.id}
-                              className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                              onClick={() => removeDistrict(region)}
+                              disabled={deletingDistrictId === region.id || (region._count?.quests ?? 0) > 0}
+                              className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={(region._count?.quests ?? 0) > 0 ? 'Remove all quests in this district first' : 'Remove this district'}
                             >
-                              {deletingRegionId === region.id ? 'Deleting…' : 'Delete all quests with no rooms'}
+                              {deletingDistrictId === region.id ? 'Removing…' : 'Remove district'}
                             </button>
-                          )}
+                          </div>
                         </div>
                         <div className="p-4">
                           {regionQuests.length === 0 ? (
