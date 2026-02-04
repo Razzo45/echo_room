@@ -344,7 +344,9 @@ Or create via admin panel after first SUPER_ADMIN login.
 
 ### Vercel Deployment
 
-1. Set `DATABASE_URL` in Vercel (Project → Settings → Environment Variables) to your Neon (or other PostgreSQL) connection string.
+1. In Vercel (Project → Settings → Environment Variables), set:
+   - `DATABASE_URL` — your Neon (or other PostgreSQL) connection string.
+   - `NEXT_PUBLIC_APP_URL` — your production URL (e.g. `https://echo-room-six.vercel.app`). Required so organiser artifact export (HTML/PDF download) can inline images correctly.
 
 2. **Run migrations separately** — they are not run during the Vercel build (to avoid timeouts with serverless DB). Before or after each deploy, run once:
    ```bash

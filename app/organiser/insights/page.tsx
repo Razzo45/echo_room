@@ -77,6 +77,7 @@ export default function OrganiserInsightsPage() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -122,13 +123,14 @@ export default function OrganiserInsightsPage() {
   const handleDownloadArtifact = async (a: ArtifactRow) => {
     setDownloadingArtifactId(a.id);
     try {
-      const res = await fetch(`/api/artifact/${a.id}`);
-      const data = await res.json();
-      if (!res.ok || !data.artifact?.htmlContent) {
+      const res = await fetch(`/api/artifact/${a.id}/export?format=html`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         alert(data.error || 'Failed to load artifact');
         return;
       }
-      const blob = new Blob([data.artifact.htmlContent], { type: 'text/html;charset=utf-8' });
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -139,6 +141,43 @@ export default function OrganiserInsightsPage() {
       alert('Download failed. Please try again.');
     } finally {
       setDownloadingArtifactId(null);
+    }
+  };
+
+  const handleDownloadPdf = async (a: ArtifactRow) => {
+    setDownloadingPdfId(a.id);
+    try {
+      const res = await fetch(`/api/artifact/${a.id}/export?format=html`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to load artifact');
+        return;
+      }
+      const inlinedHtml = await res.text();
+      const html2pdf = (await import('html2pdf.js')).default;
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '0';
+      iframe.style.width = '900px';
+      iframe.style.height = '1200px';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument;
+      if (!doc) throw new Error('Could not create document');
+      doc.open();
+      doc.write(inlinedHtml);
+      doc.close();
+      await new Promise((r) => setTimeout(r, 300));
+      const filename = `decision-map-${a.roomCode}-${slugForFilename(a.questName)}.pdf`;
+      await html2pdf()
+        .set({ filename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 } })
+        .from(iframe.contentDocument?.body ?? iframe)
+        .save();
+      document.body.removeChild(iframe);
+    } catch (err) {
+      alert('PDF download failed. Please try again.');
+    } finally {
+      setDownloadingPdfId(null);
     }
   };
 
@@ -340,7 +379,7 @@ export default function OrganiserInsightsPage() {
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Decision maps for this event — view in browser or download as HTML to share with users
+                  Decision maps for this event — view, or download as HTML (images included) or PDF to share with users
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -379,7 +418,7 @@ export default function OrganiserInsightsPage() {
                               : '—'}
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                               <Link
                                 href={`/artifact/${a.id}`}
                                 target="_blank"
@@ -391,10 +430,18 @@ export default function OrganiserInsightsPage() {
                               <button
                                 type="button"
                                 onClick={() => handleDownloadArtifact(a)}
-                                disabled={downloadingArtifactId === a.id}
+                                disabled={downloadingArtifactId === a.id || downloadingPdfId === a.id}
                                 className="text-indigo-600 hover:text-indigo-800 text-sm font-medium disabled:opacity-50"
                               >
-                                {downloadingArtifactId === a.id ? 'Downloading…' : 'Download'}
+                                {downloadingArtifactId === a.id ? 'Downloading…' : 'HTML'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadPdf(a)}
+                                disabled={downloadingArtifactId === a.id || downloadingPdfId === a.id}
+                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium disabled:opacity-50"
+                              >
+                                {downloadingPdfId === a.id ? 'Generating PDF…' : 'PDF'}
                               </button>
                             </div>
                           </td>
