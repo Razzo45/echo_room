@@ -47,7 +47,7 @@ For every quest and decision, implicitly answer:
 
 CONTENT & LENGTH GUIDELINES
 - Generate exactly 3 regions (districts/areas).
-- Each region: 2–3 quests that fit the event’s theme and audience.
+- Each region: exactly 2 quests (fixed for stable data flow). Fit the event’s theme and audience.
 - Each quest: exactly 3 sequential decisions.
 - Each decision: exactly 3 options (A, B, C) that are all plausible, with no obvious "correct" answer.
 - Quest descriptions: 80–150 words, focused on setting the scene and why it matters to participants.
@@ -67,7 +67,7 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
 
 CRITICAL CONTENT REQUIREMENTS:
 - Generate exactly 3 regions (districts/areas)
-- Each region must have at least 1 quest (aim for 2-3 quests per region for variety)
+- You MUST output exactly 3 regions and exactly 2 quests per region (no more, no less). Output structure is fixed.
 - Each quest must have exactly 3 decisions
 - Each decision must have exactly 3 options (A, B, C)
 - All content must be realistic, engaging, and suitable for team collaboration
@@ -77,6 +77,7 @@ CRITICAL CONTENT REQUIREMENTS:
 - Trade-offs should NOT be simple "cost vs benefit" - explore complexity and nuance
 
 OUTPUT FORMAT (STRICT JSON):
+- "regions" must be an array of exactly 3 region objects. Each region must have a "quests" array of exactly 2 quests.
 {
   "regions": [
     {
@@ -84,8 +85,7 @@ OUTPUT FORMAT (STRICT JSON):
       "displayName": "Human Readable Name",
       "description": "Brief description of this region",
       "quests": [
-        {
-          "name": "Quest Name",
+        { "name": "Quest 1 Name",
           "description": "Concise, contextual narrative describing the quest scenario (80-150 words) written for people attending the event",
           "durationMinutes": 30,
           "teamSize": 3,
@@ -131,7 +131,8 @@ OUTPUT FORMAT (STRICT JSON):
               "options": [/* 3 options A, B, C */]
             }
           ]
-        }
+        },
+                { "name": "Quest 2 Name", "description": "...", "durationMinutes": 30, "teamSize": 3, "decisions": [ /* 3 decisions, same structure as Quest 1 */ ] }
       ]
     }
   ]
@@ -176,7 +177,7 @@ Use this central question to:
 - Show how each option changes what participants see, feel, and can do.
 - Make it obvious how the scenario connects to why they came to this event.
 
-Generate 3 regions with 2-3 quests each. Each quest should have 3 sequential decisions with 3 options each. Make the content highly relevant to the brief AND to the lived experience of people who chose to attend this event.
+Generate exactly 3 regions with exactly 2 quests each (6 quests total). Fixed structure: 3 areas × 2 quests. Each quest has 3 sequential decisions with 3 options each. Make the content highly relevant to the brief AND to the lived experience of people who chose to attend this event.
 
 CRITICAL QUALITY REQUIREMENTS:
 - Be concise: aim for roughly 60–120 words per narrative section (no long essays).

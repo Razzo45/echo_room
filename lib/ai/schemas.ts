@@ -30,17 +30,17 @@ const QuestSchema = z.object({
   decisions: z.array(DecisionSchema).length(3), // Exactly 3 decisions
 });
 
-// Region schema
+// Region schema – fixed 2 quests per region (3 regions × 2 quests = 6 quests total, stable data flow)
 const RegionSchema = z.object({
   name: z.string().min(1), // slug-like identifier
   displayName: z.string().min(1),
   description: z.string().optional(),
-  quests: z.array(QuestSchema).min(1), // At least 1 quest per region
+  quests: z.array(QuestSchema).length(2), // Exactly 2 quests per area
 });
 
-// Root schema for AI generation output
+// Root schema for AI generation output – exactly 3 regions
 export const EventGenerationOutputSchema = z.object({
-  regions: z.array(RegionSchema).min(1), // At least 1 region
+  regions: z.array(RegionSchema).length(3), // Exactly 3 areas
 });
 
 export type EventGenerationOutput = z.infer<typeof EventGenerationOutputSchema>;

@@ -183,6 +183,61 @@ export async function PATCH(
   }
 }
 
+// DELETE /api/organiser/events/[id]/codes
+// Permanently delete an event code that has not been used yet
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await requireOrganiserAuth();
+
+    const body = await request.json();
+    const { codeId } = body as { codeId?: string };
+
+    if (!codeId) {
+      return NextResponse.json(
+        { error: 'codeId is required' },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.eventCode.findFirst({
+      where: {
+        id: codeId,
+        eventId: params.id,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Event code not found for this event' },
+        { status: 404 }
+      );
+    }
+
+    // Safety: do not allow deleting codes that have already been used
+    if (existing.usedCount > 0) {
+      return NextResponse.json(
+        { error: 'This code has already been used. Deactivate it instead of deleting.' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.eventCode.delete({
+      where: { id: codeId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete event code error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete event code' },
+      { status: 500 }
+    );
+  }
+}
+
 function generateEventCode(prefix: string = ''): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Avoid confusing characters
   const length = 8;

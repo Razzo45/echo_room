@@ -177,6 +177,32 @@ export default function EventDetailPage() {
     }
   };
 
+  const deleteCode = async (codeId: string, usedCount: number) => {
+    if (usedCount > 0) {
+      alert('This code has already been used. Deactivate it instead of deleting.');
+      return;
+    }
+    if (!confirm('Delete this code permanently? It cannot be restored.')) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}/codes`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codeId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete code');
+        return;
+      }
+      await loadEvent();
+    } catch (error) {
+      console.error('Delete code error:', error);
+      alert('Failed to delete code');
+    }
+  };
+
   const copyJoinLink = (code: string) => {
     const baseUrl = window.location.origin;
     const joinLink = `${baseUrl}/?code=${code}`;
@@ -581,6 +607,12 @@ export default function EventDetailPage() {
                           className="px-3 py-2 text-sm rounded-lg transition border"
                         >
                           {code.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => deleteCode(code.id, code.usedCount)}
+                          className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition border border-red-200"
+                        >
+                          Delete
                         </button>
                       </div>
                     </div>
