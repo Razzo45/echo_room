@@ -62,6 +62,13 @@ type InsightsData = {
   badgeStats: BadgeStat[];
 };
 
+function slugForFilename(name: string): string {
+  return name
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50) || 'artifact';
+}
+
 export default function OrganiserInsightsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -69,6 +76,7 @@ export default function OrganiserInsightsPage() {
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [downloadingArtifactId, setDownloadingArtifactId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -110,6 +118,29 @@ export default function OrganiserInsightsPage() {
       .catch(() => setInsights(null))
       .finally(() => setLoadingInsights(false));
   }, [selectedEventId, router]);
+
+  const handleDownloadArtifact = async (a: ArtifactRow) => {
+    setDownloadingArtifactId(a.id);
+    try {
+      const res = await fetch(`/api/artifact/${a.id}`);
+      const data = await res.json();
+      if (!res.ok || !data.artifact?.htmlContent) {
+        alert(data.error || 'Failed to load artifact');
+        return;
+      }
+      const blob = new Blob([data.artifact.htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `decision-map-${a.roomCode}-${slugForFilename(a.questName)}.html`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Download failed. Please try again.');
+    } finally {
+      setDownloadingArtifactId(null);
+    }
+  };
 
   if (loadingEvents) {
     return (
@@ -309,7 +340,7 @@ export default function OrganiserInsightsPage() {
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Decision maps generated for this event (quick links)
+                  Decision maps for this event — view in browser or download as HTML to share with users
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -348,14 +379,24 @@ export default function OrganiserInsightsPage() {
                               : '—'}
                           </td>
                           <td className="px-4 py-3">
-                            <Link
-                              href={`/artifact/${a.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                            >
-                              View artifact →
-                            </Link>
+                            <div className="flex items-center gap-3">
+                              <Link
+                                href={`/artifact/${a.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                              >
+                                View
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadArtifact(a)}
+                                disabled={downloadingArtifactId === a.id}
+                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium disabled:opacity-50"
+                              >
+                                {downloadingArtifactId === a.id ? 'Downloading…' : 'Download'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
