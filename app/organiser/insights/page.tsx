@@ -120,6 +120,31 @@ export default function OrganiserInsightsPage() {
       .finally(() => setLoadingInsights(false));
   }, [selectedEventId, router]);
 
+  const handlePrintArtifact = async (a: ArtifactRow) => {
+    try {
+      const res = await fetch(`/api/artifact/${a.id}/export?format=html`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to load artifact');
+        return;
+      }
+      const html = await res.text();
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Please allow popups to open the print view.');
+        return;
+      }
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 400);
+    } catch (err) {
+      alert('Failed to open print view.');
+    }
+  };
+
   const handleDownloadArtifact = async (a: ArtifactRow) => {
     setDownloadingArtifactId(a.id);
     try {
@@ -153,25 +178,71 @@ export default function OrganiserInsightsPage() {
         alert(data.error || 'Failed to load artifact');
         return;
       }
-      const inlinedHtml = await res.text();
+      let inlinedHtml = await res.text();
+      const pdfOverrides = `
+<style id="pdf-overrides">
+  body { width: 816px !important; max-width: 816px !important; margin: 0 auto !important; padding: 32px !important; background: #f9fafb !important; font-size: 16px; }
+  .container { width: 100% !important; max-width: none !important; padding: 48px !important; background: #fff !important; border-radius: 8px !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important; }
+  .header-with-image { display: flex !important; align-items: flex-start !important; gap: 24px !important; margin-bottom: 32px !important; padding-bottom: 32px !important; border-bottom: 2px solid #e5e7eb !important; }
+  .city-thumbnail { width: 100px !important; height: 100px !important; object-fit: cover !important; border-radius: 8px !important; flex-shrink: 0 !important; }
+  .header-content { flex: 1 !important; min-width: 0 !important; }
+  h1 { font-size: 32px !important; font-weight: 700 !important; color: #111827 !important; margin-bottom: 8px !important; }
+  h2 { font-size: 24px !important; font-weight: 600 !important; color: #374151 !important; margin-top: 32px !important; margin-bottom: 16px !important; padding-bottom: 8px !important; border-bottom: 2px solid #e5e7eb !important; page-break-after: avoid !important; }
+  .subtitle { font-size: 18px !important; color: #6b7280 !important; margin-bottom: 8px !important; }
+  .timestamp { font-size: 14px !important; color: #9ca3af !important; }
+  .team-list { display: block !important; margin-bottom: 32px !important; }
+  .team-member { display: block !important; padding: 12px 16px !important; margin-bottom: 12px !important; background: #f3f4f6 !important; border-radius: 6px !important; page-break-inside: avoid !important; }
+  .team-member-name { font-size: 16px !important; font-weight: 600 !important; color: #111827 !important; }
+  .team-member-details { font-size: 14px !important; color: #6b7280 !important; }
+  .decision { margin-bottom: 40px !important; padding: 24px !important; background: #fafafa !important; border-left: 4px solid #3b82f6 !important; border-radius: 6px !important; page-break-inside: avoid !important; }
+  .decision-header { margin-bottom: 16px !important; }
+  .decision-title { font-size: 18px !important; font-weight: 600 !important; color: #1f2937 !important; margin-bottom: 4px !important; }
+  .decision-choice { font-size: 16px !important; color: #3b82f6 !important; font-weight: 500 !important; }
+  .vote-summary { font-size: 14px !important; color: #6b7280 !important; margin-top: 4px !important; }
+  .section { margin-top: 16px !important; }
+  .section-title { font-size: 14px !important; font-weight: 600 !important; color: #374151 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; margin-bottom: 8px !important; }
+  .section-content { font-size: 16px !important; color: #4b5563 !important; line-height: 1.6 !important; }
+  ul { margin-left: 24px !important; margin-top: 8px !important; }
+  li { margin-bottom: 6px !important; font-size: 16px !important; color: #4b5563 !important; }
+  .justifications { margin-top: 16px !important; padding-top: 16px !important; border-top: 1px solid #e5e7eb !important; }
+  .justification { margin-bottom: 12px !important; padding: 8px 12px !important; background: #fff !important; border-radius: 4px !important; border: 1px solid #e5e7eb !important; page-break-inside: avoid !important; }
+  .justification-author { font-weight: 500 !important; font-size: 14px !important; color: #374151 !important; }
+  .justification-text { font-size: 14px !important; color: #6b7280 !important; margin-top: 4px !important; }
+  .location-badge { font-size: 14px !important; color: #2563eb !important; font-weight: 500 !important; }
+</style>`;
+      inlinedHtml = inlinedHtml.replace('</head>', pdfOverrides + '\n</head>');
       const html2pdf = (await import('html2pdf.js')).default;
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
-      iframe.style.top = '0';
-      iframe.style.width = '900px';
-      iframe.style.height = '1200px';
+      iframe.style.width = '816px';
+      iframe.style.height = '1056px';
+      iframe.style.border = 'none';
       document.body.appendChild(iframe);
       const doc = iframe.contentDocument;
       if (!doc) throw new Error('Could not create document');
       doc.open();
       doc.write(inlinedHtml);
       doc.close();
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 600));
       const filename = `decision-map-${a.roomCode}-${slugForFilename(a.questName)}.pdf`;
+      const element = doc.body;
       await html2pdf()
-        .set({ filename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 } })
-        .from(iframe.contentDocument?.body ?? iframe)
+        .set({
+          filename,
+          margin: [12, 12, 12, 12],
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            letterRendering: true,
+            logging: false,
+          },
+          jsPDF: { unit: 'mm', format: 'a4', hotfixes: ['px_scaling'] },
+          pagebreak: { mode: ['avoid-all', 'css'], avoid: ['.decision', '.team-member', '.header-with-image', 'h2', '.justification'] },
+        })
+        .from(element)
         .save();
       document.body.removeChild(iframe);
     } catch (err) {
@@ -379,7 +450,7 @@ export default function OrganiserInsightsPage() {
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Decision maps for this event — view, or download as HTML (images included) or PDF to share with users
+                  View, or download as HTML (images included) or PDF. Use Print for best PDF formatting (opens in new tab → Save as PDF).
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -429,6 +500,13 @@ export default function OrganiserInsightsPage() {
                               </Link>
                               <button
                                 type="button"
+                                onClick={() => handlePrintArtifact(a)}
+                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                              >
+                                Print
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => handleDownloadArtifact(a)}
                                 disabled={downloadingArtifactId === a.id || downloadingPdfId === a.id}
                                 className="text-indigo-600 hover:text-indigo-800 text-sm font-medium disabled:opacity-50"
@@ -441,7 +519,7 @@ export default function OrganiserInsightsPage() {
                                 disabled={downloadingArtifactId === a.id || downloadingPdfId === a.id}
                                 className="text-indigo-600 hover:text-indigo-800 text-sm font-medium disabled:opacity-50"
                               >
-                                {downloadingPdfId === a.id ? 'Generating PDF…' : 'PDF'}
+                                {downloadingPdfId === a.id ? 'Generating…' : 'PDF'}
                               </button>
                             </div>
                           </td>

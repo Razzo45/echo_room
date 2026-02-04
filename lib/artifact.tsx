@@ -223,6 +223,12 @@ function generateHTML(
     .justification { margin-bottom: 0.75rem; padding: 0.5rem; background: white; border-radius: 0.25rem; }
     .justification-author { font-weight: 500; font-size: 0.875rem; color: #374151; }
     .justification-text { font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem; }
+    @media print {
+      body { background: #fff !important; padding: 0.5in !important; max-width: none !important; }
+      .container { box-shadow: none !important; }
+      .decision, .team-member, .header-with-image, .justification { page-break-inside: avoid !important; }
+      h2 { page-break-after: avoid !important; }
+    }
   </style>
 </head>
 <body>
