@@ -12,17 +12,49 @@ type Event = {
   endDate: string | null;
   brandColor: string;
   createdAt: string;
+  retentionOverride: boolean;
+  retentionOverrideAt: string | null;
+  retentionOverrideBy: string | null;
   _count: {
     users: number;
     rooms: number;
     eventCodes: number;
   };
+  retentionLogs: Array<{ runAt: string }>;
 };
+
+const RETENTION_WEEKS = 2;
+
+function retentionStatus(event: Event): { label: string; detail?: string } {
+  if (event.retentionOverride) {
+    return {
+      label: 'Retained (override)',
+      detail: event.retentionOverrideAt
+        ? `Set on ${new Date(event.retentionOverrideAt).toLocaleString()}`
+        : undefined,
+    };
+  }
+  const lastCleanup = event.retentionLogs?.[0]?.runAt;
+  if (lastCleanup) {
+    return { label: 'Cleaned', detail: new Date(lastCleanup).toLocaleString() };
+  }
+  if (!event.endDate) return { label: 'No end date', detail: 'Set end date for retention rule' };
+  const end = new Date(event.endDate);
+  const cleanupDue = new Date(end);
+  cleanupDue.setDate(cleanupDue.getDate() + RETENTION_WEEKS * 7);
+  const now = new Date();
+  if (cleanupDue <= now) {
+    return { label: 'Eligible for cleanup', detail: 'See Data lifecycle' };
+  }
+  const days = Math.ceil((cleanupDue.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  return { label: `Cleanup in ${days} days`, detail: cleanupDue.toLocaleDateString() };
+}
 
 export default function AdminEventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadEvents();
@@ -42,6 +74,27 @@ export default function AdminEventsPage() {
       console.error('Failed to load events:', err);
       router.push('/admin/login');
     }
+  };
+
+  const setRetentionOverride = async (eventId: string, retentionOverride: boolean) => {
+    setTogglingId(eventId);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/retention`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ retentionOverride }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to update retention');
+        return;
+      }
+      await loadEvents();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update retention');
+    }
+    setTogglingId(null);
   };
 
   if (loading) {
@@ -67,6 +120,9 @@ export default function AdminEventsPage() {
               </Link>
               <h1 className="text-3xl font-bold text-white mb-2">Events Management</h1>
               <p className="text-sm text-gray-400">{events.length} total events</p>
+              <Link href="/admin/retention" className="text-sm text-amber-400 hover:text-amber-300 mt-1 inline-block">
+                Data lifecycle & retention →
+              </Link>
             </div>
           </div>
         </div>
@@ -124,6 +180,29 @@ export default function AdminEventsPage() {
                   </div>
                   <div className="text-xs font-semibold text-gray-400">
                     {event._count.eventCodes} codes
+                  </div>
+                </div>
+
+                {/* Data retention */}
+                <div className="mt-4 pt-4 border-t border-gray-700">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="text-xs text-gray-400">
+                      <span className="font-medium text-gray-300">{retentionStatus(event).label}</span>
+                      {retentionStatus(event).detail && (
+                        <span className="block text-gray-500 mt-0.5">{retentionStatus(event).detail}</span>
+                      )}
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <span className="text-xs text-gray-400">Keep longer</span>
+                      <input
+                        type="checkbox"
+                        checked={event.retentionOverride}
+                        onChange={(e) => setRetentionOverride(event.id, e.target.checked)}
+                        disabled={togglingId === event.id}
+                        className="rounded border-gray-600 bg-gray-700 text-amber-500 focus:ring-amber-500"
+                      />
+                      {togglingId === event.id && <span className="text-xs text-gray-500">Updating…</span>}
+                    </label>
                   </div>
                 </div>
               </div>

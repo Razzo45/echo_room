@@ -36,14 +36,19 @@ model Event {
   sponsorLogos        String?            // JSON array of logo URLs
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
- 
+  // Data retention: 2 weeks after endDate = auto cleanup unless override
+  retentionOverride   Boolean            @default(false)  // "Keep longer" – skip auto cleanup
+  retentionOverrideAt DateTime?          // When override was set (audit)
+  retentionOverrideBy String?            // Organiser id who set override (audit)
+
   organiser           Organiser?         @relation(fields: [organiserId], references: [id], onDelete: Cascade)
- 
+
   eventCodes          EventCode[]
   users               User[]
   rooms               Room[]
   regions             Region[]
   generations         EventGeneration[]
+  retentionLogs       RetentionCleanupLog[]
 }
 
 model EventCode {
@@ -411,4 +416,26 @@ model EventGeneration {
   
   @@index([eventId])
   @@index([status])
+}
+
+// Audit trail for data deprecation: 2-week post-event cleanup
+model RetentionCleanupLog {
+  id                    String   @id @default(cuid())
+  eventId               String
+  runAt                 DateTime @default(now())
+  deletedSessions       Int      @default(0)
+  deletedVotes          Int      @default(0)
+  deletedDecisionCommits Int     @default(0)
+  deletedArtifacts      Int      @default(0)
+  deletedUserBadges     Int      @default(0)
+  deletedRoomMembers    Int      @default(0)
+  deletedRooms          Int      @default(0)
+  deletedUsers          Int      @default(0)
+  deletedAnalyticsEvents Int     @default(0)
+  triggeredBy            String?  // Organiser id if manual run
+
+  event                 Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([runAt])
 }

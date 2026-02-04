@@ -15,6 +15,11 @@ export async function GET() {
             eventCodes: true,
           },
         },
+        retentionLogs: {
+          orderBy: { runAt: 'desc' },
+          take: 1,
+          select: { runAt: true },
+        },
       },
       orderBy: {
         createdAt: 'desc',
