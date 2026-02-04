@@ -344,12 +344,13 @@ Or create via admin panel after first SUPER_ADMIN login.
 
 ### Vercel Deployment
 
-The build script automatically runs migrations:
-```json
-"build": "prisma generate && prisma migrate deploy && next build"
-```
+1. Set `DATABASE_URL` in Vercel (Project → Settings → Environment Variables) to your Neon (or other PostgreSQL) connection string.
 
-Ensure `DATABASE_URL` is set in Vercel environment variables.
+2. **Run migrations separately** — they are not run during the Vercel build (to avoid timeouts with serverless DB). Before or after each deploy, run once:
+   ```bash
+   npx prisma migrate deploy
+   ```
+   Use the same `DATABASE_URL` as production (e.g. from your machine or from a CI step). Neon’s pooler can time out during build; running migrations from a stable environment avoids this.
 
 ## 🧪 Testing
 
