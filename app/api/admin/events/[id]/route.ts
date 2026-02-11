@@ -157,7 +157,8 @@ export async function PATCH(
       } else {
         const snapshot: any = event.debugSnapshot;
 
-        await prisma.$transaction(async (tx) => {
+        try {
+          await prisma.$transaction(async (tx) => {
           // Remove current event data (config + participants + rooms + telemetry)
           await tx.analyticsEvent.deleteMany({
             where: { eventId },
@@ -457,6 +458,17 @@ export async function PATCH(
             },
           });
         });
+        } catch (revertError) {
+          console.error('Debug revert transaction failed, falling back to turning off debug only:', revertError);
+          // Best-effort fallback: turn off debug and clear snapshot, but keep current data
+          await prisma.event.update({
+            where: { id: eventId },
+            data: {
+              debugMode: false,
+              debugSnapshot: Prisma.DbNull,
+            },
+          });
+        }
       }
     }
 
