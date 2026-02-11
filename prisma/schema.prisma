@@ -40,6 +40,8 @@ model Event {
   retentionOverride   Boolean            @default(false)  // "Keep longer" – skip auto cleanup
   retentionOverrideAt DateTime?          // When override was set (audit)
   retentionOverrideBy String?            // Organiser id who set override (audit)
+  debugMode           Boolean            @default(false) // Super Admin: test full platform without LLM/cost
+  debugSnapshot       Json?
 
   organiser           Organiser?         @relation(fields: [organiserId], references: [id], onDelete: Cascade)
 

@@ -3,10 +3,12 @@ import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
 import { requireOrganiserEventAccess } from '@/lib/event-access';
 import { generateEventRooms } from '@/lib/ai/generateEventRooms';
+import { getMockEventRooms } from '@/lib/ai/mockEventRooms';
 
 /**
  * POST /api/organiser/events/[id]/generate
  * Generate event rooms (quests, decisions, options) using AI
+ * When event.debugMode is true, uses canned mock output (no LLM call).
  * Returns DRAFT status - content must be reviewed and committed via /generate/commit
  */
 export async function POST(
@@ -16,18 +18,6 @@ export async function POST(
   try {
     const organiser = await requireOrganiserAuth();
     await requireOrganiserEventAccess(organiser, params.id);
-
-    // Check OpenAI API key early
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY is not set');
-      return NextResponse.json(
-        { 
-          error: 'OpenAI API key is not configured',
-          details: 'Please set OPENAI_API_KEY environment variable'
-        },
-        { status: 500 }
-      );
-    }
 
     const eventId = params.id;
 
@@ -43,10 +33,23 @@ export async function POST(
       );
     }
 
-    if (!event.aiBrief || !event.aiBrief.trim()) {
+    // In debug mode we skip AI; otherwise brief is required
+    if (!event.debugMode && (!event.aiBrief || !event.aiBrief.trim())) {
       return NextResponse.json(
         { error: 'AI brief is required. Please add an AI brief to the event first.' },
         { status: 400 }
+      );
+    }
+
+    // Check OpenAI API key only when not using debug mock
+    if (!event.debugMode && !process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not set');
+      return NextResponse.json(
+        {
+          error: 'OpenAI API key is not configured',
+          details: 'Please set OPENAI_API_KEY environment variable',
+        },
+        { status: 500 }
       );
     }
 
@@ -79,17 +82,17 @@ export async function POST(
     });
 
     try {
-      console.log('Starting AI generation for event:', eventId);
-      
-      // Call AI generation FIRST (outside transaction to avoid timeout)
-      // This can take 10-30 seconds, so we don't want it inside a transaction
-      const generated = await generateEventRooms({
-        brief: event.aiBrief,
-        eventName: event.name,
-        eventDescription: event.description || undefined,
-      });
+      console.log('Starting generation for event:', eventId, event.debugMode ? '(debug mock)' : '(AI)');
 
-      console.log('AI generation completed, regions:', generated.regions.length);
+      const generated = event.debugMode
+        ? getMockEventRooms()
+        : await generateEventRooms({
+            brief: event.aiBrief!,
+            eventName: event.name,
+            eventDescription: event.description || undefined,
+          });
+
+      console.log('Generation completed, regions:', generated.regions.length);
 
       // Store draft in EventGeneration.output and set status to DRAFT (not READY)
       // This allows organiser to review/edit before committing to database

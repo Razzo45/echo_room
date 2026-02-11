@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 
 export async function GET() {
   try {
@@ -10,6 +11,15 @@ export async function GET() {
     }
 
     const needsProfile = user.name === 'Unnamed';
+
+    let event: { debugMode: boolean } | undefined;
+    if (user.eventId) {
+      const e = await prisma.event.findUnique({
+        where: { id: user.eventId },
+        select: { debugMode: true },
+      });
+      if (e) event = { debugMode: e.debugMode };
+    }
 
     return NextResponse.json({
       user: {
@@ -22,6 +32,7 @@ export async function GET() {
         curiosity: user.curiosity,
       },
       needsProfile,
+      event,
     });
   } catch (error) {
     console.error('Get user error:', error);

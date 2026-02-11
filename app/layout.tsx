@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import DebugBanner from '@/components/DebugBanner';
 
 export const metadata: Metadata = {
   title: 'Echo Room - AI Powered Decision Environment',
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <DebugBanner />
         <main className="min-h-screen">{children}</main>
       </body>
     </html>

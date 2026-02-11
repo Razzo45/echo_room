@@ -15,6 +15,7 @@ type Event = {
   retentionOverride: boolean;
   retentionOverrideAt: string | null;
   retentionOverrideBy: string | null;
+  debugMode: boolean;
   _count: {
     users: number;
     rooms: number;
@@ -55,6 +56,8 @@ export default function AdminEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [debugTogglingId, setDebugTogglingId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<'ORGANISER' | 'ADMIN' | 'SUPER_ADMIN' | null>(null);
 
   useEffect(() => {
     loadEvents();
@@ -69,6 +72,7 @@ export default function AdminEventsPage() {
       }
       const data = await res.json();
       setEvents(data.events);
+      setCurrentUserRole(data.currentUser?.role ?? null);
       setLoading(false);
     } catch (err) {
       console.error('Failed to load events:', err);
@@ -95,6 +99,27 @@ export default function AdminEventsPage() {
       alert('Failed to update retention');
     }
     setTogglingId(null);
+  };
+
+  const setDebugMode = async (eventId: string, debugMode: boolean) => {
+    setDebugTogglingId(eventId);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ debugMode }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to update debug mode');
+        return;
+      }
+      await loadEvents();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update debug mode');
+    }
+    setDebugTogglingId(null);
   };
 
   if (loading) {
@@ -182,6 +207,23 @@ export default function AdminEventsPage() {
                     {event._count.eventCodes} codes
                   </div>
                 </div>
+
+                {/* Debug mode (Super Admin only) */}
+                {currentUserRole === 'SUPER_ADMIN' && (
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <label className="flex items-center justify-between gap-2 cursor-pointer">
+                      <span className="text-xs text-gray-400">Debug mode</span>
+                      <input
+                        type="checkbox"
+                        checked={event.debugMode ?? false}
+                        onChange={(e) => setDebugMode(event.id, e.target.checked)}
+                        disabled={debugTogglingId === event.id}
+                        className="rounded border-gray-600 bg-gray-700 text-amber-500 focus:ring-amber-500"
+                      />
+                      {debugTogglingId === event.id && <span className="text-xs text-gray-500">Updating…</span>}
+                    </label>
+                  </div>
+                )}
 
                 {/* Data retention */}
                 <div className="mt-4 pt-4 border-t border-gray-700">

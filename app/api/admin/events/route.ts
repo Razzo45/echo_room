@@ -4,7 +4,7 @@ import { requireAdminAuth } from '@/lib/auth-organiser';
 
 export async function GET() {
   try {
-    await requireAdminAuth();
+    const organiser = await requireAdminAuth();
 
     const events = await prisma.event.findMany({
       include: {
@@ -26,7 +26,10 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ events });
+    return NextResponse.json({
+      events,
+      currentUser: { role: organiser.role },
+    });
   } catch (error: any) {
     if (error.message === 'Admin authentication required' || error.message === 'Organiser authentication required') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
