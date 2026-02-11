@@ -1,6 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+const DEFAULT_ORGANISER_PASSWORD = 'organiser2026';
+const DEFAULT_ADMIN_PASSWORD = 'admin123';
 
 const questDecisions = {
   decisions: [
@@ -466,11 +470,39 @@ async function main() {
 
   console.log(`✅ Created quest: ${quest3.name} with ${4} fields`);
 
+  // Create default organiser and admin accounts so login works without env vars
+  const organiserEmail = 'organiser@echo-room.local';
+  const adminEmail = 'admin@echo-room.local';
+
+  if (!(await prisma.organiser.findUnique({ where: { email: organiserEmail } }))) {
+    await prisma.organiser.create({
+      data: {
+        email: organiserEmail,
+        name: 'Default Organiser',
+        passwordHash: await bcrypt.hash(DEFAULT_ORGANISER_PASSWORD, 10),
+        role: 'ORGANISER',
+      },
+    });
+    console.log('✅ Created default organiser:', organiserEmail);
+  }
+
+  if (!(await prisma.organiser.findUnique({ where: { email: adminEmail } }))) {
+    await prisma.organiser.create({
+      data: {
+        email: adminEmail,
+        name: 'System Administrator',
+        passwordHash: await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10),
+        role: 'SUPER_ADMIN',
+      },
+    });
+    console.log('✅ Created default admin:', adminEmail);
+  }
+
   console.log('\n🎉 Seed completed successfully!\n');
   console.log('📝 Credentials:');
   console.log(`   Event Code: ${eventCode.code}`);
-  console.log(`   Admin Password: ${process.env.ADMIN_PASSWORD || 'admin123'}`);
-  console.log(`   Organiser Password: ${process.env.ORGANISER_PASSWORD || 'organiser2026'}\n`);
+  console.log(`   Admin: ${adminEmail} / ${DEFAULT_ADMIN_PASSWORD}`);
+  console.log(`   Organiser: ${organiserEmail} / ${DEFAULT_ORGANISER_PASSWORD}\n`);
   console.log('📊 Created:');
   console.log(`   1 Event: ${event.name}`);
   console.log(`   5 Districts (1 active, 4 locked)`);

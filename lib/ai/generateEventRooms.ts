@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { jsonrepair } from 'jsonrepair';
 import { z } from 'zod';
 import { EventGenerationOutputSchema, type EventGenerationOutput } from './schemas';
 
@@ -199,7 +200,7 @@ REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph
       ],
       response_format: { type: 'json_object' }, // Force JSON output
       temperature: 0.7, // Slightly higher for nuanced content while staying concise
-      max_tokens: 6000, // Lower to encourage more focused, concise content
+      max_tokens: 10000, // Enough for 3 regions × 2 quests × 3 decisions × 3 options without truncation
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -236,44 +237,32 @@ REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph
         return match;
       });
 
-    let parsed;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(jsonContent);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      const errorPos = parseError instanceof SyntaxError && 'position' in parseError 
-        ? (parseError as any).position 
-        : null;
-      
-      if (errorPos) {
-        const start = Math.max(0, errorPos - 200);
-        const end = Math.min(jsonContent.length, errorPos + 200);
-        console.error('Content around error position:', jsonContent.substring(start, end));
-      } else {
-        console.error('Content preview (first 1000 chars):', jsonContent.substring(0, 1000));
-      }
-      
-      // Try to recover by fixing common issues (conservative approach)
+      console.error('Content preview (first 800 chars):', jsonContent.substring(0, 800));
+
+      // Try trailing-comma fix first
       try {
-        let fixedJson = jsonContent;
-        
-        // Remove trailing commas (common issue)
-        fixedJson = fixedJson.replace(/,(\s*[}\]])/g, '$1');
-        
-        // Try parsing the fixed version
+        const fixedJson = jsonContent.replace(/,(\s*[}\]])/g, '$1');
         parsed = JSON.parse(fixedJson);
-        console.log('Successfully parsed after auto-fix (trailing comma removal)');
-      } catch (recoveryError) {
-        // If auto-fix didn't work, the JSON is too malformed
-        // Log more details for debugging
-        console.error('JSON auto-fix failed. Original error:', parseError);
-        console.error('Recovery attempt error:', recoveryError);
-        
-        throw new Error(
-          `AI returned invalid JSON with syntax error. This usually happens when the AI includes unescaped quotes in text. ` +
-          `Error: ${parseError instanceof Error ? parseError.message : 'Parse error'}. ` +
-          `Please try generating again, or simplify your AI brief.`
-        );
+        console.log('Parsed successfully after trailing-comma removal');
+      } catch {
+        // Use jsonrepair to fix unescaped quotes, trailing commas, etc.
+        try {
+          const repaired = jsonrepair(jsonContent);
+          parsed = JSON.parse(repaired);
+          console.log('Parsed successfully after jsonrepair');
+        } catch (repairError) {
+          console.error('JSON repair failed:', repairError);
+          throw new Error(
+            `AI returned invalid JSON. This often happens when the AI includes unescaped quotes in text. ` +
+            `Error: ${parseError instanceof Error ? parseError.message : 'Parse error'}. ` +
+            `Please try generating again or use a shorter/simpler AI brief.`
+          );
+        }
       }
     }
 
