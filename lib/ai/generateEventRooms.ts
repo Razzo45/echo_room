@@ -18,6 +18,19 @@ export interface GenerateEventRoomsInput {
   eventDescription?: string;
 }
 
+/** Remove hashtags and other characters that often cause the model to output invalid JSON */
+function sanitizeForJsonSafePrompt(text: string): string {
+  return (
+    text
+      // Remove hashtag tokens (#Something) - model may echo these and break JSON
+      .replace(/#\w+/g, '')
+      // Collapse multiple spaces/newlines introduced by removal
+      .replace(/\n\s*\n/g, '\n')
+      .replace(/  +/g, ' ')
+      .trim()
+  );
+}
+
 /**
  * Generate event rooms (regions, quests, decisions) from an AI brief
  * Returns validated JSON structure ready for database persistence
@@ -30,6 +43,12 @@ export async function generateEventRooms(
   }
 
   const { brief, eventName, eventDescription } = input;
+  const safeBrief = sanitizeForJsonSafePrompt(brief);
+  const safeEventDescription =
+    eventDescription != null && eventDescription.trim() !== ''
+      ? sanitizeForJsonSafePrompt(eventDescription)
+      : undefined;
+  const safeEventName = eventName?.trim() ?? undefined;
 
   const systemPrompt = `You are a facilitator designing immersive, team-based decision experiences for people attending an event.
 Your job is to turn an event brief into concrete, emotionally resonant quests that feel relevant to participants’ real lives.
@@ -147,6 +166,7 @@ CRITICAL JSON RULES:
 - No newlines in string values (use \\n if needed)
 - No trailing commas anywhere
 - All strings must be properly terminated
+- Do NOT include hashtags (#) or social media tags in any string value - they break JSON parsing. Paraphrase themes in plain text only.
 - Validate your JSON before returning
 
 CONTENT RULES:
@@ -162,11 +182,11 @@ CONTENT RULES:
 
   const userPrompt = `Generate immersive, team-based decision quests that feel relevant to people attending this event:
 
-Event Name: ${eventName || 'Unnamed Event'}
-Event Description: ${eventDescription || 'No description provided'}
+Event Name: ${safeEventName || 'Unnamed Event'}
+Event Description: ${safeEventDescription ?? 'No description provided'}
 
 AI Brief:
-${brief}
+${safeBrief}
 
 Audience: People attending this event (for example, the kinds of participants and stakeholders described in the brief).
 
@@ -187,7 +207,7 @@ CRITICAL QUALITY REQUIREMENTS:
 - Context: Focused background narratives (100-180 words) with only the most relevant constraints, tensions, and decision drivers.
 - Language: Professional and sophisticated, but direct, human, and easy to relate to for participants.
 
-REMEMBER: Use plain text in strings, escape quotes as \\", use \\n for paragraph breaks, and ensure all strings are properly escaped for JSON.`;
+REMEMBER: Use plain text in strings only (no hashtags or #). Escape quotes as \\", use \\n for paragraph breaks. Ensure all strings are properly escaped for JSON.`;
 
   try {
     console.log('Calling OpenAI API with model: gpt-4o (high-quality content generation)');
