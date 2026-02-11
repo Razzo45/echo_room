@@ -16,6 +16,9 @@ type RoomData = {
   status: string;
   questName: string;
   questDescription: string;
+  memberCount: number;
+  maxPlayers: number;
+  minPlayersToStart: number;
   members: Member[];
 };
 
@@ -94,7 +97,7 @@ export default function RoomLobbyPage() {
     );
   }
 
-  const canStart = room.members.length === 3;
+  const canStart = room.memberCount >= room.minPlayersToStart;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -116,7 +119,7 @@ export default function RoomLobbyPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">Team Members</h2>
               <span className="text-sm text-gray-600">
-                {room.members.length} / 3
+                {room.memberCount} / {room.maxPlayers} players
               </span>
             </div>
 
@@ -141,7 +144,7 @@ export default function RoomLobbyPage() {
               ))}
 
               {/* Empty slots */}
-              {[...Array(3 - room.members.length)].map((_, i) => (
+              {[...Array(Math.max(0, (room.maxPlayers ?? 3) - room.members.length))].map((_, i) => (
                 <div
                   key={`empty-${i}`}
                   className="flex items-center p-4 bg-gray-100 rounded-lg border border-gray-300 border-dashed"
@@ -160,7 +163,7 @@ export default function RoomLobbyPage() {
           {!canStart && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-yellow-800">
-                <strong>Waiting for more players...</strong> The quest will start automatically when all 3 members are present.
+                <strong>Waiting for more players...</strong> The quest will start when at least {room.minPlayersToStart} member(s) have joined ({room.memberCount} of {room.maxPlayers} in room).
               </p>
             </div>
           )}

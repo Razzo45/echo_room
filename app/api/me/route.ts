@@ -30,6 +30,7 @@ export async function GET() {
       status: membership.room.status,
       questName: membership.room.quest.name,
       memberCount: membership.room._count.members,
+      maxPlayers: membership.room.quest.teamSize,
       joinedAt: membership.joinedAt,
       completedAt: membership.room.completedAt,
       hasArtifact: !!membership.room.artifact,

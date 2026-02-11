@@ -96,6 +96,7 @@ export async function POST(
           description: baselineQuest.description,
           durationMinutes: baselineQuest.durationMinutes,
           teamSize: baselineQuest.teamSize,
+          minTeamSize: (baselineQuest as { minTeamSize?: number }).minTeamSize ?? 2,
           decisionsData: null,
         },
       });

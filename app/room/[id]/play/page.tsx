@@ -38,6 +38,8 @@ type RoomData = {
   id: string;
   status: string;
   currentDecision: number;
+  memberCount?: number;
+  maxPlayers?: number;
   members: Array<{ id: string; name: string }>;
   votes: Vote[];
   commits: Commit[];
@@ -367,6 +369,9 @@ export default function QuestPlayPage() {
             </span>
             <span className="text-sm text-gray-600">
               {currentVotes.length} / {room.members.length} voted
+              {room.memberCount != null && room.maxPlayers != null && (
+                <span className="ml-2 text-gray-500">• {room.memberCount} of {room.maxPlayers} in room</span>
+              )}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">

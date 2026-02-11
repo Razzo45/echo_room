@@ -11,6 +11,7 @@ type Room = {
   status: string;
   questName: string;
   memberCount: number;
+  maxPlayers?: number;
   joinedAt: string;
   completedAt: string | null;
   hasArtifact: boolean;
@@ -106,7 +107,7 @@ export default function MyPage() {
                     <div className="flex items-center gap-3 text-sm text-gray-600">
                       <span className="font-mono">{room.roomCode}</span>
                       <span>•</span>
-                      <span>{room.memberCount} members</span>
+                      <span>{room.memberCount}{room.maxPlayers != null ? ` / ${room.maxPlayers}` : ''} in room</span>
                       <span>•</span>
                       <span>
                         {room.status === 'COMPLETED'

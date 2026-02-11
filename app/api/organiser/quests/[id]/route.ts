@@ -66,6 +66,7 @@ export async function PUT(
       description,
       durationMinutes,
       teamSize,
+      minTeamSize,
       sortOrder,
       isActive,
       decisions,
@@ -74,6 +75,7 @@ export async function PUT(
       description?: string;
       durationMinutes?: number;
       teamSize?: number;
+      minTeamSize?: number;
       sortOrder?: number;
       isActive?: boolean;
       decisions?: Array<{
@@ -99,6 +101,7 @@ export async function PUT(
           ...(description !== undefined && { description }),
           ...(durationMinutes !== undefined && { durationMinutes }),
           ...(teamSize !== undefined && { teamSize }),
+          ...(minTeamSize !== undefined && { minTeamSize }),
           ...(sortOrder !== undefined && { sortOrder }),
           ...(isActive !== undefined && { isActive }),
           // Clear deprecated decisionsData so API builds from QuestDecision/QuestOption

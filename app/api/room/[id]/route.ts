@@ -103,6 +103,9 @@ export async function GET(
         questName: room.quest.name,
         questDescription: room.quest.description,
         questDuration: room.quest.durationMinutes,
+        memberCount: room.members.length,
+        maxPlayers: room.quest.teamSize,
+        minPlayersToStart: room.quest.minTeamSize ?? 2,
         decisionsData,
         members: room.members.map((m) => ({
           id: m.user.id,

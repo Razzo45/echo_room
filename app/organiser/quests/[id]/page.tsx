@@ -25,6 +25,8 @@ type Quest = {
   id: string;
   name: string;
   description: string;
+  teamSize: number;
+  minTeamSize: number;
   region: {
     displayName: string;
   };
@@ -108,6 +110,8 @@ export default function QuestEditPage() {
         body: JSON.stringify({
           name: quest.name,
           description: quest.description,
+          teamSize: quest.teamSize,
+          minTeamSize: quest.minTeamSize,
           decisions: quest.decisions.map((d) => ({
             id: d.id,
             title: d.title,
@@ -266,6 +270,44 @@ export default function QuestEditPage() {
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
+          </div>
+
+          {/* Room size – organiser only; participants cannot see or change this */}
+          <div className="pt-4 border-t border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-800 mb-2">Room size</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Minimum and maximum players per room. Only you can change this; participants cannot see or edit it.
+            </p>
+            <div className="flex flex-wrap gap-6">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Min players (to start)</label>
+                <input
+                  type="number"
+                  min={2}
+                  max={5}
+                  value={quest.minTeamSize ?? 2}
+                  onChange={(e) => {
+                    const v = Math.min(5, Math.max(2, parseInt(e.target.value, 10) || 2));
+                    setQuest((p) => (p ? { ...p, minTeamSize: v, teamSize: Math.max(p.teamSize, v) } : p));
+                  }}
+                  className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Max players (per room)</label>
+                <input
+                  type="number"
+                  min={2}
+                  max={5}
+                  value={quest.teamSize ?? 3}
+                  onChange={(e) => {
+                    const v = Math.min(5, Math.max(2, parseInt(e.target.value, 10) || 3));
+                    setQuest((p) => (p ? { ...p, teamSize: v, minTeamSize: Math.min(p.minTeamSize, v) } : p));
+                  }}
+                  className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
