@@ -12,6 +12,36 @@ async function tryJsonRepair(text: string): Promise<string> {
   }
 }
 
+/** Try to close truncated JSON by appending missing ] and } (only when error position is near end). */
+function closeTruncatedJson(str: string): string | null {
+  let openBraces = 0;
+  let openBrackets = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') escape = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') openBraces++;
+    else if (c === '}') openBraces--;
+    else if (c === '[') openBrackets++;
+    else if (c === ']') openBrackets--;
+  }
+  if (openBraces < 0 || openBrackets < 0) return null;
+  return str + ']'.repeat(openBrackets) + '}'.repeat(openBraces);
+}
+
 /**
  * AI Event Room Generator
  * Generates quests, decisions, and options from an event brief using OpenAI
@@ -74,16 +104,20 @@ For every quest and decision, implicitly answer:
 - "If I lived or worked in this context, how would this actually change my day-to-day experience?"
 - When helpful, bring in concrete characters (e.g. "a nurse on the night shift", "a commuter with two kids", "a small café owner").
 
-CONTENT & LENGTH GUIDELINES
+LENGTH & QUALITY (stay within parameters; prioritise impact)
+- Aim for these ranges so the full response fits in one go; within that, prioritise clarity and substance over padding.
+- Quest description: roughly 2–4 sentences (about 40–70 words). Set the scene and why it matters to participants.
+- Decision context: roughly 2–4 sentences (about 50–80 words). Give enough stakes and tension to make the choice meaningful.
+- Option description: 1–2 sentences (about 25–45 words). Be concrete about what the team does.
+- Impact: 2–4 sentences (about 40–70 words). Concrete outcomes and 1–2 clear risks; no laundry lists.
+- Tradeoff: 2–3 sentences (about 40–60 words). What is gained vs given up, with real nuance.
+- Quality bar: specific, grounded, and discussion-worthy. No filler, no repetition, no generic fluff. Every sentence should earn its place.
+
+CONTENT & STRUCTURE
 - Generate exactly 3 regions (districts/areas).
-- Each region: exactly 2 quests (fixed for stable data flow). Fit the event’s theme and audience.
+- Each region: exactly 2 quests (fixed for stable data flow). Fit the event theme and audience.
 - Each quest: exactly 3 sequential decisions.
 - Each decision: exactly 3 options (A, B, C) that are all plausible, with no obvious "correct" answer.
-- Quest descriptions: 80–150 words, focused on setting the scene and why it matters to participants.
-- Decision context: 100–180 words, describing the crossroads and the pressures around it.
-- Option description: 40–80 words, explaining what the team would actually do.
-- Impact: 120–200 words, mixing concrete outcomes and 2–3 key risks (1–2 sentences each).
-- Tradeoff: 80–150 words, explaining what you gain, what you lose, and who feels it.
 
 CRITICAL JSON FORMATTING REQUIREMENTS:
 - You MUST return ONLY valid JSON, no markdown, no code blocks, no explanations
@@ -94,16 +128,12 @@ CRITICAL JSON FORMATTING REQUIREMENTS:
 - Ensure all strings are properly terminated
 - Use \\n to indicate paragraph breaks in longer text fields
 
-CRITICAL CONTENT REQUIREMENTS:
-- Generate exactly 3 regions (districts/areas)
-- You MUST output exactly 3 regions and exactly 2 quests per region (no more, no less). Output structure is fixed.
-- Each quest must have exactly 3 decisions
-- Each decision must have exactly 3 options (A, B, C)
-- All content must be realistic, engaging, and suitable for team collaboration
-- Decisions should present sophisticated, challenging dilemmas with no obvious "right" answer
-- Options should have well-articulated, multi-dimensional impacts and tradeoffs
-- Avoid generic or simplistic language - be specific and nuanced
-- Trade-offs should NOT be simple "cost vs benefit" - explore complexity and nuance
+CONTENT REQUIREMENTS
+- Output exactly 3 regions and exactly 2 quests per region (no more, no less). Structure is fixed.
+- Each quest: exactly 3 decisions. Each decision: exactly 3 options (A, B, C).
+- Content must be realistic, engaging, and suitable for team collaboration.
+- Decisions: genuine dilemmas with no obvious "right" answer; options with clear trade-offs and nuance.
+- Be specific and grounded; avoid generic or simplistic language. Trade-offs should reflect real complexity, not simple cost vs benefit.
 
 OUTPUT FORMAT (STRICT JSON):
 - "regions" must be an array of exactly 3 region objects. Each region must have a "quests" array of exactly 2 quests.
@@ -115,50 +145,28 @@ OUTPUT FORMAT (STRICT JSON):
       "description": "Brief description of this region",
       "quests": [
         { "name": "Quest 1 Name",
-          "description": "Concise, contextual narrative describing the quest scenario (80-150 words) written for people attending the event",
+          "description": "2-4 sentences. Set the scene and why it matters to participants.",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
             {
               "decisionNumber": 1,
               "title": "Decision Title",
-              "context": "Focused background context (100-180 words) including key constraints, stakeholder perspectives, and why this decision matters to people at the event",
+              "context": "2-4 sentences. Stakes and tension so the choice is meaningful.",
               "options": [
                 {
                   "optionKey": "A",
                   "title": "Option A Title",
-                  "description": "Clear description of what this option entails for participants (40-80 words)",
-                  "impact": "Concise analysis of outcomes and consequences (120-200 words). MUST include 2-3 specific risks with brief explanations, plus key expected outcomes and any important follow-on effects for people and communities.",
-                  "tradeoff": "Multi-faceted trade-off analysis (80-150 words). MUST cover economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions in a concise way. Not a simple cost-benefit."
+                  "description": "1-2 sentences. Concrete description of what the team does.",
+                  "impact": "2-4 sentences. Outcomes and 1-2 clear risks.",
+                  "tradeoff": "2-3 sentences. What is gained vs given up, with nuance."
                 },
-                {
-                  "optionKey": "B",
-                  "title": "Option B Title",
-                  "description": "What this option entails (keep it focused and concrete)",
-                  "impact": "Expected outcomes and consequences in 3-5 sentences.",
-                  "tradeoff": "What is sacrificed or gained, in a concise way."
-                },
-                {
-                  "optionKey": "C",
-                  "title": "Option C Title",
-                  "description": "What this option entails (keep it focused and concrete)",
-                  "impact": "Expected outcomes and consequences in 3-5 sentences.",
-                  "tradeoff": "What is sacrificed or gained, in a concise way."
-                }
+                { "optionKey": "B", "title": "Option B Title", "description": "...", "impact": "...", "tradeoff": "..." },
+                { "optionKey": "C", "title": "Option C Title", "description": "...", "impact": "...", "tradeoff": "..." }
               ]
             },
-            {
-              "decisionNumber": 2,
-              "title": "Decision 2 Title",
-              "context": "Focused background context for this decision",
-              "options": [/* 3 options A, B, C */]
-            },
-            {
-              "decisionNumber": 3,
-              "title": "Decision 3 Title",
-              "context": "Focused background context for this decision",
-              "options": [/* 3 options A, B, C */]
-            }
+            { "decisionNumber": 2, "title": "...", "context": "...", "options": [/* 3 options */] },
+            { "decisionNumber": 3, "title": "...", "context": "...", "options": [/* 3 options */] }
           ]
         },
                 { "name": "Quest 2 Name", "description": "...", "durationMinutes": 30, "teamSize": 3, "decisions": [ /* 3 decisions, same structure as Quest 1 */ ] }
@@ -178,16 +186,11 @@ CRITICAL JSON RULES:
 - Do NOT include hashtags (#) or social media tags in any string value - they break JSON parsing. Paraphrase themes in plain text only.
 - Validate your JSON before returning
 
-CONTENT RULES:
-- Ensure all required fields are present with substantial, high-quality content
-- Each quest must have exactly 3 decisions (numbered 1, 2, 3)
-- Each decision must have exactly 3 options (A, B, C)
-- Make decisions challenging, sophisticated dilemmas with no obvious answer
-- Ensure options have meaningful, well-articulated differences with comprehensive trade-offs
-- Trade-offs MUST be detailed multi-faceted analyses, NOT simple cost-benefit summaries
-- Impact fields MUST include specific, detailed risks (3-5 minimum) with explanations
-- Write for an executive/professional audience - sophisticated language and concepts
-- Avoid generic, vague, or high-school level language - be specific and nuanced`;
+CONTENT RULES
+- Ensure all required fields are present. Stay within the length ranges above so the full JSON fits; prioritise quality and clarity.
+- Each quest: exactly 3 decisions (1, 2, 3). Each decision: exactly 3 options (A, B, C).
+- Decisions: challenging dilemmas with no obvious answer. Options: clear differences and real trade-offs.
+- Write for professionals: specific, nuanced, and substantive. No filler or repetition.`;
 
   const userPrompt = `Generate immersive, team-based decision quests that feel relevant to people attending this event:
 
@@ -207,16 +210,9 @@ Use this central question to:
 - Show how each option changes what participants see, feel, and can do.
 - Make it obvious how the scenario connects to why they came to this event.
 
-Generate exactly 3 regions with exactly 2 quests each (6 quests total). Fixed structure: 3 areas × 2 quests. Each quest has 3 sequential decisions with 3 options each. Make the content highly relevant to the brief AND to the lived experience of people who chose to attend this event.
+Generate exactly 3 regions with exactly 2 quests each (6 quests total). Fixed structure: 3 areas × 2 quests. Each quest has 3 sequential decisions with 3 options each. Make content relevant to the brief and to participants.
 
-CRITICAL QUALITY REQUIREMENTS:
-- Be concise: aim for roughly 60–120 words per narrative section (no long essays).
-- Trade-offs: Provide multi-faceted analyses (80-150 words) covering economic, strategic, operational, stakeholder, temporal, and risk-reward dimensions. NOT simple cost-benefit.
-- Impact/Risks: Provide focused outcome analysis (120-200 words) with 2-3 specific, detailed risks (1-2 sentences each) plus key outcomes. Avoid repetition.
-- Context: Focused background narratives (100-180 words) with only the most relevant constraints, tensions, and decision drivers.
-- Language: Professional and sophisticated, but direct, human, and easy to relate to for participants.
-
-REMEMBER: Use plain text in strings only (no hashtags or #). Escape quotes as \\", use \\n for paragraph breaks. Ensure all strings are properly escaped for JSON.`;
+Length and quality: aim for the ranges in the instructions (roughly 2–4 sentences per narrative field) so the full response fits. Prioritise clarity, substance, and impact; avoid padding and repetition. Escape quotes as \\", no hashtags in strings. Return ONLY valid JSON.`;
 
   try {
     console.log('Calling OpenAI API with model: gpt-4o (high-quality content generation)');
@@ -229,7 +225,7 @@ REMEMBER: Use plain text in strings only (no hashtags or #). Escape quotes as \\
       ],
       response_format: { type: 'json_object' }, // Force JSON output
       temperature: 0.7, // Slightly higher for nuanced content while staying concise
-      max_tokens: 10000, // Enough for 3 regions × 2 quests × 3 decisions × 3 options without truncation
+      max_tokens: 6000, // Concise prompt keeps output short; 6k is enough and controls cost
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -266,23 +262,35 @@ REMEMBER: Use plain text in strings only (no hashtags or #). Escape quotes as \\
     }
 
     if (parsed === undefined) {
-      // Try jsonrepair (safe import, may throw on bad input)
+      // Try jsonrepair first (fixes unescaped quotes, trailing commas, etc.)
       let repaired = jsonContent;
       try {
         repaired = await tryJsonRepair(jsonContent);
-      } catch (repairErr) {
-        console.warn('jsonrepair failed (will try parse anyway):', repairErr);
-      }
-      try {
         parsed = JSON.parse(repaired);
         console.log('Parsed successfully after jsonrepair');
-      } catch (e2) {
+      } catch (repairErr) {
+        // If parse failed near end of content, likely truncation – try closing open brackets
+        const posMatch = parseError instanceof Error && parseError.message.match(/position (\d+)/);
+        const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
+        if (errPos > 0 && errPos >= jsonContent.length * 0.8) {
+          const closed = closeTruncatedJson(jsonContent.substring(0, errPos));
+          if (closed) {
+            try {
+              parsed = JSON.parse(closed);
+              console.log('Parsed successfully after truncation recovery');
+            } catch {
+              // fall through to throw
+            }
+          }
+        }
+      }
+
+      if (parsed === undefined) {
         console.error('JSON parse error:', parseError);
-        console.error('After repair parse error:', e2);
         console.error('Content preview (first 1200 chars):', jsonContent.substring(0, 1200));
         const msg = parseError instanceof Error ? parseError.message : String(parseError);
         throw new Error(
-          `Generation could not parse the AI response as valid JSON. This often happens when the model outputs unescaped quotes or is cut off. Please try again or use a shorter AI brief. Parse error: ${msg}`
+          `Generation could not parse the AI response as valid JSON. This often happens when the response was cut off (try again) or contains unescaped quotes. Parse error: ${msg}`
         );
       }
     }
