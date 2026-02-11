@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserEventAccess } from '@/lib/event-access';
 
 // GET /api/organiser/events/[id]
 export async function GET(
@@ -9,14 +10,10 @@ export async function GET(
 ) {
   try {
     const organiser = await requireOrganiserAuth();
+    const activeEvent = await requireOrganiserEventAccess(organiser, params.id);
 
-    const event = await prisma.event.findFirst({
-      where: {
-        id: params.id,
-        ...(organiser.role === 'SUPER_ADMIN'
-          ? {}
-          : { organiserId: organiser.id }),
-      },
+    const event = await prisma.event.findUnique({
+      where: { id: activeEvent.id },
       include: {
         eventCodes: true,
         regions: {
@@ -92,12 +89,11 @@ export async function PUT(
       sponsorLogos,
     } = body;
 
+    const activeEvent = await requireOrganiserEventAccess(organiser, params.id);
+
     const event = await prisma.event.updateMany({
       where: {
-        id: params.id,
-        ...(organiser.role === 'SUPER_ADMIN'
-          ? {}
-          : { organiserId: organiser.id }),
+        id: activeEvent.id,
       },
       data: {
         ...(name && { name }),
@@ -119,7 +115,7 @@ export async function PUT(
     }
 
     const updated = await prisma.event.findUnique({
-      where: { id: params.id },
+      where: { id: activeEvent.id },
     });
 
     return NextResponse.json({ event: updated });

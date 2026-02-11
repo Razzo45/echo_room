@@ -13,18 +13,38 @@ export async function requireOrganiserEventAccess(
   organiser: OrganiserLike,
   eventId: string
 ): Promise<Event> {
-  const event = await prisma.event.findFirst({
+  // First resolve the original event
+  const baseEvent = await prisma.event.findFirst({
     where: {
       id: eventId,
       ...(organiser.role === 'SUPER_ADMIN' ? {} : { organiserId: organiser.id }),
     },
   });
-  if (!event) {
+  if (!baseEvent) {
     const err = new Error('Event not found');
     (err as any).status = 404;
     throw err;
   }
-  return event;
+
+  // If this is already a debug clone, just return it
+  if (baseEvent.isDebugClone) {
+    return baseEvent;
+  }
+
+  // If debug is enabled and a clone exists, route access to the clone
+  if (baseEvent.debugMode && baseEvent.debugCloneEventId) {
+    const clone = await prisma.event.findFirst({
+      where: {
+        id: baseEvent.debugCloneEventId,
+        ...(organiser.role === 'SUPER_ADMIN' ? {} : { organiserId: organiser.id }),
+      },
+    });
+    if (clone) {
+      return clone;
+    }
+  }
+
+  return baseEvent;
 }
 
 /** Returns region (district) if organiser has access to its event. Throws 404 if not found / no access. */

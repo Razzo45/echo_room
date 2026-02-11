@@ -14,9 +14,8 @@ export async function POST(
 ) {
   try {
     const organiser = await requireOrganiserAuth();
-    await requireOrganiserEventAccess(organiser, params.id);
-
-    const eventId = params.id;
+    const event = await requireOrganiserEventAccess(organiser, params.id);
+    const eventId = event.id;
     const body = await request.json();
     const { draft } = body; // The reviewed/edited content
 

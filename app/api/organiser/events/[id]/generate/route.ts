@@ -17,21 +17,8 @@ export async function POST(
 ) {
   try {
     const organiser = await requireOrganiserAuth();
-    await requireOrganiserEventAccess(organiser, params.id);
-
-    const eventId = params.id;
-
-    // Fetch event
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!event) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
-    }
+    const event = await requireOrganiserEventAccess(organiser, params.id);
+    const eventId = event.id;
 
     // In debug mode we skip AI; otherwise brief is required
     if (!event.debugMode && (!event.aiBrief || !event.aiBrief.trim())) {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserEventAccess } from '@/lib/event-access';
 
 /**
  * GET /api/organiser/events/[id]/generation
@@ -13,15 +14,13 @@ export async function GET(
   try {
     const organiser = await requireOrganiserAuth();
 
-    const eventId = params.id;
+    const activeEvent = await requireOrganiserEventAccess(organiser, params.id);
+    const eventId = activeEvent.id;
 
     // Fetch event with latest generation
     const event = await prisma.event.findFirst({
       where: {
         id: eventId,
-        ...(organiser.role === 'SUPER_ADMIN'
-          ? {}
-          : { organiserId: organiser.id }),
       },
       include: {
         generations: {

@@ -42,6 +42,12 @@ model Event {
   retentionOverrideBy String?            // Organiser id who set override (audit)
   debugMode           Boolean            @default(false) // Super Admin: test full platform without LLM/cost
   debugSnapshot       Json?
+  // Debug clone support: when debugMode is enabled on an event, we transparently
+  // operate on a cloned event (isDebugClone = true) and leave the original untouched.
+  isDebugClone        Boolean            @default(false)
+  debugCloneEventId   String?
+  debugCloneEvent     Event?             @relation("EventDebugClone", fields: [debugCloneEventId], references: [id])
+  debugParentEvents   Event[]            @relation("EventDebugClone")
 
   organiser           Organiser?         @relation(fields: [organiserId], references: [id], onDelete: Cascade)
 
