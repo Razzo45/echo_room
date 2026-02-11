@@ -104,14 +104,14 @@ For every quest and decision, implicitly answer:
 - "If I lived or worked in this context, how would this actually change my day-to-day experience?"
 - When helpful, bring in concrete characters (e.g. "a nurse on the night shift", "a commuter with two kids", "a small café owner").
 
-LENGTH & QUALITY (stay within parameters; prioritise impact)
-- Aim for these ranges so the full response fits in one go; within that, prioritise clarity and substance over padding.
-- Quest description: roughly 2–4 sentences (about 40–70 words). Set the scene and why it matters to participants.
-- Decision context: roughly 2–4 sentences (about 50–80 words). Give enough stakes and tension to make the choice meaningful.
-- Option description: 1–2 sentences (about 25–45 words). Be concrete about what the team does.
-- Impact: 2–4 sentences (about 40–70 words). Concrete outcomes and 1–2 clear risks; no laundry lists.
-- Tradeoff: 2–3 sentences (about 40–60 words). What is gained vs given up, with real nuance.
-- Quality bar: specific, grounded, and discussion-worthy. No filler, no repetition, no generic fluff. Every sentence should earn its place.
+TOKEN BUDGET (CRITICAL – response is cut off if you exceed it)
+- Your reply has a strict token limit. If you write too much, the JSON will be truncated and the generation will fail. Stay well under the limit.
+- Quest description: at most 2 sentences (about 30–45 words).
+- Decision context: at most 2 sentences (about 35–50 words).
+- Option description: exactly 1 sentence (about 15–25 words).
+- Impact: at most 2 sentences (about 30–45 words). One outcome and one risk is enough.
+- Tradeoff: at most 2 sentences (about 25–40 words).
+- Be specific and discussion-worthy, but brief. No lists, no repetition, no filler. Prefer one strong sentence over two weak ones.
 
 CONTENT & STRUCTURE
 - Generate exactly 3 regions (districts/areas).
@@ -145,21 +145,21 @@ OUTPUT FORMAT (STRICT JSON):
       "description": "Brief description of this region",
       "quests": [
         { "name": "Quest 1 Name",
-          "description": "2-4 sentences. Set the scene and why it matters to participants.",
+          "description": "At most 2 sentences.",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
             {
               "decisionNumber": 1,
               "title": "Decision Title",
-              "context": "2-4 sentences. Stakes and tension so the choice is meaningful.",
+              "context": "At most 2 sentences.",
               "options": [
                 {
                   "optionKey": "A",
                   "title": "Option A Title",
-                  "description": "1-2 sentences. Concrete description of what the team does.",
-                  "impact": "2-4 sentences. Outcomes and 1-2 clear risks.",
-                  "tradeoff": "2-3 sentences. What is gained vs given up, with nuance."
+                  "description": "One sentence.",
+                  "impact": "At most 2 sentences.",
+                  "tradeoff": "At most 2 sentences."
                 },
                 { "optionKey": "B", "title": "Option B Title", "description": "...", "impact": "...", "tradeoff": "..." },
                 { "optionKey": "C", "title": "Option C Title", "description": "...", "impact": "...", "tradeoff": "..." }
@@ -187,10 +187,9 @@ CRITICAL JSON RULES:
 - Validate your JSON before returning
 
 CONTENT RULES
-- Ensure all required fields are present. Stay within the length ranges above so the full JSON fits; prioritise quality and clarity.
+- Ensure all required fields are present. Respect the TOKEN BUDGET above or the response will be cut off and fail.
 - Each quest: exactly 3 decisions (1, 2, 3). Each decision: exactly 3 options (A, B, C).
-- Decisions: challenging dilemmas with no obvious answer. Options: clear differences and real trade-offs.
-- Write for professionals: specific, nuanced, and substantive. No filler or repetition.`;
+- Decisions: genuine dilemmas; options with clear trade-offs. Be specific and concise.`;
 
   const userPrompt = `Generate immersive, team-based decision quests that feel relevant to people attending this event:
 
@@ -212,7 +211,7 @@ Use this central question to:
 
 Generate exactly 3 regions with exactly 2 quests each (6 quests total). Fixed structure: 3 areas × 2 quests. Each quest has 3 sequential decisions with 3 options each. Make content relevant to the brief and to participants.
 
-Length and quality: aim for the ranges in the instructions (roughly 2–4 sentences per narrative field) so the full response fits. Prioritise clarity, substance, and impact; avoid padding and repetition. Escape quotes as \\", no hashtags in strings. Return ONLY valid JSON.`;
+Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence for option description and tradeoff. If you exceed the limit the JSON will be cut off and fail. Escape quotes as \\", no hashtags. Return ONLY valid JSON.`;
 
   try {
     console.log('Calling OpenAI API with model: gpt-4o (high-quality content generation)');
@@ -253,34 +252,35 @@ Length and quality: aim for the ranges in the instructions (roughly 2–4 senten
       jsonContent = next;
     }
 
+    // Try jsonrepair first (fixes unescaped quotes, trailing commas, and can help with truncation)
+    let toParse = jsonContent;
+    try {
+      toParse = await tryJsonRepair(jsonContent);
+    } catch {
+      // keep toParse as jsonContent
+    }
+
     let parsed: unknown;
     let parseError: unknown;
     try {
-      parsed = JSON.parse(jsonContent);
+      parsed = JSON.parse(toParse);
+      if (toParse !== jsonContent) console.log('Parsed successfully after jsonrepair');
     } catch (e) {
       parseError = e;
     }
 
     if (parsed === undefined) {
-      // Try jsonrepair first (fixes unescaped quotes, trailing commas, etc.)
-      let repaired = jsonContent;
-      try {
-        repaired = await tryJsonRepair(jsonContent);
-        parsed = JSON.parse(repaired);
-        console.log('Parsed successfully after jsonrepair');
-      } catch (repairErr) {
-        // If parse failed near end of content, likely truncation – try closing open brackets
-        const posMatch = parseError instanceof Error && parseError.message.match(/position (\d+)/);
-        const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
-        if (errPos > 0 && errPos >= jsonContent.length * 0.8) {
-          const closed = closeTruncatedJson(jsonContent.substring(0, errPos));
-          if (closed) {
-            try {
-              parsed = JSON.parse(closed);
-              console.log('Parsed successfully after truncation recovery');
-            } catch {
-              // fall through to throw
-            }
+      // Truncation recovery: error near end of content → close open brackets and re-parse
+      const posMatch = parseError instanceof Error && parseError.message.match(/position (\d+)/);
+      const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
+      if (errPos > 0 && errPos >= jsonContent.length * 0.75) {
+        const closed = closeTruncatedJson(jsonContent.substring(0, errPos));
+        if (closed) {
+          try {
+            parsed = JSON.parse(closed);
+            console.log('Parsed successfully after truncation recovery');
+          } catch {
+            // fall through
           }
         }
       }
@@ -290,7 +290,7 @@ Length and quality: aim for the ranges in the instructions (roughly 2–4 senten
         console.error('Content preview (first 1200 chars):', jsonContent.substring(0, 1200));
         const msg = parseError instanceof Error ? parseError.message : String(parseError);
         throw new Error(
-          `Generation could not parse the AI response as valid JSON. This often happens when the response was cut off (try again) or contains unescaped quotes. Parse error: ${msg}`
+          `Generation could not parse the AI response as valid JSON. The response may have been cut off (try again; use a shorter AI brief) or contain unescaped quotes. Parse error: ${msg}`
         );
       }
     }
