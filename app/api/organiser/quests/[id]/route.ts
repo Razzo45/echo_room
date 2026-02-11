@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserQuestAccess } from '@/lib/event-access';
 
 // GET /api/organiser/quests/[id]
 export async function GET(
@@ -56,7 +57,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserQuestAccess(organiser, params.id);
 
     const body = await request.json();
     const {
@@ -165,7 +167,13 @@ export async function PUT(
     });
 
     return NextResponse.json({ quest });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Quest not found' }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Update quest error:', error);
     return NextResponse.json(
       { error: 'Failed to update quest' },
@@ -180,14 +188,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserQuestAccess(organiser, params.id);
 
     await prisma.quest.delete({
       where: { id: params.id },
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Quest not found' }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Delete quest error:', error);
     return NextResponse.json(
       { error: 'Failed to delete quest' },

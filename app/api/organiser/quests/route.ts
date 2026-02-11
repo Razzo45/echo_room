@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserDistrictAccess } from '@/lib/event-access';
 
 // GET /api/organiser/quests?eventId=xxx or ?districtId=xxx
 export async function GET(request: Request) {
@@ -70,7 +71,10 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ quests });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'District not found' }, { status: 404 });
+    }
     if (error instanceof Error && error.message === 'Organiser authentication required') {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -109,6 +113,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await requireOrganiserDistrictAccess(organiser, regionId);
+
     const quest = await prisma.quest.create({
       data: {
         regionId,
@@ -126,7 +132,13 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ quest });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'District not found or not accessible' }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Create quest error:', error);
     return NextResponse.json(
       { error: 'Failed to create quest' },

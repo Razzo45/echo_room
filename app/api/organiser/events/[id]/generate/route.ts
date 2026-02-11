@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserEventAccess } from '@/lib/event-access';
 import { generateEventRooms } from '@/lib/ai/generateEventRooms';
 
 /**
@@ -13,7 +14,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserEventAccess(organiser, params.id);
 
     // Check OpenAI API key early
     if (!process.env.OPENAI_API_KEY) {
@@ -171,12 +173,14 @@ export async function POST(
         { status: 500 }
       );
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
     console.error('Generate event rooms outer error:', error);
-    
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { 
+      {
         error: 'An error occurred during generation',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
       },

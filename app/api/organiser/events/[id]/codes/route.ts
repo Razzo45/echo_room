@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserEventAccess } from '@/lib/event-access';
 
 // POST /api/organiser/events/[id]/codes
 // - existing behaviour: generate random codes by count
@@ -10,7 +11,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserEventAccess(organiser, params.id);
 
     const body = await request.json();
     const { count = 1, prefix = '', maxUses, customCodes } = body as {
@@ -102,7 +104,10 @@ export async function POST(
     }
 
     return NextResponse.json({ codes });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
     console.error('Generate codes error:', error);
     return NextResponse.json(
       { error: 'Failed to generate codes' },
@@ -117,7 +122,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserEventAccess(organiser, params.id);
 
     const codes = await prisma.eventCode.findMany({
       where: { eventId: params.id },
@@ -125,7 +131,10 @@ export async function GET(
     });
 
     return NextResponse.json({ codes });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
     console.error('Get codes error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch codes' },
@@ -141,7 +150,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserEventAccess(organiser, params.id);
 
     const body = await request.json();
     const { codeId, active } = body as { codeId?: string; active?: boolean };
@@ -174,7 +184,10 @@ export async function PATCH(
     });
 
     return NextResponse.json({ code: updated });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
     console.error('Update code state error:', error);
     return NextResponse.json(
       { error: 'Failed to update event code' },
@@ -190,7 +203,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserEventAccess(organiser, params.id);
 
     const body = await request.json();
     const { codeId } = body as { codeId?: string };
@@ -229,7 +243,10 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
     console.error('Delete event code error:', error);
     return NextResponse.json(
       { error: 'Failed to delete event code' },

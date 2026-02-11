@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserDistrictAccess } from '@/lib/event-access';
 
 // GET /api/organiser/districts?eventId=xxx
 export async function GET(request: Request) {
@@ -107,10 +108,10 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT /api/organiser/districts/[id]
+// PUT /api/organiser/districts (body includes id)
 export async function PUT(request: Request) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
 
     const body = await request.json();
     const { id, displayName, description, isActive, sortOrder } = body;
@@ -121,6 +122,8 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
+
+    await requireOrganiserDistrictAccess(organiser, id);
 
     const district = await prisma.region.update({
       where: { id },
@@ -133,7 +136,13 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ district });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'District not found' }, { status: 404 });
+    }
+    if (error instanceof Error && error.message === 'Organiser authentication required') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Update district error:', error);
     return NextResponse.json(
       { error: 'Failed to update district' },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
+import { requireOrganiserEventAccess } from '@/lib/event-access';
 import { EventGenerationOutputSchema } from '@/lib/ai/schemas';
 
 /**
@@ -12,7 +13,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireOrganiserAuth();
+    const organiser = await requireOrganiserAuth();
+    await requireOrganiserEventAccess(organiser, params.id);
 
     const eventId = params.id;
     const body = await request.json();
@@ -224,11 +226,12 @@ export async function POST(
       message: 'Content committed successfully',
       generationId: generation.id,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.status === 404) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
     console.error('Commit error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
     return NextResponse.json(
       {
         error: 'Failed to commit content',

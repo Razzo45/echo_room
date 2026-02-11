@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireAdminAuth();
 
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('eventId');
+
     const rooms = await prisma.room.findMany({
+      where: eventId ? { eventId } : undefined,
       include: {
         quest: true,
         members: {
@@ -85,22 +89,38 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json({ success: true, message: 'Room marked completed' });
 
-      case 'move_user':
-        // Remove from current room
+      case 'move_user': {
+        // Enforce same-event: user can only be moved between rooms of the same event
+        const [sourceRoom, targetRoom] = await Promise.all([
+          prisma.room.findUnique({
+            where: { id: roomId },
+            select: { eventId: true },
+          }),
+          prisma.room.findUnique({
+            where: { id: targetRoomId },
+            select: { eventId: true },
+          }),
+        ]);
+        if (!sourceRoom || !targetRoom) {
+          return NextResponse.json(
+            { error: 'Room or target room not found' },
+            { status: 404 }
+          );
+        }
+        if (sourceRoom.eventId !== targetRoom.eventId) {
+          return NextResponse.json(
+            { error: 'Cannot move user across events. Source and target room must belong to the same event.' },
+            { status: 400 }
+          );
+        }
         await prisma.roomMember.deleteMany({
-          where: {
-            userId,
-            roomId,
-          },
+          where: { userId, roomId },
         });
-        // Add to target room
         await prisma.roomMember.create({
-          data: {
-            userId,
-            roomId: targetRoomId,
-          },
+          data: { userId, roomId: targetRoomId },
         });
         return NextResponse.json({ success: true, message: 'User moved' });
+      }
 
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
