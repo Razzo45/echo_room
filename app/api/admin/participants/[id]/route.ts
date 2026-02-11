@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
+import { logAdminAction } from '@/lib/admin-audit';
 
 // DELETE /api/admin/participants/[id] – remove a participant (User) and their data
 export async function DELETE(
@@ -8,13 +9,13 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdminAuth();
+    const admin = await requireAdminAuth();
 
     const userId = params.id;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, eventId: true },
     });
 
     if (!user) {
@@ -30,6 +31,14 @@ export async function DELETE(
     // Then delete User (cascades to Session, RoomMember, Vote, UserBadge)
     await prisma.user.delete({
       where: { id: userId },
+    });
+
+    await logAdminAction({
+      organiserId: admin.id,
+      action: 'participant.remove',
+      resourceType: 'participant',
+      resourceId: userId,
+      details: { participantName: user.name, eventId: user.eventId },
     });
 
     return NextResponse.json({

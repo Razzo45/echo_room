@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth, requireSuperAdminAuth } from '@/lib/auth-organiser';
+import { logAdminAction } from '@/lib/admin-audit';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -52,7 +53,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireSuperAdminAuth(); // Only super admins can create organisers
+    const admin = await requireSuperAdminAuth(); // Only super admins can create organisers
 
     const body = await request.json();
     const validation = createOrganiserSchema.safeParse(body);
@@ -97,6 +98,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await logAdminAction({
+      organiserId: admin.id,
+      action: 'organiser.create',
+      resourceType: 'organiser',
+      resourceId: organiser.id,
+      details: { email: organiser.email, name: organiser.name, role: organiser.role },
+    });
+
     return NextResponse.json({ organiser }, { status: 201 });
   } catch (error: any) {
     if (error.message === 'Super admin access required') {
@@ -115,7 +124,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    await requireSuperAdminAuth(); // Only super admins can update organisers
+    const admin = await requireSuperAdminAuth(); // Only super admins can update organisers
 
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -155,6 +164,18 @@ export async function PATCH(request: NextRequest) {
         isActive: true,
         lastLoginAt: true,
         updatedAt: true,
+      },
+    });
+
+    await logAdminAction({
+      organiserId: admin.id,
+      action: 'organiser.update',
+      resourceType: 'organiser',
+      resourceId: organiser.id,
+      details: {
+        email: organiser.email,
+        updatedFields: Object.keys(validation.data),
+        isActive: organiser.isActive,
       },
     });
 

@@ -335,7 +335,8 @@ model Organiser {
 
   events       Event[]
   sessions     OrganiserSession[]
-  
+  adminAuditLogs AdminAuditLog[]
+
   @@index([email])
   @@index([role])
 }
@@ -438,4 +439,21 @@ model RetentionCleanupLog {
 
   @@index([eventId])
   @@index([runAt])
+}
+
+// Admin/SuperAdmin action audit log (GDPR + future-proofing)
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  organiserId  String
+  action       String   // e.g. participant.remove, retention.override, retention.run, organiser.create, organiser.update
+  resourceType String?  // participant, event, organiser, config, etc.
+  resourceId   String?
+  details      String?  // JSON: optional payload (e.g. { participantName }, { eventId, retentionOverride }
+  createdAt    DateTime @default(now())
+
+  organiser    Organiser @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+
+  @@index([organiserId])
+  @@index([action])
+  @@index([createdAt])
 }

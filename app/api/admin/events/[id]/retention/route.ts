@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
+import { logAdminAction } from '@/lib/admin-audit';
 
 // PATCH /api/admin/events/[id]/retention – set "keep longer" override (audit trail)
 export async function PATCH(
@@ -34,6 +35,14 @@ export async function PATCH(
         retentionOverrideAt: retentionOverride ? new Date() : null,
         retentionOverrideBy: retentionOverride ? organiser.id : null,
       },
+    });
+
+    await logAdminAction({
+      organiserId: organiser.id,
+      action: 'retention.override',
+      resourceType: 'event',
+      resourceId: eventId,
+      details: { eventName: event.name, retentionOverride },
     });
 
     return NextResponse.json({ success: true });
