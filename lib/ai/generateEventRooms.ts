@@ -1,7 +1,16 @@
 import OpenAI from 'openai';
-import { jsonrepair } from 'jsonrepair';
 import { z } from 'zod';
 import { EventGenerationOutputSchema, type EventGenerationOutput } from './schemas';
+
+// Optional: use jsonrepair when parse fails. Load lazily to avoid breaking if the package has ESM/CJS issues.
+async function tryJsonRepair(text: string): Promise<string> {
+  try {
+    const { jsonrepair } = await import('jsonrepair');
+    return jsonrepair(text);
+  } catch {
+    return text;
+  }
+}
 
 /**
  * AI Event Room Generator
@@ -230,59 +239,51 @@ REMEMBER: Use plain text in strings only (no hashtags or #). Escape quotes as \\
 
     console.log('OpenAI response received, length:', content.length);
 
-    // Parse JSON (remove any markdown code blocks if present)
+    // Parse JSON: strip markdown, extract object, fix trailing commas, then parse (with optional repair)
     let jsonContent = content.trim();
-    
-    // Remove markdown code blocks
     if (jsonContent.startsWith('```json')) {
       jsonContent = jsonContent.replace(/^```json\s*\n?/i, '').replace(/\n?\s*```\s*$/, '');
     } else if (jsonContent.startsWith('```')) {
       jsonContent = jsonContent.replace(/^```\s*\n?/, '').replace(/\n?\s*```\s*$/, '');
     }
-    
-    // Try to find JSON object if wrapped in text
     const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      jsonContent = jsonMatch[0];
+      jsonContent = jsonMatch[0].trim();
+    }
+    // Multi-pass trailing comma removal (nested structures)
+    for (let i = 0; i < 5; i++) {
+      const next = jsonContent.replace(/,(\s*[}\]])/g, '$1');
+      if (next === jsonContent) break;
+      jsonContent = next;
     }
 
-    // Fix common JSON issues before parsing
-    jsonContent = jsonContent
-      .trim()
-      // Remove trailing commas before closing braces/brackets
-      .replace(/,(\s*[}\]])/g, '$1')
-      // Ensure proper string termination (basic fix)
-      .replace(/([^\\])"([^":,}\]]*?)([^\\])"/g, (match, p1, p2, p3) => {
-        // This is a basic fix - if we detect potential unterminated strings, try to fix them
-        return match;
-      });
-
     let parsed: unknown;
+    let parseError: unknown;
     try {
       parsed = JSON.parse(jsonContent);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.error('Content preview (first 800 chars):', jsonContent.substring(0, 800));
+    } catch (e) {
+      parseError = e;
+    }
 
-      // Try trailing-comma fix first
+    if (parsed === undefined) {
+      // Try jsonrepair (safe import, may throw on bad input)
+      let repaired = jsonContent;
       try {
-        const fixedJson = jsonContent.replace(/,(\s*[}\]])/g, '$1');
-        parsed = JSON.parse(fixedJson);
-        console.log('Parsed successfully after trailing-comma removal');
-      } catch {
-        // Use jsonrepair to fix unescaped quotes, trailing commas, etc.
-        try {
-          const repaired = jsonrepair(jsonContent);
-          parsed = JSON.parse(repaired);
-          console.log('Parsed successfully after jsonrepair');
-        } catch (repairError) {
-          console.error('JSON repair failed:', repairError);
-          throw new Error(
-            `AI returned invalid JSON. This often happens when the AI includes unescaped quotes in text. ` +
-            `Error: ${parseError instanceof Error ? parseError.message : 'Parse error'}. ` +
-            `Please try generating again or use a shorter/simpler AI brief.`
-          );
-        }
+        repaired = await tryJsonRepair(jsonContent);
+      } catch (repairErr) {
+        console.warn('jsonrepair failed (will try parse anyway):', repairErr);
+      }
+      try {
+        parsed = JSON.parse(repaired);
+        console.log('Parsed successfully after jsonrepair');
+      } catch (e2) {
+        console.error('JSON parse error:', parseError);
+        console.error('After repair parse error:', e2);
+        console.error('Content preview (first 1200 chars):', jsonContent.substring(0, 1200));
+        const msg = parseError instanceof Error ? parseError.message : String(parseError);
+        throw new Error(
+          `Generation could not parse the AI response as valid JSON. This often happens when the model outputs unescaped quotes or is cut off. Please try again or use a shorter AI brief. Parse error: ${msg}`
+        );
       }
     }
 

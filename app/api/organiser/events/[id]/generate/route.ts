@@ -146,11 +146,13 @@ export async function POST(
         console.error('Failed to update generation status:', updateError);
       }
 
-      // Return user-friendly error message
+      // Return user-friendly error message (order matters: check specific before generic)
       const userMessage = errorMessage.includes('OPENAI_API_KEY')
         ? 'OpenAI API key is not configured. Please contact the administrator.'
         : errorMessage.includes('validation')
         ? 'AI returned invalid content. Please try again with a different brief.'
+        : errorMessage.includes('could not parse') || errorMessage.includes('Parse error')
+        ? 'Could not parse AI response. Try again or use a shorter AI brief.'
         : errorMessage.includes('JSON')
         ? 'AI returned invalid JSON. Please try again.'
         : 'Failed to generate event rooms. Please try again.';
