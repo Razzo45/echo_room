@@ -134,7 +134,8 @@ model Quest {
   description         String
   questType           QuestType  @default(DECISION_ROOM)
   durationMinutes     Int        @default(30)
-  teamSize            Int        @default(3)
+  teamSize            Int        @default(3)  // Max team size (2–5 recommended)
+  minTeamSize         Int        @default(2)  // Minimum players required to start
   sortOrder           Int        @default(0)
   isActive            Boolean    @default(true)
   decisionsData       String?    // DEPRECATED: JSON string, use QuestDecision instead
@@ -253,6 +254,7 @@ model RoomMember {
   roomId     String
   userId     String
   joinedAt   DateTime @default(now())
+  completedAt DateTime?
   
   room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)

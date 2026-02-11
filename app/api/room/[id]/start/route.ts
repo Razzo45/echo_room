@@ -17,6 +17,12 @@ export async function POST(
           select: { members: true },
         },
         members: true,
+        quest: {
+          select: {
+            teamSize: true,
+            minTeamSize: true,
+          },
+        },
       },
     });
 
@@ -48,13 +54,15 @@ export async function POST(
       );
     }
 
-    // Admin can force start, otherwise need 3 members
+    // Admin can force start; otherwise need minTeamSize members (defaults to 2)
     const body = await request.json();
     const isAdminOverride = body.adminOverride === true;
 
-    if (!isAdminOverride && room._count.members < 3) {
+    const minTeamSize = room.quest.minTeamSize ?? 2;
+
+    if (!isAdminOverride && room._count.members < minTeamSize) {
       return NextResponse.json(
-        { error: 'Need 3 members to start quest' },
+        { error: `Need at least ${minTeamSize} member(s) to start quest` },
         { status: 400 }
       );
     }

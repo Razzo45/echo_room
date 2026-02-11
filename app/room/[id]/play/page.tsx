@@ -173,47 +173,44 @@ export default function QuestPlayPage() {
     }
   };
 
-  // Immediately redirect if room is completed
+  // Immediately redirect or wait if room is completed
   if (room && room.status === 'COMPLETED') {
-    // Check if we already have an artifact
+    // If artifact already exists, go straight to it
     if (room.artifactId) {
       router.push(`/artifact/${room.artifactId}`);
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Generating your decision map...</p>
+            <p className="text-gray-600">Loading your decision map...</p>
           </div>
         </div>
       );
     }
-    
-    // Generate artifact if not already generated
-    fetch('/api/artifact/generate', {
+
+    // Otherwise, mark this participant as completed and wait for others
+    fetch(`/api/room/${roomId}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId }),
     })
       .then((r) => r.json())
-      .then((artifactData) => {
-        if (artifactData.artifactId) {
-          router.push(`/artifact/${artifactData.artifactId}`);
-        } else {
-          console.error('Failed to generate artifact:', artifactData);
-          alert(`Failed to generate artifact: ${artifactData.error || 'Unknown error'}`);
+      .then((data) => {
+        if (data.artifactId) {
+          router.push(`/artifact/${data.artifactId}`);
+        } else if (!data.success) {
+          console.error('Failed to mark completion:', data);
         }
       })
       .catch((err) => {
-        console.error('Error generating artifact:', err);
-        alert(`Error generating artifact: ${err.message || 'Unknown error'}`);
+        console.error('Error marking completion:', err);
       });
-    
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Quest Complete!</h3>
-          <p className="text-gray-600">Generating your decision map...</p>
+          <p className="text-gray-600">Waiting for all teammates to finish before generating the decision map…</p>
         </div>
       </div>
     );
