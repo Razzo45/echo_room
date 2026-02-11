@@ -74,9 +74,12 @@ function sanitizeForJsonSafePrompt(text: string): string {
  * Generate event rooms (regions, quests, decisions) from an AI brief
  * Returns validated JSON structure ready for database persistence
  */
+const GENERATE_PIPELINE_VERSION = 'v2-jsonrepair-first-truncation-recovery';
+
 export async function generateEventRooms(
   input: GenerateEventRoomsInput
 ): Promise<EventGenerationOutput> {
+  console.log('[generateEventRooms] pipeline', GENERATE_PIPELINE_VERSION);
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY environment variable is not set');
   }
@@ -89,7 +92,9 @@ export async function generateEventRooms(
       : undefined;
   const safeEventName = eventName?.trim() ?? undefined;
 
-  const systemPrompt = `You are a facilitator designing immersive, team-based decision experiences for people attending an event.
+  const systemPrompt = `CRITICAL: Your reply is strictly limited to 5000 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use 1-2 short sentences per text field only.
+
+You are a facilitator designing immersive, team-based decision experiences for people attending an event.
 Your job is to turn an event brief into concrete, emotionally resonant quests that feel relevant to participants’ real lives.
 
 WRITING STYLE (CRITICAL)
@@ -224,7 +229,7 @@ Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence fo
       ],
       response_format: { type: 'json_object' }, // Force JSON output
       temperature: 0.7, // Slightly higher for nuanced content while staying concise
-      max_tokens: 6000, // Concise prompt keeps output short; 6k is enough and controls cost
+      max_tokens: 5000, // Hard cap so response fits; prompt enforces short fields
     });
 
     const content = completion.choices[0]?.message?.content;

@@ -70,6 +70,7 @@ export async function POST(
 
     try {
       console.log('Starting generation for event:', eventId, event.debugMode ? '(debug mock)' : '(AI)');
+      if (!event.debugMode) console.log('[generate] pipeline v2: jsonrepair-first + truncation recovery');
 
       const generated = event.debugMode
         ? getMockEventRooms()
