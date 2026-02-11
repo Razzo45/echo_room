@@ -46,7 +46,6 @@ export async function PATCH(
           sessions,
           regions,
           rooms,
-          questResponses,
           analyticsEvents,
           userBadges,
         ] = await Promise.all([
@@ -88,15 +87,6 @@ export async function PATCH(
               artifact: true,
             },
           }),
-          prisma.questResponse.findMany({
-            where: {
-              quest: {
-                region: {
-                  eventId,
-                },
-              },
-            },
-          }),
           prisma.analyticsEvent.findMany({
             where: { eventId },
           }),
@@ -108,6 +98,23 @@ export async function PATCH(
             },
           }),
         ]);
+
+        // QuestResponses: need questIds for this event (no direct relation in schema)
+        const questsForEvent = await prisma.quest.findMany({
+          where: {
+            region: {
+              eventId,
+            },
+          },
+          select: { id: true },
+        });
+        const questResponses = await prisma.questResponse.findMany({
+          where: {
+            questId: {
+              in: questsForEvent.map((q) => q.id),
+            },
+          },
+        });
 
         const snapshot = {
           event: {
@@ -155,12 +162,19 @@ export async function PATCH(
             where: { eventId },
           });
 
+          const questsForEvent = await tx.quest.findMany({
+            where: {
+              region: {
+                eventId,
+              },
+            },
+            select: { id: true },
+          });
+
           await tx.questResponse.deleteMany({
             where: {
-              quest: {
-                region: {
-                  eventId,
-                },
+              questId: {
+                in: questsForEvent.map((q) => q.id),
               },
             },
           });
