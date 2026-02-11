@@ -19,9 +19,12 @@ export async function GET(request: Request) {
       throw authError;
     }
 
-    const whereClause = organiser.role === 'SUPER_ADMIN'
-      ? {}
-      : { organiserId: organiser.id };
+    const whereClause = {
+      isDebugClone: false,
+      ...(organiser.role === 'SUPER_ADMIN'
+        ? {}
+        : { organiserId: organiser.id }),
+    };
 
     let events;
     try {

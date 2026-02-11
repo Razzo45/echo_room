@@ -7,6 +7,9 @@ export async function GET() {
     const organiser = await requireAdminAuth();
 
     const events = await prisma.event.findMany({
+      where: {
+        isDebugClone: false,
+      },
       include: {
         _count: {
           select: {

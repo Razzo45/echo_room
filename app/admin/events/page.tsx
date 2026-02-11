@@ -208,6 +208,15 @@ export default function AdminEventsPage() {
                   </div>
                 </div>
 
+                {/* Debug status pill (for clarity) */}
+                {event.debugMode && (
+                  <div className="mt-3">
+                    <span className="inline-flex items-center rounded-full bg-amber-500/10 text-amber-300 px-2 py-0.5 text-[11px] font-medium border border-amber-500/40">
+                      Debug session active
+                    </span>
+                  </div>
+                )}
+
                 {/* Debug mode (Super Admin only) */}
                 {currentUserRole === 'SUPER_ADMIN' && (
                   <div className="mt-4 pt-4 border-t border-gray-700">
