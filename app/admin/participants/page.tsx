@@ -28,6 +28,7 @@ export default function AdminParticipantsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadParticipants();
@@ -48,6 +49,24 @@ export default function AdminParticipantsPage() {
       console.error('Failed to load participants:', err);
       router.push('/admin/login');
     }
+  };
+
+  const removeParticipant = async (participant: Participant) => {
+    if (!confirm(`Remove "${participant.name}"? This will permanently delete their profile, room memberships, votes, and badges.`)) return;
+    setRemovingId(participant.id);
+    try {
+      const res = await fetch(`/api/admin/participants/${participant.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to remove participant');
+        return;
+      }
+      await loadParticipants();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to remove participant');
+    }
+    setRemovingId(null);
   };
 
   if (loading) {
@@ -91,6 +110,7 @@ export default function AdminParticipantsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rooms</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Votes</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Badges</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
@@ -103,6 +123,17 @@ export default function AdminParticipantsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-gray-400">{participant._count.roomMembers}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-400">{participant._count.votes}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-400">{participant._count.badges}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button
+                      type="button"
+                      onClick={() => removeParticipant(participant)}
+                      disabled={removingId === participant.id}
+                      className="text-sm text-red-400 hover:text-red-300 disabled:opacity-50"
+                      title="Permanently remove this participant"
+                    >
+                      {removingId === participant.id ? 'Removing…' : 'Remove'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
