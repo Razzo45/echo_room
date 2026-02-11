@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { requireSuperAdminAuth } from '@/lib/auth-organiser';
 import { logAdminAction } from '@/lib/admin-audit';
 
@@ -448,7 +449,7 @@ export async function PATCH(
             where: { id: eventId },
             data: {
               debugMode: false,
-              debugSnapshot: null,
+              debugSnapshot: Prisma.DbNull,
               aiBrief: e.aiBrief ?? null,
               aiGenerationStatus: e.aiGenerationStatus ?? 'IDLE',
               aiGeneratedAt: e.aiGeneratedAt ? new Date(e.aiGeneratedAt) : null,
