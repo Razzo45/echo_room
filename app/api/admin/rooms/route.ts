@@ -47,8 +47,11 @@ export async function GET(request: NextRequest) {
         voteCount: room._count.votes,
         commitCount: room._count.commits,
         hasArtifact: !!room.artifact,
+        artifactId: room.artifact?.id ?? null,
         startedAt: room.startedAt,
         completedAt: room.completedAt,
+        lastActivityAt: room.lastActivityAt,
+        closedAt: room.closedAt,
         createdAt: room.createdAt,
       })),
     });
@@ -88,6 +91,28 @@ export async function POST(request: NextRequest) {
           },
         });
         return NextResponse.json({ success: true, message: 'Room marked completed' });
+
+      case 'close_room': {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          select: { status: true },
+        });
+        if (!room) {
+          return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        }
+        if (room.status !== 'IN_PROGRESS' && room.status !== 'COMPLETED') {
+          return NextResponse.json(
+            { error: 'Only IN_PROGRESS or COMPLETED rooms can be closed' },
+            { status: 400 }
+          );
+        }
+        const now = new Date();
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { status: 'CLOSED', closedAt: now },
+        });
+        return NextResponse.json({ success: true, message: 'Room closed' });
+      }
 
       case 'move_user': {
         // Enforce same-event: user can only be moved between rooms of the same event

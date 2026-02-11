@@ -44,6 +44,8 @@ type ArtifactRow = {
   questName: string;
   completedAt: string | null;
   createdAt: string;
+  roomStatus: string;
+  closedAt: string | null;
 };
 
 type BadgeStat = {
@@ -69,6 +71,7 @@ export default function OrganiserInsightsPage() {
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [artifactFilter, setArtifactFilter] = useState<'all' | 'archived'>('all');
 
   useEffect(() => {
     (async () => {
@@ -336,6 +339,30 @@ export default function OrganiserInsightsPage() {
                 <p className="text-sm text-gray-500 mt-0.5">
                   View in browser or open as PDF (Save as PDF in the print dialog).
                 </p>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setArtifactFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                      artifactFilter === 'all'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setArtifactFilter('archived')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                      artifactFilter === 'archived'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Archived (closed rooms)
+                  </button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -356,16 +383,30 @@ export default function OrganiserInsightsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {insights.artifacts.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
-                          No artifacts yet
-                        </td>
-                      </tr>
-                    ) : (
-                      insights.artifacts.map((a) => (
+                    {(() => {
+                      const filtered =
+                        artifactFilter === 'archived'
+                          ? insights.artifacts.filter((a) => a.roomStatus === 'CLOSED')
+                          : insights.artifacts;
+                      return filtered.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                            {artifactFilter === 'archived'
+                              ? 'No archived artifacts'
+                              : 'No artifacts yet'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filtered.map((a) => (
                         <tr key={a.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-mono text-sm text-gray-900">{a.roomCode}</td>
+                          <td className="px-4 py-3">
+                            <span className="font-mono text-sm text-gray-900">{a.roomCode}</span>
+                            {a.roomStatus === 'CLOSED' && (
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-700">
+                                Archived
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-sm text-gray-600">{a.questName}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">
                             {a.completedAt
@@ -392,8 +433,8 @@ export default function OrganiserInsightsPage() {
                             </div>
                           </td>
                         </tr>
-                      ))
-                    )}
+                      )));
+                    })()}
                   </tbody>
                 </table>
               </div>

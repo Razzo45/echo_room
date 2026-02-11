@@ -222,19 +222,22 @@ enum RoomStatus {
   FULL
   IN_PROGRESS
   COMPLETED
+  CLOSED
 }
 
 model Room {
-  id             String     @id @default(cuid())
-  eventId        String
-  questId        String
-  roomCode       String     @unique
-  status         RoomStatus @default(OPEN)
-  currentDecision Int       @default(1)
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id              String      @id @default(cuid())
+  eventId         String
+  questId         String
+  roomCode        String      @unique
+  status          RoomStatus  @default(OPEN)
+  currentDecision Int         @default(1)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  lastActivityAt  DateTime?   // Updated on vote, commit, start, join, complete
+  closedAt        DateTime?   // Set when room is closed (manual or auto)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   
   event          Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   quest          Quest      @relation(fields: [questId], references: [id], onDelete: Cascade)
@@ -247,6 +250,7 @@ model Room {
   @@index([status, questId])
   @@index([eventId, status])
   @@index([completedAt])
+  @@index([status, lastActivityAt])
 }
 
 model RoomMember {

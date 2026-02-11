@@ -78,6 +78,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { lastActivityAt: new Date() },
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Vote recorded',

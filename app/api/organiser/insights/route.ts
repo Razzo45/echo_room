@@ -77,8 +77,10 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               roomCode: true,
+              status: true,
               quest: { select: { name: true } },
               completedAt: true,
+              closedAt: true,
             },
           },
         },
@@ -131,6 +133,8 @@ export async function GET(request: NextRequest) {
         questName: a.room.quest.name,
         completedAt: a.room.completedAt,
         createdAt: a.createdAt,
+        roomStatus: a.room.status,
+        closedAt: a.room.closedAt,
       })),
       badgeStats: badgeStatsWithNames,
     });

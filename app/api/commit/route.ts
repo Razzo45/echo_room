@@ -74,13 +74,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const now = new Date();
     // If this was decision 3, mark room as completed
     if (decisionNumber === 3) {
       await prisma.room.update({
         where: { id: roomId },
         data: {
           status: 'COMPLETED',
-          completedAt: new Date(),
+          completedAt: now,
+          lastActivityAt: now,
         },
       });
 
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
         where: { id: roomId },
         data: {
           currentDecision: decisionNumber + 1,
+          lastActivityAt: now,
         },
       });
     }

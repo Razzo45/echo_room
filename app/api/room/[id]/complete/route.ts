@@ -62,6 +62,10 @@ export async function POST(
     if (allCompleted && !artifactId) {
       const artifact = await generateArtifact(roomId);
       artifactId = artifact.id;
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { lastActivityAt: new Date() },
+      });
     }
 
     return NextResponse.json({

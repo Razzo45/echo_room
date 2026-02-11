@@ -87,25 +87,29 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Update room status if now full
+      // Update room status if now full; always bump lastActivityAt on join
       const memberCount = openRoom._count.members + 1;
-      if (memberCount >= quest.teamSize) {
-        await prisma.room.update({
-          where: { id: room.id },
-          data: { status: 'FULL' },
-        });
-      }
+      const now = new Date();
+      await prisma.room.update({
+        where: { id: room.id },
+        data: {
+          ...(memberCount >= quest.teamSize ? { status: 'FULL' as const } : {}),
+          lastActivityAt: now,
+        },
+      });
     } else {
       // Create new room
       console.log(`Creating new room for quest ${questId} (no open rooms with space)`);
       const roomCode = `ROOM-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
       
+      const now = new Date();
       room = await prisma.room.create({
         data: {
           eventId: user.eventId,
           questId,
           roomCode,
           status: 'OPEN',
+          lastActivityAt: now,
           members: {
             create: {
               userId: user.id,

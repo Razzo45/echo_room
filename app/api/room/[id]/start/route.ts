@@ -68,11 +68,13 @@ export async function POST(
     }
 
     // Start the room
+    const now = new Date();
     await prisma.room.update({
       where: { id: roomId },
       data: {
         status: 'IN_PROGRESS',
-        startedAt: new Date(),
+        startedAt: now,
+        lastActivityAt: now,
       },
     });
 

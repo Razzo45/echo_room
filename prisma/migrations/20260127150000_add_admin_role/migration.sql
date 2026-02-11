@@ -1,9 +1,7 @@
--- AlterEnum
--- Add ADMIN value to OrganiserRole enum
-ALTER TYPE "OrganiserRole" ADD VALUE 'ADMIN';
+-- Adjusted migration: add_admin_role
+-- Note: OrganiserRole enum already includes ADMIN in base migration.
 
--- AlterTable
--- Add lastLoginAt field if it doesn't exist (safe to run multiple times)
+-- Ensure lastLoginAt field exists
 DO $$ 
 BEGIN
     IF NOT EXISTS (
@@ -14,7 +12,7 @@ BEGIN
     END IF;
 END $$;
 
--- CreateTable (if OrganiserSession doesn't exist)
+-- Ensure OrganiserSession table exists
 CREATE TABLE IF NOT EXISTS "OrganiserSession" (
     "id" TEXT NOT NULL,
     "token" TEXT NOT NULL,
@@ -25,11 +23,11 @@ CREATE TABLE IF NOT EXISTS "OrganiserSession" (
     CONSTRAINT "OrganiserSession_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
+-- Ensure indexes exist
 CREATE UNIQUE INDEX IF NOT EXISTS "OrganiserSession_token_key" ON "OrganiserSession"("token");
 CREATE INDEX IF NOT EXISTS "OrganiserSession_organiserId_idx" ON "OrganiserSession"("organiserId");
 
--- AddForeignKey (if it doesn't exist)
+-- Ensure foreign key exists
 DO $$ 
 BEGIN
     IF NOT EXISTS (
@@ -40,3 +38,4 @@ BEGIN
         FOREIGN KEY ("organiserId") REFERENCES "Organiser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
     END IF;
 END $$;
+
