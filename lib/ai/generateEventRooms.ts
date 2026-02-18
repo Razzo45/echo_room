@@ -91,62 +91,48 @@ export async function fetchEventRoomsRaw(
 
   const systemPrompt = `CRITICAL: Your reply is strictly limited to 3500 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use ONE short sentence per text field (max 15-20 words for options, 25-35 for context/impact/tradeoff).
 
-You are a facilitator designing immersive, team-based decision experiences for people attending an event.
-Your job is to turn an event brief into concrete, emotionally resonant quests that feel relevant to participants’ real lives.
+You are a facilitator designing immersive, team-based decision experiences for people attending an event. Your goal is maximum engagement and "wow" for the event goer: every quest and option should feel relevant, on-brand, and worth debating.
 
-WRITING STYLE (CRITICAL)
-- Write for smart, curious professionals who are at the event right now – not as a distant consultant report.
-- Use clear, vivid, conversational language (no buzzword soup, no long essays).
-- Make scenarios feel grounded in everyday reality: what people see, feel, and worry about in their roles and communities.
-- Highlight tensions and trade-offs in a way that sparks discussion, not in dense paragraphs.
+VOICE & EVENT FIT (CRITICAL)
+- Match the tone and themes of the event. Use the event name and description to infer: sector (tech, healthcare, sustainability, etc.), audience (innovators, practitioners, leaders), and desired vibe (bold, collaborative, pragmatic).
+- Write as if the experience is happening at THIS event. Reference the kinds of stakes, language, and dilemmas that would resonate with someone who chose to be here. Avoid generic corporate or textbook language.
+- One vivid, concrete detail per option beats three abstract points. Make participants feel "this could actually happen to me or my team."
 
-PARTICIPANT PERSPECTIVE (CRITICAL)
-For every quest and decision, implicitly answer:
-- "If I’m a person at this event, why should I care about this?"
-- "If I lived or worked in this context, how would this actually change my day-to-day experience?"
-- When helpful, bring in concrete characters (e.g. "a nurse on the night shift", "a commuter with two kids", "a small café owner").
+PARTICIPANT-CENTRIC & WOW FACTOR
+- Every quest and decision must answer: "Why would I care about this right now, at this event?" Anchor scenarios in real tensions (e.g. speed vs quality, inclusion vs efficiency, innovation vs risk).
+- Options should spark genuine discussion: no obviously "right" or "wrong" choice. Each option has a clear upside and a real cost. Participants should want to hear each other's reasoning.
+- Use clear, vivid, conversational language. No buzzword soup. No long essays. One strong sentence beats two weak ones.
+- When helpful, ground scenarios in concrete roles or situations (e.g. "a team shipping a new product", "a department balancing budget and impact") so participants can see themselves in the dilemma.
 
-TOKEN BUDGET (CRITICAL – response is cut off if you exceed it)
-- Your reply has a strict token limit. If you write too much, the JSON will be truncated and the generation will fail. Stay well under the limit.
-- Quest description: at most 2 sentences (about 30–45 words).
-- Decision context: at most 2 sentences (about 35–50 words).
-- Option description: exactly 1 sentence (about 15–25 words).
-- Impact: at most 2 sentences (about 30–45 words). One outcome and one risk is enough.
-- Tradeoff: at most 2 sentences (about 25–40 words).
-- Be specific and discussion-worthy, but brief. No lists, no repetition, no filler. Prefer one strong sentence over two weak ones.
+STRUCTURED OUTPUT FOR ARTIFACT QUALITY
+- For each option, "impact" is used to generate Risks and Outcomes in the final decision map. Write impact as exactly two short sentences separated by a period. First sentence = the main positive outcome (what could go right). Second sentence = the main risk or downside (what could go wrong). Example: "Teams move faster and learn in public. Early criticism can demotivate if not managed."
+- "tradeoff" should be one crisp sentence that names what you are giving up or accepting. It appears prominently in the artifact. Example: "You accept more coordination overhead for greater alignment."
+- Option "title" = punchy, memorable (a few words). Option "description" = one sentence that makes the choice vivid and distinct from A/B/C.
+
+TOKEN BUDGET (CRITICAL)
+- Quest description: at most 2 sentences (30–45 words).
+- Decision context: at most 2 sentences (35–50 words). Set the stakes and why this decision matters here and now.
+- Option description: exactly 1 sentence (15–25 words).
+- Impact: exactly 2 sentences (outcome then risk), separated by a period (25–40 words total).
+- Tradeoff: exactly 1 sentence (15–30 words).
+- Stay under the token limit or the JSON will be cut off and fail.
 
 CONTENT & STRUCTURE
-- Generate exactly 3 regions (districts/areas).
-- Each region: exactly 2 quests (fixed for stable data flow). Fit the event theme and audience.
-- Each quest: exactly 3 sequential decisions.
-- Each decision: exactly 3 options (A, B, C) that are all plausible, with no obvious "correct" answer.
+- Exactly 3 regions (districts/areas), each with exactly 2 quests. Fit the event theme and audience.
+- Each quest: exactly 3 sequential decisions. Each decision: exactly 3 options (A, B, C), all plausible, with no obvious correct answer.
 
-CRITICAL JSON FORMATTING REQUIREMENTS:
-- You MUST return ONLY valid JSON, no markdown, no code blocks, no explanations
-- All string values MUST be properly escaped for JSON (use \\" for quotes, \\n for newlines)
-- NO unescaped quotes or special characters in strings
-- NO trailing commas
-- NO comments in JSON
-- Ensure all strings are properly terminated
-- Use \\n to indicate paragraph breaks in longer text fields
-
-CONTENT REQUIREMENTS
-- Output exactly 3 regions and exactly 2 quests per region (no more, no less). Structure is fixed.
-- Each quest: exactly 3 decisions. Each decision: exactly 3 options (A, B, C).
-- Content must be realistic, engaging, and suitable for team collaboration.
-- Decisions: genuine dilemmas with no obvious "right" answer; options with clear trade-offs and nuance.
-- Be specific and grounded; avoid generic or simplistic language. Trade-offs should reflect real complexity, not simple cost vs benefit.
-
-OUTPUT FORMAT (STRICT JSON):
-- "regions" must be an array of exactly 3 region objects. Each region must have a "quests" array of exactly 2 quests.
+JSON FORMAT (STRICT)
+- Return ONLY valid JSON. No markdown, no code blocks, no explanations.
+- Escape quotes in strings as \\". No trailing commas. No hashtags or social tags.
 {
   "regions": [
     {
-      "name": "slug-like-identifier",
+      "name": "slug-like-id",
       "displayName": "Human Readable Name",
-      "description": "Brief description of this region",
+      "description": "Brief, on-brand description of this region.",
       "quests": [
-        { "name": "Quest 1 Name",
+        {
+          "name": "Quest 1 Name",
           "description": "At most 2 sentences.",
           "durationMinutes": 30,
           "teamSize": 3,
@@ -154,66 +140,41 @@ OUTPUT FORMAT (STRICT JSON):
             {
               "decisionNumber": 1,
               "title": "Decision Title",
-              "context": "At most 2 sentences.",
+              "context": "Stakes and why it matters here.",
               "options": [
-                {
-                  "optionKey": "A",
-                  "title": "Option A Title",
-                  "description": "One sentence.",
-                  "impact": "At most 2 sentences.",
-                  "tradeoff": "At most 2 sentences."
-                },
-                { "optionKey": "B", "title": "Option B Title", "description": "...", "impact": "...", "tradeoff": "..." },
-                { "optionKey": "C", "title": "Option C Title", "description": "...", "impact": "...", "tradeoff": "..." }
+                { "optionKey": "A", "title": "Punchy title", "description": "One vivid sentence.", "impact": "First sentence: main outcome. Second sentence: main risk.", "tradeoff": "One crisp tradeoff sentence." },
+                { "optionKey": "B", "title": "...", "description": "...", "impact": "Outcome. Risk.", "tradeoff": "..." },
+                { "optionKey": "C", "title": "...", "description": "...", "impact": "Outcome. Risk.", "tradeoff": "..." }
               ]
             },
-            { "decisionNumber": 2, "title": "...", "context": "...", "options": [/* 3 options */] },
-            { "decisionNumber": 3, "title": "...", "context": "...", "options": [/* 3 options */] }
+            { "decisionNumber": 2, "title": "...", "context": "...", "options": [ /* same structure */ ] },
+            { "decisionNumber": 3, "title": "...", "context": "...", "options": [ /* same structure */ ] }
           ]
         },
-                { "name": "Quest 2 Name", "description": "...", "durationMinutes": 30, "teamSize": 3, "decisions": [ /* 3 decisions, same structure as Quest 1 */ ] }
+        { "name": "Quest 2 Name", "description": "...", "durationMinutes": 30, "teamSize": 3, "decisions": [ /* 3 decisions */ ] }
       ]
     }
   ]
 }
 
-CRITICAL JSON RULES:
-- Return ONLY raw JSON object, NO markdown code blocks
-- NO backticks, NO code fences, NO explanations before or after
-- Escape all quotes in strings: use \\" not "
-- Escape all backslashes: use \\\\
-- No newlines in string values (use \\n if needed)
-- No trailing commas anywhere
-- All strings must be properly terminated
-- Do NOT include hashtags (#) or social media tags in any string value - they break JSON parsing. Paraphrase themes in plain text only.
-- Validate your JSON before returning
+RULES
+- All required fields present. impact = two sentences (outcome. risk.). tradeoff = one sentence. Escape \\", no trailing commas, no hashtags.`;
 
-CONTENT RULES
-- Ensure all required fields are present. Respect the TOKEN BUDGET above or the response will be cut off and fail.
-- Each quest: exactly 3 decisions (1, 2, 3). Each decision: exactly 3 options (A, B, C).
-- Decisions: genuine dilemmas; options with clear trade-offs. Be specific and concise.`;
-
-  const userPrompt = `Generate immersive, team-based decision quests that feel relevant to people attending this event:
+  const userPrompt = `Generate immersive, on-brand decision quests that maximise engagement for people attending this event.
 
 Event Name: ${safeEventName || 'Unnamed Event'}
 Event Description: ${safeEventDescription ?? 'No description provided'}
 
-AI Brief:
+AI Brief (use this to infer audience, sector, and tone):
 ${safeBrief}
 
-Audience: People attending this event (for example, the kinds of participants and stakeholders described in the brief).
+INSTRUCTIONS:
+- Match the voice and themes of this event. Use the event name, description, and brief to decide: who is in the room (e.g. innovators, practitioners, leaders), what sector or theme (e.g. tech, sustainability, healthcare), and what would make them lean in and debate.
+- Every quest and decision should feel like it belongs at THIS event. Scenarios and dilemmas should resonate with why someone would attend. Prioritise the event goer's experience: vivid, relevant, discussion-worthy.
+- For each option: "impact" must be exactly two sentences separated by a period. First = main positive outcome. Second = main risk or downside. "tradeoff" = one crisp sentence (what you give up or accept). This structure powers the final decision map and must be clear.
+- Generate exactly 3 regions with exactly 2 quests each. Each quest has 3 decisions with 3 options (A, B, C). No obvious right answer; each option has real upside and real cost.
 
-CENTRAL QUESTION TO HOLD IN EVERY QUEST AND DECISION:
-"If you were one of these participants, what would you want this experience or solution to do to improve your daily work or quality of life?"
-
-Use this central question to:
-- Anchor every quest in concrete participant experiences (before, during, and after the event).
-- Show how each option changes what participants see, feel, and can do.
-- Make it obvious how the scenario connects to why they came to this event.
-
-Generate exactly 3 regions with exactly 2 quests each (6 quests total). Fixed structure: 3 areas × 2 quests. Each quest has 3 sequential decisions with 3 options each. Make content relevant to the brief and to participants.
-
-Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence for option description and tradeoff. If you exceed the limit the JSON will be cut off and fail. Escape quotes as \\", no hashtags. Return ONLY valid JSON.`;
+Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid JSON.`;
 
   try {
     console.log('Calling OpenAI API with model: gpt-4o (high-quality content generation)');

@@ -86,19 +86,18 @@ export async function generateArtifact(roomId: string) {
         title: d.title,
         description: d.context || d.title,
         options: d.options.reduce((acc, opt) => {
-          // Parse impact field - it might be a string or contain structured info
-          // For artifact generation, we split impact into risks and outcomes
-          // The impact field typically contains outcomes, and we use tradeoff for tradeoffs
-          const impactText = opt.impact || '';
-          const impactParts = impactText.split(/[.;]\s+/).filter(Boolean);
-          
+          // Impact is structured as "Outcome sentence. Risk sentence." (LLM prompt).
+          // Split on period/semicolon; first part = outcome, second = risk.
+          const impactText = (opt.impact || '').trim();
+          const impactParts = impactText.split(/[.;]\s+/).map((s) => s.trim()).filter(Boolean);
+          const hasTwo = impactParts.length >= 2;
+          const outcomes = hasTwo ? [impactParts[0]] : impactParts.length > 0 ? impactParts.slice(0, Math.ceil(impactParts.length / 2)) : [];
+          const risks = hasTwo ? [impactParts[1]] : impactParts.length > 0 ? impactParts.slice(Math.ceil(impactParts.length / 2)) : [];
           acc[opt.optionKey as 'A' | 'B' | 'C'] = {
             label: opt.title,
             tradeoffs: opt.tradeoff || opt.description || '',
-            // For now, use impact parts as both risks and outcomes
-            // This can be refined later if we add separate risk/outcome fields
-            risks: impactParts.length > 0 ? impactParts.slice(0, Math.ceil(impactParts.length / 2)) : [],
-            outcomes: impactParts.length > 0 ? impactParts.slice(Math.ceil(impactParts.length / 2)) : impactParts,
+            risks,
+            outcomes,
           };
           return acc;
         }, {} as Record<'A' | 'B' | 'C', any>),
