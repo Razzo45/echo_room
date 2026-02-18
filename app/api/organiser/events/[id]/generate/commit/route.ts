@@ -85,15 +85,15 @@ export async function POST(
         const roomsWithArtifacts = await tx.room.findMany({
           where: {
             quest: { eventGenerationId: { in: oldGenerationIds } },
-            artifacts: { some: {} },
+            artifact: { isNot: null },
           },
           include: {
             quest: { select: { name: true } },
-            artifacts: { select: { htmlContent: true } },
+            artifact: { select: { htmlContent: true } },
           },
         });
         for (const room of roomsWithArtifacts) {
-          const artifact = room.artifacts[0];
+          const artifact = room.artifact;
           if (artifact) {
             await tx.eventArtifactArchive.create({
               data: {
