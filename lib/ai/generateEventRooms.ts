@@ -89,7 +89,7 @@ export async function fetchEventRoomsRaw(
       : undefined;
   const safeEventName = eventName?.trim() ?? undefined;
 
-  const systemPrompt = `CRITICAL: Your reply is strictly limited to 3500 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use ONE short sentence per text field (max 15-20 words for options, 25-35 for context/impact/tradeoff).
+  const systemPrompt = `CRITICAL: Your reply is strictly limited to 5250 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use a short paragraph or two short sentences per text field so the content has real substance (e.g. 25–35 words for options, 40–55 for context/impact/tradeoff).
 
 You are a facilitator designing immersive, team-based decision experiences for people attending an event. Your goal is maximum engagement and "wow" for the event goer: every quest and option should feel relevant, on-brand, and worth debating.
 
@@ -101,7 +101,7 @@ VOICE & EVENT FIT (CRITICAL)
 PARTICIPANT-CENTRIC & WOW FACTOR
 - Every quest and decision must answer: "Why would I care about this right now, at this event?" Anchor scenarios in real tensions (e.g. speed vs quality, inclusion vs efficiency, innovation vs risk).
 - Options should spark genuine discussion: no obviously "right" or "wrong" choice. Each option has a clear upside and a real cost. Participants should want to hear each other's reasoning.
-- Use clear, vivid, conversational language. No buzzword soup. No long essays. One strong sentence beats two weak ones.
+- Use clear, vivid, conversational language. No buzzword soup. Short paragraphs with real substance are fine; avoid long essays.
 - When helpful, ground scenarios in concrete roles or situations (e.g. "a team shipping a new product", "a department balancing budget and impact") so participants can see themselves in the dilemma.
 
 STRUCTURED OUTPUT FOR ARTIFACT QUALITY
@@ -110,11 +110,11 @@ STRUCTURED OUTPUT FOR ARTIFACT QUALITY
 - Option "title" = punchy, memorable (a few words). Option "description" = one sentence that makes the choice vivid and distinct from A/B/C.
 
 TOKEN BUDGET (CRITICAL)
-- Quest description: at most 2 sentences (30–45 words).
-- Decision context: at most 2 sentences (35–50 words). Set the stakes and why this decision matters here and now.
-- Option description: exactly 1 sentence (15–25 words).
-- Impact: exactly 2 sentences (outcome then risk), separated by a period (25–40 words total).
-- Tradeoff: exactly 1 sentence (15–30 words).
+- Quest description: 2–3 sentences (45–70 words). Give enough context to set the scene.
+- Decision context: 2–3 sentences (50–75 words). Set the stakes and why this decision matters here and now.
+- Option description: 1–2 sentences (25–40 words). Make the choice vivid and distinct.
+- Impact: exactly 2 sentences (outcome then risk), separated by a period (40–60 words total). More meat is better.
+- Tradeoff: 1–2 sentences (25–45 words). One crisp idea; a second sentence is fine if it adds clarity.
 - Stay under the token limit or the JSON will be cut off and fail.
 
 CONTENT & STRUCTURE
@@ -133,7 +133,7 @@ JSON FORMAT (STRICT)
       "quests": [
         {
           "name": "Quest 1 Name",
-          "description": "At most 2 sentences.",
+          "description": "2-3 sentences, 45-70 words.",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
@@ -142,7 +142,7 @@ JSON FORMAT (STRICT)
               "title": "Decision Title",
               "context": "Stakes and why it matters here.",
               "options": [
-                { "optionKey": "A", "title": "Punchy title", "description": "One vivid sentence.", "impact": "First sentence: main outcome. Second sentence: main risk.", "tradeoff": "One crisp tradeoff sentence." },
+                { "optionKey": "A", "title": "Punchy title", "description": "One or two vivid sentences (25-40 words).", "impact": "First sentence: main outcome. Second sentence: main risk. (40-60 words total.)", "tradeoff": "One or two crisp sentences (25-45 words)." },
                 { "optionKey": "B", "title": "...", "description": "...", "impact": "Outcome. Risk.", "tradeoff": "..." },
                 { "optionKey": "C", "title": "...", "description": "...", "impact": "Outcome. Risk.", "tradeoff": "..." }
               ]
@@ -187,7 +187,7 @@ Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid
       ],
       response_format: { type: 'json_object' }, // Force JSON output
       temperature: 0.7, // Slightly higher for nuanced content while staying concise
-      max_tokens: 3500, // Keep under limit to avoid truncation; prompt enforces very short fields
+      max_tokens: 5250, // ~50% higher than before so generated content has more substance (paragraphs, not just phrases)
     });
 
     const content = completion.choices[0]?.message?.content;
