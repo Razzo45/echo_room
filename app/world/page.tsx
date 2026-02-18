@@ -221,6 +221,9 @@ export default function WorldPage() {
           <Link href="/people" className="btn btn-secondary">
             People
           </Link>
+          <Link href="/profile" className="btn btn-secondary">
+            Profile
+          </Link>
         </div>
       </div>
     </div>
