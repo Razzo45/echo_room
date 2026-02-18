@@ -72,19 +72,15 @@ function sanitizeForJsonSafePrompt(text: string): string {
 }
 
 /**
- * Generate event rooms (regions, quests, decisions) from an AI brief
- * Returns validated JSON structure ready for database persistence
+ * Fetch raw preprocessed JSON string from OpenAI (for use in route with inline parse pipeline).
+ * Exported so the route can call this and run its own parse/repair/truncation to guarantee deployed fix.
  */
-const GENERATE_PIPELINE_VERSION = 'v2-jsonrepair-first-truncation-recovery';
-
-export async function generateEventRooms(
+export async function fetchEventRoomsRaw(
   input: GenerateEventRoomsInput
-): Promise<EventGenerationOutput> {
-  console.log('[generateEventRooms] pipeline', GENERATE_PIPELINE_VERSION);
+): Promise<string> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY environment variable is not set');
   }
-
   const { brief, eventName, eventDescription } = input;
   const safeBrief = sanitizeForJsonSafePrompt(brief);
   const safeEventDescription =
@@ -93,7 +89,7 @@ export async function generateEventRooms(
       : undefined;
   const safeEventName = eventName?.trim() ?? undefined;
 
-  const systemPrompt = `CRITICAL: Your reply is strictly limited to 5000 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use 1-2 short sentences per text field only.
+  const systemPrompt = `CRITICAL: Your reply is strictly limited to 3500 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use ONE short sentence per text field (max 15-20 words for options, 25-35 for context/impact/tradeoff).
 
 You are a facilitator designing immersive, team-based decision experiences for people attending an event.
 Your job is to turn an event brief into concrete, emotionally resonant quests that feel relevant to participants’ real lives.
@@ -230,7 +226,7 @@ Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence fo
       ],
       response_format: { type: 'json_object' }, // Force JSON output
       temperature: 0.7, // Slightly higher for nuanced content while staying concise
-      max_tokens: 5000, // Hard cap so response fits; prompt enforces short fields
+      max_tokens: 3500, // Keep under limit to avoid truncation; prompt enforces very short fields
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -240,7 +236,7 @@ Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence fo
 
     console.log('OpenAI response received, length:', content.length);
 
-    // Parse JSON: strip markdown, extract object, fix trailing commas, then parse (with optional repair)
+    // Preprocess: strip markdown, extract object, fix trailing commas
     let jsonContent = content.trim();
     if (jsonContent.startsWith('```json')) {
       jsonContent = jsonContent.replace(/^```json\s*\n?/i, '').replace(/\n?\s*```\s*$/, '');
@@ -258,114 +254,101 @@ Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence fo
       jsonContent = next;
     }
 
-    // Try jsonrepair first (fixes unescaped quotes, trailing commas, and can help with truncation)
-    let toParse = jsonContent;
-    try {
-      toParse = await tryJsonRepair(jsonContent);
-    } catch {
-      // keep toParse as jsonContent
+    return jsonContent;
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error) {
+      const apiError = error as { status: number; message?: string };
+      if (apiError.status === 401) throw new Error('OpenAI API key is invalid or expired');
+      if (apiError.status === 429) throw new Error('OpenAI API rate limit exceeded. Please try again later.');
+      if (apiError.status === 500 || apiError.status === 503) throw new Error('OpenAI API is temporarily unavailable. Please try again later.');
+      throw new Error(`OpenAI API error: ${apiError.message || 'Unknown error'}`);
     }
+    throw error;
+  }
+}
 
-    let parsed: unknown;
-    let parseError: unknown;
-    try {
-      parsed = JSON.parse(toParse);
-      if (toParse !== jsonContent) console.log('Parsed successfully after jsonrepair');
-    } catch (e) {
-      parseError = e;
-    }
+/**
+ * Generate event rooms (regions, quests, decisions) from an AI brief.
+ * Uses fetchEventRoomsRaw + parse/repair/truncation recovery + Zod validation.
+ */
+const GENERATE_PIPELINE_VERSION = 'v2-jsonrepair-first-truncation-recovery';
 
-    if (parsed === undefined) {
-      // Truncation recovery: error near end → use the same string we parsed (toParse) and position
-      const posMatch = parseError instanceof Error && parseError.message.match(/position (\d+)/);
-      const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
-      const isNearEnd = errPos > 0 && errPos >= toParse.length * 0.7;
+export async function generateEventRooms(
+  input: GenerateEventRoomsInput
+): Promise<EventGenerationOutput> {
+  console.log('[generateEventRooms] pipeline', GENERATE_PIPELINE_VERSION);
+  const jsonContent = await fetchEventRoomsRaw(input);
 
-      if (isNearEnd) {
-        const truncated = toParse.substring(0, errPos);
-        // 1) Try jsonrepair on truncated string (handles truncation and minor fixes)
-        try {
-          const repaired = await tryJsonRepair(truncated);
-          parsed = JSON.parse(repaired);
-          console.log('Parsed successfully after jsonrepair of truncated response');
-        } catch {
-          // 2) Try closing brackets in correct order (stack-based)
-          const closed = closeTruncatedJson(truncated);
-          if (closed) {
-            try {
-              parsed = JSON.parse(closed);
-              console.log('Parsed successfully after truncation recovery (bracket close)');
-            } catch {
-              // 3) Try closing from a bit earlier in case we cut mid-token
-              const earlier = toParse.substring(0, Math.max(0, errPos - 200));
-              const closedEarlier = closeTruncatedJson(earlier);
-              if (closedEarlier) {
-                try {
-                  parsed = JSON.parse(closedEarlier);
-                  console.log('Parsed successfully after truncation recovery (earlier cut)');
-                } catch {
-                  // fall through to error
-                }
+  // Parse: jsonrepair → parse → truncation recovery if needed → Zod
+  let toParse = jsonContent;
+  try {
+    toParse = await tryJsonRepair(jsonContent);
+  } catch {
+    // keep toParse as jsonContent
+  }
+
+  let parsed: unknown;
+  let parseError: unknown;
+  try {
+    parsed = JSON.parse(toParse);
+    if (toParse !== jsonContent) console.log('Parsed successfully after jsonrepair');
+  } catch (e) {
+    parseError = e;
+  }
+
+  if (parsed === undefined) {
+    const posMatch = parseError instanceof Error && parseError.message.match(/position (\d+)/);
+    const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
+    const isNearEnd = errPos > 0 && errPos >= toParse.length * 0.7;
+
+    if (isNearEnd) {
+      const truncated = toParse.substring(0, errPos);
+      try {
+        const repaired = await tryJsonRepair(truncated);
+        parsed = JSON.parse(repaired);
+        console.log('Parsed successfully after jsonrepair of truncated response');
+      } catch {
+        const closed = closeTruncatedJson(truncated);
+        if (closed) {
+          try {
+            parsed = JSON.parse(closed);
+            console.log('Parsed successfully after truncation recovery (bracket close)');
+          } catch {
+            const earlier = toParse.substring(0, Math.max(0, errPos - 200));
+            const closedEarlier = closeTruncatedJson(earlier);
+            if (closedEarlier) {
+              try {
+                parsed = JSON.parse(closedEarlier);
+                console.log('Parsed successfully after truncation recovery (earlier cut)');
+              } catch {
+                // fall through
               }
             }
           }
         }
       }
-
-      if (parsed === undefined) {
-        console.error('JSON parse error:', parseError);
-        console.error('Content preview (first 1200 chars):', toParse.substring(0, 1200));
-        const msg = parseError instanceof Error ? parseError.message : String(parseError);
-        throw new Error(
-          `Generation could not parse the AI response as valid JSON. The response may have been cut off (try again; use a shorter AI brief) or contain unescaped quotes. Parse error: ${msg}`
-        );
-      }
     }
 
-    // Validate with Zod schema
-    try {
-      const validated = EventGenerationOutputSchema.parse(parsed);
-      console.log('Validation passed, regions:', validated.regions.length);
-      return validated;
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        const errorDetails = validationError.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
-        console.error('Validation error:', errorDetails);
-        console.error('Parsed data preview:', JSON.stringify(parsed).substring(0, 1000));
-        throw new Error(`AI generation validation failed: ${errorDetails}`);
-      }
-      throw validationError;
+    if (parsed === undefined) {
+      console.error('JSON parse error:', parseError);
+      console.error('Content preview (first 1200 chars):', toParse.substring(0, 1200));
+      const msg = parseError instanceof Error ? parseError.message : String(parseError);
+      throw new Error(
+        `Generation could not parse the AI response as valid JSON. The response may have been cut off (try again; use a shorter AI brief) or contain unescaped quotes. Parse error: ${msg}`
+      );
     }
-  } catch (error) {
-    // Handle OpenAI API errors specifically
-    if (error && typeof error === 'object' && 'status' in error) {
-      const apiError = error as any;
-      if (apiError.status === 401) {
-        throw new Error('OpenAI API key is invalid or expired');
-      }
-      if (apiError.status === 429) {
-        throw new Error('OpenAI API rate limit exceeded. Please try again later.');
-      }
-      if (apiError.status === 500 || apiError.status === 503) {
-        throw new Error('OpenAI API is temporarily unavailable. Please try again later.');
-      }
-      throw new Error(`OpenAI API error: ${apiError.message || 'Unknown error'}`);
-    }
+  }
 
-    if (error instanceof z.ZodError) {
-      const errorDetails = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+  try {
+    const validated = EventGenerationOutputSchema.parse(parsed);
+    console.log('Validation passed, regions:', validated.regions.length);
+    return validated;
+  } catch (validationError) {
+    if (validationError instanceof z.ZodError) {
+      const errorDetails = validationError.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      console.error('Validation error:', errorDetails);
       throw new Error(`AI generation validation failed: ${errorDetails}`);
     }
-    if (error instanceof SyntaxError) {
-      throw new Error(`AI returned invalid JSON: ${error.message}`);
-    }
-    if (error instanceof Error) {
-      // Don't wrap if it's already a formatted error
-      if (error.message.includes('OpenAI') || error.message.includes('validation') || error.message.includes('JSON')) {
-        throw error;
-      }
-      throw new Error(`AI generation failed: ${error.message}`);
-    }
-    throw new Error('Unknown error during AI generation');
+    throw validationError;
   }
 }

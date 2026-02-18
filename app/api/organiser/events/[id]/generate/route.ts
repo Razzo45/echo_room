@@ -2,8 +2,104 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
 import { requireOrganiserEventAccess } from '@/lib/event-access';
-import { generateEventRooms } from '@/lib/ai/generateEventRooms';
+import { fetchEventRoomsRaw } from '@/lib/ai/generateEventRooms';
 import { getMockEventRooms } from '@/lib/ai/mockEventRooms';
+import { EventGenerationOutputSchema, type EventGenerationOutput } from '@/lib/ai/schemas';
+
+/** Close truncated JSON by appending brackets in correct order (stack-based). Inlined in route so deploy always has fix. */
+function closeTruncatedJson(str: string): string {
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') escape = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') stack.push('}');
+    else if (c === '[') stack.push(']');
+    else if (c === '}' || c === ']') stack.pop();
+  }
+  return str + stack.reverse().join('');
+}
+
+/**
+ * Parse and validate raw JSON string (jsonrepair → parse → truncation recovery → Zod).
+ * Lives in route so the deployed route bundle always contains this fix.
+ */
+async function parseGeneratedJson(raw: string): Promise<EventGenerationOutput> {
+  let toParse = raw;
+  try {
+    const { jsonrepair } = await import('jsonrepair');
+    toParse = jsonrepair(raw);
+  } catch {
+    // keep toParse as raw
+  }
+
+  let parsed: unknown;
+  let parseError: unknown;
+  try {
+    parsed = JSON.parse(toParse);
+    console.log('[generate route] Parsed successfully after jsonrepair');
+  } catch (e) {
+    parseError = e;
+  }
+
+  if (parsed === undefined && parseError instanceof Error) {
+    const posMatch = parseError.message.match(/position (\d+)/);
+    const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
+    const isNearEnd = errPos > 0 && errPos >= toParse.length * 0.7;
+
+    if (isNearEnd) {
+      const truncated = toParse.substring(0, errPos);
+      try {
+        const { jsonrepair } = await import('jsonrepair');
+        const repaired = jsonrepair(truncated);
+        parsed = JSON.parse(repaired);
+        console.log('[generate route] Parsed after jsonrepair of truncated response');
+      } catch {
+        const closed = closeTruncatedJson(truncated);
+        try {
+          parsed = JSON.parse(closed);
+          console.log('[generate route] Parsed after truncation recovery (bracket close)');
+        } catch {
+          const earlier = toParse.substring(0, Math.max(0, errPos - 200));
+          const closedEarlier = closeTruncatedJson(earlier);
+          try {
+            parsed = JSON.parse(closedEarlier);
+            console.log('[generate route] Parsed after truncation recovery (earlier cut)');
+          } catch {
+            // fall through
+          }
+        }
+      }
+    }
+  }
+
+  if (parsed === undefined) {
+    const msg = parseError instanceof Error ? parseError.message : String(parseError);
+    throw new Error(
+      `Generation could not parse the AI response as valid JSON. The response may have been cut off (try again; use a shorter AI brief) or contain unescaped quotes. Parse error: ${msg}`
+    );
+  }
+
+  const result = EventGenerationOutputSchema.safeParse(parsed);
+  if (!result.success) {
+    const details = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+    throw new Error(`AI generation validation failed: ${details}`);
+  }
+  return result.data;
+}
 
 /**
  * POST /api/organiser/events/[id]/generate
@@ -70,15 +166,19 @@ export async function POST(
 
     try {
       console.log('Starting generation for event:', eventId, event.debugMode ? '(debug mock)' : '(AI)');
-      if (!event.debugMode) console.log('[generate] pipeline v2: jsonrepair-first + truncation recovery');
+      if (!event.debugMode) console.log('[generate route] pipeline: fetchEventRoomsRaw + inline parse/repair/truncation');
 
-      const generated = event.debugMode
-        ? getMockEventRooms()
-        : await generateEventRooms({
-            brief: event.aiBrief!,
-            eventName: event.name,
-            eventDescription: event.description || undefined,
-          });
+      let generated: EventGenerationOutput;
+      if (event.debugMode) {
+        generated = getMockEventRooms();
+      } else {
+        const raw = await fetchEventRoomsRaw({
+          brief: event.aiBrief!,
+          eventName: event.name,
+          eventDescription: event.description || undefined,
+        });
+        generated = await parseGeneratedJson(raw);
+      }
 
       console.log('Generation completed, regions:', generated.regions.length);
 
