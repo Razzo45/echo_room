@@ -500,7 +500,7 @@ export async function getProgressTowardBadges(userId: string): Promise<ProgressH
           icon: def.icon,
           rarity: def.rarity,
           hint: completed >= 5 ? 'You have 5+ quests.' : `${completed}/5 quests completed. Complete ${5 - completed} more.`,
-          percent,
+          percent: percent,
         });
         break;
       }
@@ -522,10 +522,11 @@ export async function getProgressTowardBadges(userId: string): Promise<ProgressH
           icon: def.icon,
           rarity: def.rarity,
           hint: maxCountries >= 3 ? 'Earned.' : `Team with ${maxCountries}/3 different countries in one room. Join diverse rooms.`,
-          percent,
+          percent: percent,
         });
         break;
-      default:
+      }
+      default: {
         hints.push({
           badgeType,
           name: def.name,
@@ -535,6 +536,8 @@ export async function getProgressTowardBadges(userId: string): Promise<ProgressH
           hint: def.description,
           percent: 0,
         });
+        break;
+      }
     }
   }
 
