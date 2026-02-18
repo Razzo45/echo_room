@@ -61,6 +61,19 @@ export default function QuestPlayPage() {
   const [userId, setUserId] = useState('');
   const [roomError, setRoomError] = useState<string | null>(null);
   const [voteRecognition, setVoteRecognition] = useState<string | null>(null);
+  const [badgeHint, setBadgeHint] = useState<{ name: string; hint: string } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/badges/progress')
+      .then((r) => r.json())
+      .then((data) => {
+        const storyteller = data.hints?.find((h: { badgeType: string }) => h.badgeType === 'STORYTELLER');
+        if (storyteller) {
+          setBadgeHint({ name: storyteller.name, hint: storyteller.hint });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Get current user ID
@@ -477,6 +490,11 @@ export default function QuestPlayPage() {
               placeholder={justificationPrompt ? 'Share your reasoning...' : 'Pick a prompt above or share your reasoning...'}
             />
             <p className="mt-2 text-sm text-gray-500">{justification.length}/120</p>
+            {badgeHint && (
+              <p className="mt-2 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">
+                📖 You&apos;re close to <strong>{badgeHint.name}</strong> — {badgeHint.hint}
+              </p>
+            )}
           </div>
         )}
 
