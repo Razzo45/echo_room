@@ -6,17 +6,24 @@ export async function GET() {
   try {
     const user = await requireAuth();
 
-    const regions = await prisma.region.findMany({
-      where: { eventId: user.eventId },
-      orderBy: { sortOrder: 'asc' },
-      include: {
-        _count: {
-          select: { quests: true },
+    const [event, regions] = await Promise.all([
+      prisma.event.findUnique({
+        where: { id: user.eventId },
+        select: { name: true },
+      }),
+      prisma.region.findMany({
+        where: { eventId: user.eventId },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          _count: {
+            select: { quests: true },
+          },
         },
-      },
-    });
+      }),
+    ]);
 
     return NextResponse.json({
+      event: event ? { name: event.name } : null,
       regions: regions.map((r) => ({
         id: r.id,
         name: r.name,

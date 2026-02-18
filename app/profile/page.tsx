@@ -22,17 +22,20 @@ export default function ProfilePage() {
     linkedinUrl: '',
     isDiscoverable: false,
   });
-  const [isEditing, setIsEditing] = useState(false); // true when user already has profile and is updating
+  const [isEditing, setIsEditing] = useState(false);
+  const [levelLabel, setLevelLabel] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
         if (data.user && !data.needsProfile) {
-          // Already has profile: prefill so they can edit
           setIsEditing(true);
           if (data.user.profileUpdatedAt) {
             setProfileUpdatedAt(data.user.profileUpdatedAt);
+          }
+          if (data.user.levelLabel) {
+            setLevelLabel(data.user.levelLabel);
           }
           setFormData({
             name: data.user.name,
@@ -121,6 +124,11 @@ export default function ProfilePage() {
             <p className="mt-1 text-xs text-gray-500">
               Last updated:{' '}
               {new Date(profileUpdatedAt).toLocaleString()}
+            </p>
+          )}
+          {isEditing && levelLabel && (
+            <p className="mt-1 text-xs text-indigo-600 font-medium">
+              Level: {levelLabel}
             </p>
           )}
         </div>

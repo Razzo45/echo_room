@@ -14,19 +14,37 @@ type Region = {
   questCount: number;
 };
 
+type RegionProgress = {
+  id: string;
+  displayName: string;
+  name: string;
+  completed: number;
+  total: number;
+  percentage: number;
+};
+
+type Progress = {
+  eventName: string;
+  eventProgress: { completed: number; total: number };
+  regions: RegionProgress[];
+};
+
 export default function WorldPage() {
   const router = useRouter();
   const [regions, setRegions] = useState<Region[]>([]);
+  const [progress, setProgress] = useState<Progress | null>(null);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
-  const [showCityInfo, setShowCityInfo] = useState(false);
+  const [identity, setIdentity] = useState<{ role: string; country: string; curiosity: string } | null>(null);
+  const [eventName, setEventName] = useState('');
 
   useEffect(() => {
     Promise.all([
       fetch('/api/auth/me').then((r) => r.json()),
       fetch('/api/world').then((r) => r.json()),
+      fetch('/api/progress').then((r) => r.json()),
     ])
-      .then(([userData, worldData]) => {
+      .then(([userData, worldData, progressData]) => {
         if (userData.error || worldData.error) {
           router.push('/');
           return;
@@ -37,6 +55,15 @@ export default function WorldPage() {
         }
         setUserName(userData.user.name);
         setRegions(worldData.regions);
+        setEventName(worldData.event?.name || progressData.eventName || 'this event');
+        if (progressData.eventProgress) {
+          setProgress(progressData);
+        }
+        setIdentity({
+          role: userData.user.role || '',
+          country: userData.user.country || '',
+          curiosity: userData.user.curiosity || '',
+        });
         setLoading(false);
       })
       .catch(() => {
@@ -67,6 +94,26 @@ export default function WorldPage() {
           <p className="text-blue-200 mb-2">Welcome back, {userName}</p>
           <h1 className="text-4xl font-bold text-white mb-2">World Map</h1>
           <p className="text-blue-200">Select a region to begin your quest</p>
+          {identity && (identity.role || identity.country || identity.curiosity) && (
+            <p className="mt-3 text-sm text-blue-100/90 max-w-xl mx-auto">
+              Today you&apos;re exploring <span className="font-medium text-white">{eventName}</span> as:{' '}
+              {identity.role && identity.country && (
+                <span>{identity.role} from {identity.country}</span>
+              )}
+              {identity.role && !identity.country && identity.role}
+              {!identity.role && identity.country && identity.country}
+              {identity.curiosity && (
+                <span>. Curious about: {identity.curiosity}</span>
+              )}
+            </p>
+          )}
+          {progress && progress.eventProgress.total > 0 && (
+            <div className="mt-4 inline-block px-4 py-2 rounded-xl bg-white/10 backdrop-blur-sm">
+              <span className="text-white font-semibold">
+                Event progress: {progress.eventProgress.completed} / {progress.eventProgress.total} quests completed
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Dynamic Regions List - Show all active regions */}
@@ -87,6 +134,19 @@ export default function WorldPage() {
                         <p className="text-sm text-gray-600 mt-1">{region.description}</p>
                       )}
                       <p className="text-xs text-gray-500 mt-1">{region.questCount} quest{region.questCount !== 1 ? 's' : ''} available</p>
+                      {progress && (() => {
+                        const rp = progress.regions.find((pr) => pr.id === region.id);
+                        if (!rp || rp.total === 0) return null;
+                        return (
+                          <p className="text-xs font-medium text-indigo-600 mt-1">
+                            {rp.completed === rp.total ? (
+                              <>✓ {rp.total}/{rp.total} completed</>
+                            ) : (
+                              <>{rp.displayName}: {rp.percentage}% explored ({rp.completed}/{rp.total} quests)</>
+                            )}
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex items-center gap-4">

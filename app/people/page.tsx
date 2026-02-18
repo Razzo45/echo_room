@@ -19,6 +19,9 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [levelLabel, setLevelLabel] = useState<string | null>(null);
+  const [neighbours, setNeighbours] = useState<Array<{ name: string; agreementPercent: number }>>([]);
+  const [collabStats, setCollabStats] = useState<{ uniqueCollaborators: number; countriesCollaborated: number } | null>(null);
 
   const fetchPeople = useCallback(async (q: string) => {
     const url = q.trim()
@@ -34,13 +37,21 @@ export default function PeoplePage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error || data.needsProfile) {
-          router.push(data.needsProfile ? '/profile' : '/');
+    Promise.all([
+      fetch('/api/auth/me').then((r) => r.json()),
+      fetch('/api/me').then((r) => r.json()),
+      fetch('/api/people/neighbours').then((r) => r.json()),
+    ])
+      .then(([authData, meData, neighData]) => {
+        if (authData.error || authData.needsProfile) {
+          router.push(authData.needsProfile ? '/profile' : '/');
           return;
         }
+        if (meData.levelLabel) setLevelLabel(meData.levelLabel);
+        if (neighData.neighbours) {
+          setNeighbours(neighData.neighbours.map((n: { name: string; agreementPercent: number }) => ({ name: n.name, agreementPercent: n.agreementPercent })));
+        }
+        if (neighData.stats) setCollabStats(neighData.stats);
         setLoading(false);
       })
       .catch(() => router.push('/'));
@@ -84,6 +95,33 @@ export default function PeoplePage() {
           <p className="text-gray-600">
             Find other participants who have chosen to appear in the directory. Only people who opted in are shown.
           </p>
+          {levelLabel && (
+            <p className="text-sm text-indigo-600 font-medium mt-1">
+              Your level: {levelLabel}
+            </p>
+          )}
+          {collabStats && (collabStats.uniqueCollaborators > 0 || collabStats.countriesCollaborated > 0) && (
+            <div className="mt-3 p-3 rounded-lg bg-gray-100 border border-gray-200">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Your collaboration</p>
+              <p className="text-sm text-gray-700">
+                You&apos;ve worked with {collabStats.uniqueCollaborators} unique professional{collabStats.uniqueCollaborators !== 1 ? 's' : ''}
+                {collabStats.countriesCollaborated > 0 && (
+                  <> across {collabStats.countriesCollaborated} countr{collabStats.countriesCollaborated !== 1 ? 'ies' : 'y'}</>
+                )}.
+              </p>
+            </div>
+          )}
+          {neighbours.length > 0 && (
+            <div className="mt-3 p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+              <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-1">Decision Neighbours</p>
+              <p className="text-sm text-indigo-700 mb-1">You aligned most with:</p>
+              <ul className="text-sm text-indigo-800 font-medium">
+                {neighbours.slice(0, 5).map((n, i) => (
+                  <li key={i}>{n.name} ({n.agreementPercent}% agreement)</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSearchSubmit} className="mb-6">

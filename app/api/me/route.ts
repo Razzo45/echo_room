@@ -1,28 +1,30 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { getLevelForUser } from '@/lib/xp';
 
 export async function GET() {
   try {
     const user = await requireAuth();
 
-    const roomMemberships = await prisma.roomMember.findMany({
-      where: { userId: user.id },
-      include: {
-        room: {
-          include: {
-            quest: true,
-            artifact: true,
-            _count: {
-              select: { members: true },
+    const [roomMemberships, levelInfo] = await Promise.all([
+      prisma.roomMember.findMany({
+        where: { userId: user.id },
+        include: {
+          room: {
+            include: {
+              quest: true,
+              artifact: true,
+              _count: {
+                select: { members: true },
+              },
             },
           },
         },
-      },
-      orderBy: {
-        joinedAt: 'desc',
-      },
-    });
+        orderBy: { joinedAt: 'desc' },
+      }),
+      getLevelForUser(user.id),
+    ]);
 
     const rooms = roomMemberships.map((membership) => ({
       id: membership.room.id,
@@ -37,7 +39,11 @@ export async function GET() {
       artifactId: membership.room.artifact?.id,
     }));
 
-    return NextResponse.json({ rooms });
+    return NextResponse.json({
+      rooms,
+      level: levelInfo.level,
+      levelLabel: levelInfo.label,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

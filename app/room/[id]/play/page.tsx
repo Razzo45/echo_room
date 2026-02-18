@@ -56,9 +56,11 @@ export default function QuestPlayPage() {
   const [loading, setLoading] = useState(true);
   const [selectedOption, setSelectedOption] = useState<'A' | 'B' | 'C' | null>(null);
   const [justification, setJustification] = useState('');
+  const [justificationPrompt, setJustificationPrompt] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [userId, setUserId] = useState('');
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [voteRecognition, setVoteRecognition] = useState<string | null>(null);
 
   useEffect(() => {
     // Get current user ID
@@ -133,6 +135,34 @@ export default function QuestPlayPage() {
       if (res.ok) {
         setSelectedOption(null);
         setJustification('');
+        setJustificationPrompt(null);
+        const res2 = await fetch(`/api/room/${roomId}`);
+        const data2 = await res2.json();
+        const updatedRoom = data2.room;
+        if (updatedRoom && updatedRoom.votes) {
+          const votesForDec = updatedRoom.votes.filter(
+            (v: Vote) => v.decisionNumber === myCurrentDecision
+          );
+          const others = votesForDec.filter((v: Vote) => v.userId !== userId);
+          const counts: Record<string, number> = { A: 0, B: 0, C: 0 };
+          votesForDec.forEach((v: Vote) => {
+            counts[v.optionKey] = (counts[v.optionKey] || 0) + 1;
+          });
+          const majority = (['A', 'B', 'C'] as const).slice().sort(
+            (a, b) => (counts[b] || 0) - (counts[a] || 0)
+          )[0];
+          const myVote = votesForDec.find((v: Vote) => v.userId === userId);
+          if (others.length === 0) {
+            setVoteRecognition("You're the first to vote on this decision.");
+          } else if (myVote && myVote.optionKey === majority) {
+            setVoteRecognition('Your vote matches the majority so far.');
+          } else {
+            setVoteRecognition(
+              `${others.length} other${others.length !== 1 ? 's have' : ' has'} voted differently so far.`
+            );
+          }
+          setTimeout(() => setVoteRecognition(null), 4000);
+        }
         await loadRoom();
       } else {
         const data = await res.json();
@@ -144,6 +174,20 @@ export default function QuestPlayPage() {
     setSubmitting(false);
   };
 
+  const getDecisionPersonality = (): string => {
+    if (!room || !room.commits || room.commits.length === 0) return 'Strategic Optimist';
+    const myVotes = room.votes.filter((v) => v.userId === userId);
+    let matchCount = 0;
+    for (const c of room.commits) {
+      const myV = myVotes.find((v) => v.decisionNumber === c.decisionNumber);
+      if (myV && myV.optionKey === c.committedOption) matchCount++;
+    }
+    if (matchCount === 3) return 'Consensus Seeker';
+    if (matchCount === 2) return 'Strategic Optimist';
+    if (matchCount === 1) return 'Risk-Averse Planner';
+    return 'Bold Innovator';
+  };
+
   // COMPLETED: show vote breakdown and artifact link (async flow: artifact already generated when all voted)
   if (room && room.status === 'COMPLETED') {
     if (room.artifactId) {
@@ -151,7 +195,12 @@ export default function QuestPlayPage() {
         <div className="min-h-screen bg-gray-50 py-8 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="card mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Quest complete</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">🎉 Your Decision Map is ready</h1>
+              <p className="text-gray-600 mb-4">This map reflects the 3 tradeoffs your team committed to.</p>
+              <div className="mb-6 p-4 rounded-xl bg-indigo-50 border border-indigo-100">
+                <p className="text-sm font-semibold text-indigo-900 mb-1">🧠 Your Decision Style</p>
+                <p className="text-lg font-bold text-indigo-700">{getDecisionPersonality()}</p>
+              </div>
               <p className="text-gray-600 mb-6">All votes are in. Here’s how everyone voted, then view your decision map.</p>
               {[1, 2, 3].map((num) => {
                 const decision = room!.decisionsData?.decisions?.find((d: Decision) => d.number === num);
@@ -183,7 +232,7 @@ export default function QuestPlayPage() {
               })}
               <a
                 href={`/artifact/${room.artifactId}`}
-                className="btn btn-primary inline-block"
+                className="btn btn-primary inline-block mt-4"
               >
                 View decision map
               </a>
@@ -268,9 +317,35 @@ export default function QuestPlayPage() {
             <p className="text-gray-600 mb-4">
               You’ve answered all three decisions. Results and the decision map will appear once everyone in the room has finished.
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm font-medium text-gray-700">
               {completedCount} of {room.members.length} have completed all decisions
             </p>
+            {(() => {
+              const totalVotes = room.votes.length;
+              const avgLen = totalVotes > 0
+                ? Math.round(room.votes.reduce((a, v) => a + (v.justification?.length ?? 0), 0) / totalVotes)
+                : 0;
+              const perDec = [1, 2, 3].map((num) => {
+                const vs = room.votes.filter((v) => v.decisionNumber === num);
+                const c: Record<string, number> = { A: 0, B: 0, C: 0 };
+                vs.forEach((v) => { c[v.optionKey] = (c[v.optionKey] || 0) + 1; });
+                const leader = (['A', 'B', 'C'] as const).slice().sort((a, b) => (c[b] || 0) - (c[a] || 0))[0];
+                return { num, leader, count: c[leader] || 0 };
+              });
+              return (
+                <div className="mt-6 p-4 bg-gray-50 rounded-xl text-left max-w-sm mx-auto">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Live so far</p>
+                  {totalVotes > 0 && (
+                    <p className="text-sm text-gray-600 mb-2">Average justification length: {avgLen} characters</p>
+                  )}
+                  {perDec.map(({ num, leader, count }) => (
+                    <p key={num} className="text-sm text-gray-600">
+                      Decision {num}: most chosen — Option {leader}{count > 0 && ` (${count})`}
+                    </p>
+                  ))}
+                </div>
+              );
+            })()}
             <p className="mt-4 text-xs text-gray-400">This page updates every few seconds.</p>
           </div>
         </div>
@@ -308,6 +383,11 @@ export default function QuestPlayPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        {voteRecognition && (
+          <div className="mb-4 p-3 rounded-lg bg-primary-50 border border-primary-200 text-sm text-primary-800">
+            {voteRecognition}
+          </div>
+        )}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-gray-600">
@@ -366,16 +446,37 @@ export default function QuestPlayPage() {
 
         {selectedOption && (
           <div className="card mb-6">
-            <label className="label">Why did you choose this option? (max 160 characters)</label>
+            <label className="label">Why did you choose this option?</label>
+            <p className="text-xs text-gray-500 mb-2">Pick a prompt to guide your answer (max 120 characters):</p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {[
+                { key: 'risk', label: '⚖️ What\'s the biggest risk?' },
+                { key: 'benefits', label: '🌍 Who benefits most?' },
+                { key: 'tradeoff', label: '💸 Hidden tradeoff?' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setJustificationPrompt(key)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${
+                    justificationPrompt === key
+                      ? 'border-primary-600 bg-primary-50 text-primary-800'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <textarea
               value={justification}
-              onChange={(e) => setJustification(e.target.value.slice(0, 160))}
+              onChange={(e) => setJustification(e.target.value.slice(0, 120))}
               className="input"
               rows={3}
-              maxLength={160}
-              placeholder="Share your reasoning..."
+              maxLength={120}
+              placeholder={justificationPrompt ? 'Share your reasoning...' : 'Pick a prompt above or share your reasoning...'}
             />
-            <p className="mt-2 text-sm text-gray-500">{justification.length}/160</p>
+            <p className="mt-2 text-sm text-gray-500">{justification.length}/120</p>
           </div>
         )}
 

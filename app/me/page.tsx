@@ -23,6 +23,7 @@ export default function MyPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [levelLabel, setLevelLabel] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -36,6 +37,7 @@ export default function MyPage() {
         }
         setUserName(userData.user.name);
         setRooms(roomsData.rooms);
+        setLevelLabel(roomsData.levelLabel ?? null);
         setLoading(false);
       })
       .catch(() => {
@@ -90,6 +92,11 @@ export default function MyPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">My Rooms & Artifacts</h1>
               <p className="text-gray-600">Your quest history and decision maps</p>
+              {levelLabel && (
+                <p className="text-sm text-indigo-600 font-medium mt-1">
+                  Level: {levelLabel}
+                </p>
+              )}
             </div>
             <Link href="/profile" className="btn btn-secondary">
               Edit profile

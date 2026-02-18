@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getLevelForUser } from '@/lib/xp';
 
 export async function GET() {
   try {
@@ -12,14 +13,15 @@ export async function GET() {
 
     const needsProfile = user.name === 'Unnamed';
 
-    let event: { debugMode: boolean } | undefined;
-    if (user.eventId) {
-      const e = await prisma.event.findUnique({
-        where: { id: user.eventId },
-        select: { debugMode: true },
-      });
-      if (e) event = { debugMode: e.debugMode };
-    }
+    const [event, levelInfo] = await Promise.all([
+      user.eventId
+        ? prisma.event.findUnique({
+            where: { id: user.eventId },
+            select: { debugMode: true },
+          }).then((e) => (e ? { debugMode: e.debugMode } : undefined))
+        : Promise.resolve(undefined),
+      getLevelForUser(user.id),
+    ]);
 
     return NextResponse.json({
       user: {
@@ -34,6 +36,8 @@ export async function GET() {
         linkedinUrl: user.linkedinUrl ?? null,
         isDiscoverable: user.isDiscoverable ?? false,
         profileUpdatedAt: user.updatedAt,
+        level: levelInfo.level,
+        levelLabel: levelInfo.label,
       },
       needsProfile,
       event,
