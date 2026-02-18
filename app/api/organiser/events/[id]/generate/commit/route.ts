@@ -81,6 +81,18 @@ export async function POST(
 
       if (existingGenerations.length > 0) {
         const oldGenerationIds = existingGenerations.map(g => g.id);
+        // Preserve user badges: null out roomId so badge rows are not cascade-deleted when rooms are removed.
+        const roomsToRemove = await tx.room.findMany({
+          where: { quest: { eventGenerationId: { in: oldGenerationIds } } },
+          select: { id: true },
+        });
+        const roomIdsToRemove = roomsToRemove.map((r) => r.id);
+        if (roomIdsToRemove.length > 0) {
+          await tx.userBadge.updateMany({
+            where: { roomId: { in: roomIdsToRemove } },
+            data: { roomId: null },
+          });
+        }
         // Archive artifacts from rooms that will be deleted so organisers never lose them (insights panel).
         const roomsWithArtifacts = await tx.room.findMany({
           where: {
