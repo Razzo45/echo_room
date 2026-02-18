@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       include: {
         members: true,
         commits: true,
+        votes: true,
       },
     });
 
@@ -47,13 +48,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if decision already committed
-    const isCommitted = room.commits.some((c) => c.decisionNumber === decisionNumber);
-    if (isCommitted) {
+    // Async flow: no room-level commit check. Enforce per-user sequence (must vote 1 before 2, 2 before 3).
+    const myVotes = room.votes.filter((v) => v.userId === user.id);
+    const alreadyVotedThis = myVotes.some((v) => v.decisionNumber === decisionNumber);
+    if (alreadyVotedThis) {
       return NextResponse.json(
-        { error: 'Decision already committed' },
+        { error: 'You have already voted for this decision' },
         { status: 400 }
       );
+    }
+    if (decisionNumber > 1) {
+      const hasPrevious = myVotes.some((v) => v.decisionNumber === decisionNumber - 1);
+      if (!hasPrevious) {
+        return NextResponse.json(
+          { error: `Please vote for decision ${decisionNumber - 1} first` },
+          { status: 400 }
+        );
+      }
     }
 
     // Create or update vote
@@ -82,6 +93,48 @@ export async function POST(request: NextRequest) {
       where: { id: roomId },
       data: { lastActivityAt: new Date() },
     });
+
+    // Async flow: when all members have voted for all 3 decisions, create commits (majority) and complete room
+    const memberIds = room.members.map((m) => m.userId);
+    const votesAfter = await prisma.vote.findMany({
+      where: { roomId },
+      select: { userId: true, decisionNumber: true, optionKey: true },
+    });
+    const votesPerUser = memberIds.map((uid) => votesAfter.filter((v) => v.userId === uid).length);
+    const allHaveThree = memberIds.length > 0 && votesPerUser.every((c) => c === 3);
+
+    if (allHaveThree) {
+      const freshRoom = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { commits: true },
+      });
+      if (freshRoom && freshRoom.commits.length === 0) {
+        const now = new Date();
+        for (const num of [1, 2, 3]) {
+          const votesForNum = votesAfter.filter((v) => v.decisionNumber === num);
+          const counts = { A: 0, B: 0, C: 0 };
+          votesForNum.forEach((v) => {
+            counts[v.optionKey as 'A' | 'B' | 'C']++;
+          });
+          const majority = (['A', 'B', 'C'] as const).slice().sort((a, b) => counts[b] - counts[a])[0];
+          await prisma.decisionCommit.create({
+            data: { roomId, decisionNumber: num, committedOption: majority },
+          });
+        }
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { status: 'COMPLETED', completedAt: now, lastActivityAt: now },
+        });
+        const { checkRoomCompletionBadges } = await import('@/lib/badges');
+        checkRoomCompletionBadges(roomId).catch((err) => console.error('Badges check error:', err));
+        const { generateArtifact } = await import('@/lib/artifact');
+        try {
+          await generateArtifact(roomId);
+        } catch (err) {
+          console.error('Artifact generation error:', err);
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

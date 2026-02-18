@@ -29,7 +29,6 @@ export default function RoomLobbyPage() {
 
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     loadRoom();
@@ -63,29 +62,6 @@ export default function RoomLobbyPage() {
     }
   };
 
-  const handleStart = async () => {
-    setStarting(true);
-    try {
-      const res = await fetch(`/api/room/${roomId}/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        router.push(`/room/${roomId}/play`);
-      } else {
-        alert(data.error || 'Failed to start quest');
-        setStarting(false);
-      }
-    } catch (err) {
-      alert('Failed to start quest');
-      setStarting(false);
-    }
-  };
-
   if (loading || !room) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -96,8 +72,6 @@ export default function RoomLobbyPage() {
       </div>
     );
   }
-
-  const canStart = room.memberCount >= room.minPlayersToStart;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -143,7 +117,6 @@ export default function RoomLobbyPage() {
                 </div>
               ))}
 
-              {/* Empty slots */}
               {[...Array(Math.max(0, (room.maxPlayers ?? 3) - room.members.length))].map((_, i) => (
                 <div
                   key={`empty-${i}`}
@@ -160,21 +133,11 @@ export default function RoomLobbyPage() {
             </div>
           </div>
 
-          {!canStart && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-yellow-800">
-                <strong>Waiting for more players...</strong> The quest will start when at least {room.minPlayersToStart} member(s) have joined ({room.memberCount} of {room.maxPlayers} in room).
-              </p>
-            </div>
-          )}
-
-          <button
-            onClick={handleStart}
-            disabled={!canStart || starting}
-            className="btn btn-primary w-full text-lg"
-          >
-            {starting ? 'Starting...' : canStart ? 'Start Quest' : 'Waiting for Team...'}
-          </button>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              <strong>Async play:</strong> The quest will start automatically when at least {room.minPlayersToStart} player(s) have joined. Once it starts, the room is locked and everyone can answer the three decisions at their own pace. Results and the decision map appear when everyone has finished.
+            </p>
+          </div>
         </div>
 
         <div className="text-center">

@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
 
     const { questId } = validation.data;
 
-    // First get quest to know team size
+    // First get quest to know team size and min to start
     const quest = await prisma.quest.findUnique({
       where: { id: questId },
-      select: { teamSize: true },
+      select: { teamSize: true, minTeamSize: true },
     });
 
     if (!quest) {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find open room for this quest
+    // Find open room for this quest (only OPEN – once IN_PROGRESS we lock joining)
     const openRoom = await prisma.room.findFirst({
       where: {
         questId,
@@ -73,13 +73,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const minTeamSize = quest.minTeamSize ?? 2;
     let room;
 
     if (openRoom && openRoom._count.members < quest.teamSize) {
       // Join existing room
-      console.log(`Joining existing room ${openRoom.id} with ${openRoom._count.members} members (max: ${quest.teamSize})`);
+      const memberCount = openRoom._count.members + 1;
+      console.log(`Joining existing room ${openRoom.id} with ${memberCount} members (max: ${quest.teamSize}, minToStart: ${minTeamSize})`);
       room = openRoom;
-      
+
       await prisma.roomMember.create({
         data: {
           roomId: room.id,
@@ -87,13 +89,14 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Update room status if now full; always bump lastActivityAt on join
-      const memberCount = openRoom._count.members + 1;
       const now = new Date();
+      // Auto-start when we reach min players (lock room; no more joins)
+      const shouldAutoStart = memberCount >= minTeamSize;
       await prisma.room.update({
         where: { id: room.id },
         data: {
-          ...(memberCount >= quest.teamSize ? { status: 'FULL' as const } : {}),
+          status: shouldAutoStart ? 'IN_PROGRESS' : memberCount >= quest.teamSize ? 'FULL' : 'OPEN',
+          ...(shouldAutoStart && { startedAt: now }),
           lastActivityAt: now,
         },
       });

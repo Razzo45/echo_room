@@ -112,7 +112,7 @@ export default function QuestPlayPage() {
   };
 
   const handleVote = async () => {
-    if (!selectedOption || !justification.trim()) {
+    if (!selectedOption || !justification.trim() || !myCurrentDecision) {
       alert('Please select an option and provide justification');
       return;
     }
@@ -124,7 +124,7 @@ export default function QuestPlayPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           roomId,
-          decisionNumber: room!.currentDecision,
+          decisionNumber: myCurrentDecision,
           optionKey: selectedOption,
           justification: justification.trim(),
         }),
@@ -144,75 +144,59 @@ export default function QuestPlayPage() {
     setSubmitting(false);
   };
 
-  const handleCommit = async (option: 'A' | 'B' | 'C') => {
-    if (!confirm(`Commit to Option ${option}? This decision cannot be changed.`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/commit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          decisionNumber: room!.currentDecision,
-          optionKey: option,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        await loadRoom();
-        if (data.isComplete) {
-          // Will redirect via the effect
-        }
-      } else {
-        alert(data.error || 'Failed to commit');
-      }
-    } catch (err) {
-      alert('Failed to commit decision');
-    }
-  };
-
-  // Immediately redirect or wait if room is completed
+  // COMPLETED: show vote breakdown and artifact link (async flow: artifact already generated when all voted)
   if (room && room.status === 'COMPLETED') {
-    // If artifact already exists, go straight to it
     if (room.artifactId) {
-      router.push(`/artifact/${room.artifactId}`);
       return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your decision map...</p>
+        <div className="min-h-screen bg-gray-50 py-8 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="card mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Quest complete</h1>
+              <p className="text-gray-600 mb-6">All votes are in. Here’s how everyone voted, then view your decision map.</p>
+              {[1, 2, 3].map((num) => {
+                const decision = room!.decisionsData?.decisions?.find((d: Decision) => d.number === num);
+                const votesForNum = (room!.votes || []).filter((v: Vote) => v.decisionNumber === num);
+                const counts: Record<'A' | 'B' | 'C', number> = { A: 0, B: 0, C: 0 };
+                votesForNum.forEach((v: Vote) => {
+                  const k = v.optionKey as 'A' | 'B' | 'C';
+                  if (k in counts) counts[k]++;
+                });
+                const majority = (['A', 'B', 'C'] as const).slice().sort(
+                  (a, b) => counts[b] - counts[a]
+                )[0];
+                return (
+                  <div key={num} className="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                      Decision {num}{decision ? `: ${decision.title}` : ''}
+                    </h2>
+                    <p className="text-sm text-gray-600 mb-2">Majority: Option {majority}</p>
+                    <ul className="space-y-1 text-sm">
+                      {votesForNum.map((v: Vote) => (
+                        <li key={`${v.userId}-${num}`}>
+                          <span className="font-medium">{v.userName}</span>: Option {v.optionKey}
+                          {v.justification ? ` — "${v.justification}"` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+              <a
+                href={`/artifact/${room.artifactId}`}
+                className="btn btn-primary inline-block"
+              >
+                View decision map
+              </a>
+            </div>
           </div>
         </div>
       );
     }
-
-    // Otherwise, mark this participant as completed and wait for others
-    fetch(`/api/room/${roomId}/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.artifactId) {
-          router.push(`/artifact/${data.artifactId}`);
-        } else if (!data.success) {
-          console.error('Failed to mark completion:', data);
-        }
-      })
-      .catch((err) => {
-        console.error('Error marking completion:', err);
-      });
-
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Quest Complete!</h3>
-          <p className="text-gray-600">Waiting for all teammates to finish before generating the decision map…</p>
+          <p className="text-gray-600">Preparing your decision map...</p>
         </div>
       </div>
     );
@@ -267,254 +251,141 @@ export default function QuestPlayPage() {
     );
   }
 
+  // Per-user progress: next decision I need to vote for (1, 2, 3) or 4 if I'm done
+  const myVotes = room.votes.filter((v) => v.userId === userId);
+  const myCurrentDecision = ([1, 2, 3] as const).find((n) => !myVotes.some((v) => v.decisionNumber === n)) ?? 4;
+  const completedCount = room.members.filter(
+    (m) => room.votes.filter((v) => v.userId === m.id).length === 3
+  ).length;
+
+  // I've finished all 3: show waiting for others
+  if (myCurrentDecision === 4) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="card text-center py-12">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">You’re done</h2>
+            <p className="text-gray-600 mb-4">
+              You’ve answered all three decisions. Results and the decision map will appear once everyone in the room has finished.
+            </p>
+            <p className="text-sm text-gray-500">
+              {completedCount} of {room.members.length} have completed all decisions
+            </p>
+            <p className="mt-4 text-xs text-gray-400">This page updates every few seconds.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentDecisionData = room.decisionsData.decisions.find(
-    (d) => d.number === room.currentDecision
+    (d) => d.number === myCurrentDecision
   );
 
   if (!currentDecisionData) {
-    console.error('Decision not found:', {
-      currentDecision: room.currentDecision,
-      availableDecisions: room.decisionsData.decisions.map(d => d.number)
-    });
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Decision not found</h1>
-          <p className="text-gray-600 mb-4">
-            Decision {room.currentDecision} is not available in this quest.
-          </p>
-          <button
-            onClick={() => router.push('/district')}
-            className="btn btn-primary"
-          >
-            Back to City District
-          </button>
+          <p className="text-gray-600 mb-4">Decision {myCurrentDecision} is not available.</p>
+          <button onClick={() => router.push('/world')} className="btn btn-primary">Back to World</button>
         </div>
       </div>
     );
   }
 
-  // Check if options exist
-  if (!currentDecisionData.options || !currentDecisionData.options.A || !currentDecisionData.options.B || !currentDecisionData.options.C) {
-    console.error('Decision options missing:', {
-      decisionNumber: room.currentDecision,
-      decisionTitle: currentDecisionData.title,
-      hasOptions: !!currentDecisionData.options,
-      hasA: !!currentDecisionData.options?.A,
-      hasB: !!currentDecisionData.options?.B,
-      hasC: !!currentDecisionData.options?.C,
-      fullDecision: currentDecisionData
-    });
+  if (!currentDecisionData.options?.A || !currentDecisionData.options?.B || !currentDecisionData.options?.C) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Decision options missing</h1>
-          <p className="text-gray-600 mb-4">
-            Decision {room.currentDecision}: "{currentDecisionData.title}" is missing its options.
-          </p>
-          <p className="text-sm text-gray-500 mb-4">
-            This is a data issue. Please contact support or try refreshing.
-          </p>
-          <details className="text-left text-xs text-gray-400 mb-4">
-            <summary className="cursor-pointer">Debug info</summary>
-            <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto">
-              {JSON.stringify(currentDecisionData, null, 2)}
-            </pre>
-          </details>
-          <button
-            onClick={() => window.location.reload()}
-            className="btn btn-primary"
-          >
-            Refresh Page
-          </button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Options missing</h1>
+          <button onClick={() => window.location.reload()} className="btn btn-primary">Refresh</button>
         </div>
       </div>
     );
   }
-
-  const isCommitted = room.commits.some((c) => c.decisionNumber === room.currentDecision);
-  const currentVotes = room.votes.filter((v) => v.decisionNumber === room.currentDecision);
-  const hasVoted = currentVotes.some((v) => v.userId === userId);
-  const allVoted = currentVotes.length === room.members.length;
-  
-  // If decision 3 is committed, room should be completed - show loading state
-  const decision3Committed = room.commits.some((c) => c.decisionNumber === 3);
-  if (decision3Committed && room.status !== 'COMPLETED') {
-    // Room is completing, reload to get updated status
-    setTimeout(() => loadRoom(), 1000);
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Quest Complete!</h3>
-          <p className="text-gray-600">Preparing your decision map...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const voteCounts = { A: 0, B: 0, C: 0 };
-  currentVotes.forEach((v) => {
-    voteCounts[v.optionKey as 'A' | 'B' | 'C']++;
-  });
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Progress */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-gray-600">
-              Decision {room.currentDecision} of 3
+              Your progress: Decision {myCurrentDecision} of 3
             </span>
-            <span className="text-sm text-gray-600">
-              {currentVotes.length} / {room.members.length} voted
-              {room.memberCount != null && room.maxPlayers != null && (
-                <span className="ml-2 text-gray-500">• {room.memberCount} of {room.maxPlayers} in room</span>
-              )}
+            <span className="text-sm text-gray-500">
+              {room.memberCount != null && room.maxPlayers != null
+                ? `${room.memberCount} of ${room.maxPlayers} in room`
+                : null}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
               className="bg-primary-600 h-2 rounded-full transition-all"
-              style={{ width: `${(room.currentDecision / 3) * 100}%` }}
-            ></div>
+              style={{ width: `${(myVotes.length / 3) * 100}%` }}
+            />
           </div>
         </div>
 
-        {/* Decision Info */}
         <div className="card mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {currentDecisionData.title}
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{currentDecisionData.title}</h1>
           <p className="text-gray-700">{currentDecisionData.description}</p>
         </div>
 
-        {!isCommitted && !hasVoted && (
-          <>
-            {/* Options */}
-            <div className="space-y-4 mb-6">
-              {(['A', 'B', 'C'] as const).map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setSelectedOption(key)}
-                  className={`w-full text-left p-6 rounded-lg border-2 transition-all ${
-                    selectedOption === key
-                      ? 'border-primary-600 bg-primary-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0 mr-4">
-                      <span
-                        className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${
-                          selectedOption === key
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {key}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900 mb-2">
-                        {currentDecisionData.options[key].label}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {currentDecisionData.options[key].tradeoffs}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Justification */}
-            {selectedOption && (
-              <div className="card mb-6">
-                <label className="label">Why did you choose this option? (max 160 characters)</label>
-                <textarea
-                  value={justification}
-                  onChange={(e) => setJustification(e.target.value.slice(0, 160))}
-                  className="input"
-                  rows={3}
-                  maxLength={160}
-                  placeholder="Share your reasoning with the team..."
-                />
-                <p className="mt-2 text-sm text-gray-500">{justification.length}/160</p>
-              </div>
-            )}
-
+        <div className="space-y-4 mb-6">
+          {(['A', 'B', 'C'] as const).map((key) => (
             <button
-              onClick={handleVote}
-              disabled={!selectedOption || !justification.trim() || submitting}
-              className="btn btn-primary w-full text-lg"
+              key={key}
+              onClick={() => setSelectedOption(key)}
+              className={`w-full text-left p-6 rounded-lg border-2 transition-all ${
+                selectedOption === key
+                  ? 'border-primary-600 bg-primary-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
             >
-              {submitting ? 'Submitting...' : 'Submit Vote'}
-            </button>
-          </>
-        )}
-
-        {hasVoted && !allVoted && (
-          <div className="card">
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Vote Submitted</h3>
-              <p className="text-gray-600">Waiting for other team members to vote...</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {currentVotes.length} / {room.members.length} votes received
-              </p>
-            </div>
-          </div>
-        )}
-
-        {allVoted && !isCommitted && (
-          <div className="space-y-6">
-            <div className="card">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">All Votes In</h3>
-              
-              <div className="space-y-4 mb-6">
-                {currentVotes.map((vote) => (
-                  <div key={vote.userId} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="font-semibold text-gray-900">{vote.userName}</span>
-                      <span className="px-3 py-1 bg-primary-100 text-primary-800 text-sm font-semibold rounded">
-                        Option {vote.optionKey}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-700">"{vote.justification}"</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-yellow-800">
-                  <strong>Vote Summary:</strong> {voteCounts.A > 0 && `${voteCounts.A} chose A`}
-                  {voteCounts.A > 0 && voteCounts.B > 0 && ', '}
-                  {voteCounts.B > 0 && `${voteCounts.B} chose B`}
-                  {voteCounts.B > 0 && voteCounts.C > 0 && ', '}
-                  {voteCounts.C > 0 && `${voteCounts.C} chose C`}
-                </p>
-              </div>
-
-              <p className="text-sm text-gray-700 mb-4">
-                Now your team must commit to one final option. Any team member can make the commitment.
-              </p>
-
-              <div className="grid grid-cols-3 gap-4">
-                {(['A', 'B', 'C'] as const).map((key) => (
-                  <button
-                    key={key}
-                    onClick={() => handleCommit(key)}
-                    className="btn btn-primary"
+              <div className="flex items-start">
+                <div className="flex-shrink-0 mr-4">
+                  <span
+                    className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${
+                      selectedOption === key ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
+                    }`}
                   >
-                    Commit to {key}
-                  </button>
-                ))}
+                    {key}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900 mb-2">
+                    {currentDecisionData.options[key].label}
+                  </p>
+                  <p className="text-sm text-gray-600">{currentDecisionData.options[key].tradeoffs}</p>
+                </div>
               </div>
-            </div>
+            </button>
+          ))}
+        </div>
+
+        {selectedOption && (
+          <div className="card mb-6">
+            <label className="label">Why did you choose this option? (max 160 characters)</label>
+            <textarea
+              value={justification}
+              onChange={(e) => setJustification(e.target.value.slice(0, 160))}
+              className="input"
+              rows={3}
+              maxLength={160}
+              placeholder="Share your reasoning..."
+            />
+            <p className="mt-2 text-sm text-gray-500">{justification.length}/160</p>
           </div>
         )}
+
+        <button
+          onClick={handleVote}
+          disabled={!selectedOption || !justification.trim() || submitting}
+          className="btn btn-primary w-full text-lg"
+        >
+          {submitting ? 'Submitting...' : 'Submit vote'}
+        </button>
       </div>
     </div>
   );
