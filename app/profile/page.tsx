@@ -9,6 +9,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTerms, setShowTerms] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [profileUpdatedAt, setProfileUpdatedAt] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     organisation: '',
@@ -29,6 +31,9 @@ export default function ProfilePage() {
         if (data.user && !data.needsProfile) {
           // Already has profile: prefill so they can edit
           setIsEditing(true);
+          if (data.user.profileUpdatedAt) {
+            setProfileUpdatedAt(data.user.profileUpdatedAt);
+          }
           setFormData({
             name: data.user.name,
             organisation: data.user.organisation,
@@ -51,6 +56,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setSaveSuccess(false);
 
     try {
       const res = await fetch('/api/profile', {
@@ -68,6 +74,10 @@ export default function ProfilePage() {
       }
 
       setIsEditing(true); // next time they're definitely in edit mode
+      if (data.user?.profileUpdatedAt) {
+        setProfileUpdatedAt(data.user.profileUpdatedAt);
+      }
+      setSaveSuccess(true);
       if (!isEditing) {
         router.push('/world');
       } else {
@@ -90,6 +100,9 @@ export default function ProfilePage() {
       ...formData,
       [e.target.name]: value,
     });
+    if (saveSuccess) {
+      setSaveSuccess(false);
+    }
   };
 
   return (
@@ -104,9 +117,20 @@ export default function ProfilePage() {
               ? 'Update your details anytime. Changes are saved to your account.'
               : 'Tell us about yourself to get started'}
           </p>
+          {isEditing && profileUpdatedAt && (
+            <p className="mt-1 text-xs text-gray-500">
+              Last updated:{' '}
+              {new Date(profileUpdatedAt).toLocaleString()}
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="card space-y-6">
+          {saveSuccess && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+              Profile updated successfully.
+            </div>
+          )}
           <div>
             <label className="label">Name *</label>
             <input
@@ -146,6 +170,13 @@ export default function ProfilePage() {
             />
           </div>
 
+          <p className="mt-1 text-xs text-gray-500">
+            When you turn on{' '}
+            <span className="font-medium">Show me in the People directory</span>, your
+            name, organisation, role, headline and LinkedIn (if provided) are visible to
+            other participants in this event.
+          </p>
+
           <div>
             <label className="label">Country *</label>
             <input
@@ -157,6 +188,9 @@ export default function ProfilePage() {
               required
               placeholder="Where are you based?"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Used for organiser insights only; not shown in the People directory.
+            </p>
           </div>
 
           <div>
@@ -170,6 +204,9 @@ export default function ProfilePage() {
               required
               placeholder="A key skill you bring to the table"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Used to understand team composition; not shown in the People directory.
+            </p>
           </div>
 
           <div>
@@ -186,6 +223,9 @@ export default function ProfilePage() {
             />
             <p className="mt-1 text-sm text-gray-500">
               {formData.curiosity.length}/200 characters
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Used internally for facilitation and insights; not shown to other participants.
             </p>
           </div>
 

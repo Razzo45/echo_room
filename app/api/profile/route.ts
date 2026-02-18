@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         headline: updated.headline ?? null,
         linkedinUrl: updated.linkedinUrl ?? null,
         isDiscoverable: updated.isDiscoverable ?? false,
+        profileUpdatedAt: updated.updatedAt,
       },
     });
   } catch (error) {

@@ -33,6 +33,7 @@ export async function GET() {
         headline: user.headline ?? null,
         linkedinUrl: user.linkedinUrl ?? null,
         isDiscoverable: user.isDiscoverable ?? false,
+        profileUpdatedAt: user.updatedAt,
       },
       needsProfile,
       event,
