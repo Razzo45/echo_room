@@ -17,9 +17,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const data = validation.data;
+    const updatePayload: Record<string, unknown> = {
+      name: data.name,
+      organisation: data.organisation,
+      role: data.role,
+      country: data.country,
+      skill: data.skill,
+      curiosity: data.curiosity,
+    };
+    if (data.headline !== undefined) updatePayload.headline = data.headline || null;
+    if (data.linkedinUrl !== undefined) updatePayload.linkedinUrl = data.linkedinUrl?.trim() || null;
+    if (data.isDiscoverable !== undefined) updatePayload.isDiscoverable = data.isDiscoverable;
+
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: validation.data,
+      data: updatePayload as any,
     });
 
     return NextResponse.json({
@@ -32,6 +45,9 @@ export async function POST(request: NextRequest) {
         country: updated.country,
         skill: updated.skill,
         curiosity: updated.curiosity,
+        headline: updated.headline ?? null,
+        linkedinUrl: updated.linkedinUrl ?? null,
+        isDiscoverable: updated.isDiscoverable ?? false,
       },
     });
   } catch (error) {

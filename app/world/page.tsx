@@ -154,9 +154,12 @@ export default function WorldPage() {
         </div>
 
         {/* Navigation */}
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center gap-4 flex-wrap">
           <Link href="/me" className="btn btn-secondary">
             My Rooms & Artifacts
+          </Link>
+          <Link href="/people" className="btn btn-secondary">
+            People
           </Link>
         </div>
       </div>

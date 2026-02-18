@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,15 +16,19 @@ export default function ProfilePage() {
     country: '',
     skill: '',
     curiosity: '',
+    headline: '',
+    linkedinUrl: '',
+    isDiscoverable: false,
   });
+  const [isEditing, setIsEditing] = useState(false); // true when user already has profile and is updating
 
   useEffect(() => {
-    // Check if user already has profile
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
         if (data.user && !data.needsProfile) {
-          // Already has profile, prefill
+          // Already has profile: prefill so they can edit
+          setIsEditing(true);
           setFormData({
             name: data.user.name,
             organisation: data.user.organisation,
@@ -31,11 +36,13 @@ export default function ProfilePage() {
             country: data.user.country,
             skill: data.user.skill,
             curiosity: data.user.curiosity,
+            headline: data.user.headline ?? '',
+            linkedinUrl: data.user.linkedinUrl ?? '',
+            isDiscoverable: data.user.isDiscoverable ?? false,
           });
         }
       })
       .catch(() => {
-        // Not authenticated, redirect to landing
         router.push('/');
       });
   }, [router]);
@@ -60,7 +67,12 @@ export default function ProfilePage() {
         return;
       }
 
-      router.push('/world');
+      setIsEditing(true); // next time they're definitely in edit mode
+      if (!isEditing) {
+        router.push('/world');
+      } else {
+        setLoading(false);
+      }
     } catch (err) {
       setError('An error occurred. Please try again.');
       setLoading(false);
@@ -70,9 +82,13 @@ export default function ProfilePage() {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    const value =
+      e.target.type === 'checkbox'
+        ? (e.target as HTMLInputElement).checked
+        : e.target.value;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: value,
     });
   };
 
@@ -81,10 +97,12 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Your Profile
+            {isEditing ? 'Edit your profile' : 'Create Your Profile'}
           </h1>
           <p className="text-gray-600">
-            Tell us about yourself to get started
+            {isEditing
+              ? 'Update your details anytime. Changes are saved to your account.'
+              : 'Tell us about yourself to get started'}
           </p>
         </div>
 
@@ -171,6 +189,54 @@ export default function ProfilePage() {
             </p>
           </div>
 
+          <div>
+            <label className="label">Headline (optional)</label>
+            <input
+              type="text"
+              name="headline"
+              value={formData.headline}
+              onChange={handleChange}
+              className="input"
+              maxLength={120}
+              placeholder="e.g. Sustainability lead at Acme Corp"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Short tagline shown in the People directory. {formData.headline.length}/120
+            </p>
+          </div>
+
+          <div>
+            <label className="label">LinkedIn profile URL (optional)</label>
+            <input
+              type="url"
+              name="linkedinUrl"
+              value={formData.linkedinUrl}
+              onChange={handleChange}
+              className="input"
+              placeholder="https://linkedin.com/in/yourprofile"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <input
+              type="checkbox"
+              id="isDiscoverable"
+              name="isDiscoverable"
+              checked={formData.isDiscoverable}
+              onChange={handleChange}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <label htmlFor="isDiscoverable" className="text-sm font-medium text-gray-900 cursor-pointer">
+              Show me in the People directory (networking search)
+            </label>
+            <p className="sr-only">
+              When enabled, other participants can find you by name, organisation, or role. You can turn this off anytime.
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Only people who turn this on appear in the People page. You control your visibility.
+          </p>
+
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">{error}</p>
@@ -182,19 +248,31 @@ export default function ProfilePage() {
             disabled={loading}
             className="btn btn-primary w-full"
           >
-            {loading ? 'Saving...' : 'Continue to World Map'}
+            {loading
+              ? 'Saving...'
+              : isEditing
+                ? 'Save changes'
+                : 'Continue to World Map'}
           </button>
 
           <p className="mt-4 text-xs text-gray-500 text-center">
-            By clicking <span className="font-medium">Continue to World Map</span>, you agree to our{' '}
-            <button
-              type="button"
-              className="underline text-gray-700 hover:text-gray-900"
-              onClick={() => setShowTerms(true)}
-            >
-              terms of use and data retention policy
-            </button>
-            .
+            {isEditing ? (
+              <Link href="/world" className="text-primary-600 hover:underline">
+                Back to World Map
+              </Link>
+            ) : (
+              <>
+                By clicking <span className="font-medium">Continue to World Map</span>, you agree to our{' '}
+                <button
+                  type="button"
+                  className="underline text-gray-700 hover:text-gray-900"
+                  onClick={() => setShowTerms(true)}
+                >
+                  terms of use and data retention policy
+                </button>
+                .
+              </>
+            )}
           </p>
         </form>
       </div>

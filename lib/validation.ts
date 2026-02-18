@@ -12,6 +12,13 @@ export const profileSchema = z.object({
   country: z.string().min(2, 'Country must be at least 2 characters').max(100),
   skill: z.string().min(2, 'Skill must be at least 2 characters').max(100),
   curiosity: z.string().min(2, 'Curiosity must be at least 2 characters').max(200),
+  headline: z.string().max(120).optional().nullable(),
+  linkedinUrl: z
+    .string()
+    .max(500)
+    .optional()
+    .refine((v) => !v || v.trim() === '' || /^https?:\/\/.+/i.test(v.trim()), 'Please enter a valid URL'),
+  isDiscoverable: z.boolean().optional(),
 });
 
 export const joinRoomSchema = z.object({

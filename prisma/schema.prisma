@@ -74,24 +74,28 @@ model EventCode {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  eventId     String
-  name        String
-  organisation String
-  role        String
-  country     String
-  skill       String
-  curiosity   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id             String   @id @default(cuid())
+  eventId        String
+  name           String
+  organisation   String
+  role           String
+  country        String
+  skill          String
+  curiosity      String
+  headline       String?  // Optional tagline for networking directory
+  linkedinUrl    String?  // Optional LinkedIn profile URL
+  isDiscoverable Boolean  @default(false) // If true, show in /people networking search
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
   event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   sessions    Session[]
   roomMembers RoomMember[]
   votes       Vote[]
   badges      UserBadge[]
-  
+
   @@index([eventId])
+  @@index([eventId, isDiscoverable])
 }
 
 model Session {

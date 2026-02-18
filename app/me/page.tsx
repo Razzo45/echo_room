@@ -86,8 +86,15 @@ export default function MyPage() {
             </svg>
             Back to World Map
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Rooms & Artifacts</h1>
-          <p className="text-gray-600">Your quest history and decision maps</p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Rooms & Artifacts</h1>
+              <p className="text-gray-600">Your quest history and decision maps</p>
+            </div>
+            <Link href="/profile" className="btn btn-secondary">
+              Edit profile
+            </Link>
+          </div>
         </div>
 
         {rooms.length === 0 ? (
@@ -161,6 +168,12 @@ export default function MyPage() {
             Earn badges by completing quests, collaborating with teams, and making decisions together.
           </p>
           <BadgeDisplay />
+        </div>
+
+        <div className="mt-8 flex gap-3 flex-wrap">
+          <Link href="/people" className="btn btn-secondary">
+            People
+          </Link>
         </div>
 
         <div className="mt-12 pt-8 border-t border-gray-200">
