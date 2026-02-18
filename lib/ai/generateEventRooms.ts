@@ -12,10 +12,12 @@ async function tryJsonRepair(text: string): Promise<string> {
   }
 }
 
-/** Try to close truncated JSON by appending missing ] and } (only when error position is near end). */
+/**
+ * Close truncated JSON by appending missing brackets in correct order (innermost first).
+ * Uses a stack so we close } ] } ] ... in the right order for nested { } [ ].
+ */
 function closeTruncatedJson(str: string): string | null {
-  let openBraces = 0;
-  let openBrackets = 0;
+  const stack: string[] = [];
   let inString = false;
   let escape = false;
   for (let i = 0; i < str.length; i++) {
@@ -33,13 +35,12 @@ function closeTruncatedJson(str: string): string | null {
       inString = true;
       continue;
     }
-    if (c === '{') openBraces++;
-    else if (c === '}') openBraces--;
-    else if (c === '[') openBrackets++;
-    else if (c === ']') openBrackets--;
+    if (c === '{') stack.push('}');
+    else if (c === '[') stack.push(']');
+    else if (c === '}' || c === ']') stack.pop();
   }
-  if (openBraces < 0 || openBrackets < 0) return null;
-  return str + ']'.repeat(openBrackets) + '}'.repeat(openBraces);
+  const closers = stack.reverse().join('');
+  return str + closers;
 }
 
 /**
@@ -275,24 +276,45 @@ Respect the TOKEN BUDGET: at most 2 sentences per narrative field, 1 sentence fo
     }
 
     if (parsed === undefined) {
-      // Truncation recovery: error near end of content → close open brackets and re-parse
+      // Truncation recovery: error near end → use the same string we parsed (toParse) and position
       const posMatch = parseError instanceof Error && parseError.message.match(/position (\d+)/);
       const errPos = posMatch ? parseInt(posMatch[1], 10) : 0;
-      if (errPos > 0 && errPos >= jsonContent.length * 0.75) {
-        const closed = closeTruncatedJson(jsonContent.substring(0, errPos));
-        if (closed) {
-          try {
-            parsed = JSON.parse(closed);
-            console.log('Parsed successfully after truncation recovery');
-          } catch {
-            // fall through
+      const isNearEnd = errPos > 0 && errPos >= toParse.length * 0.7;
+
+      if (isNearEnd) {
+        const truncated = toParse.substring(0, errPos);
+        // 1) Try jsonrepair on truncated string (handles truncation and minor fixes)
+        try {
+          const repaired = await tryJsonRepair(truncated);
+          parsed = JSON.parse(repaired);
+          console.log('Parsed successfully after jsonrepair of truncated response');
+        } catch {
+          // 2) Try closing brackets in correct order (stack-based)
+          const closed = closeTruncatedJson(truncated);
+          if (closed) {
+            try {
+              parsed = JSON.parse(closed);
+              console.log('Parsed successfully after truncation recovery (bracket close)');
+            } catch {
+              // 3) Try closing from a bit earlier in case we cut mid-token
+              const earlier = toParse.substring(0, Math.max(0, errPos - 200));
+              const closedEarlier = closeTruncatedJson(earlier);
+              if (closedEarlier) {
+                try {
+                  parsed = JSON.parse(closedEarlier);
+                  console.log('Parsed successfully after truncation recovery (earlier cut)');
+                } catch {
+                  // fall through to error
+                }
+              }
+            }
           }
         }
       }
 
       if (parsed === undefined) {
         console.error('JSON parse error:', parseError);
-        console.error('Content preview (first 1200 chars):', jsonContent.substring(0, 1200));
+        console.error('Content preview (first 1200 chars):', toParse.substring(0, 1200));
         const msg = parseError instanceof Error ? parseError.message : String(parseError);
         throw new Error(
           `Generation could not parse the AI response as valid JSON. The response may have been cut off (try again; use a shorter AI brief) or contain unescaped quotes. Parse error: ${msg}`
