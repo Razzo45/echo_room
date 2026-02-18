@@ -66,6 +66,7 @@ export default function EventDetailPage() {
   } | null>(null);
   const [reviewDraft, setReviewDraft] = useState<any>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
   const [deletingRegionId, setDeletingRegionId] = useState<string | null>(null);
   const [deletingDistrictId, setDeletingDistrictId] = useState<string | null>(null);
@@ -302,11 +303,24 @@ export default function EventDetailPage() {
     setSavingBrief(false);
   };
 
-  const generateRooms = async () => {
+  const startGenerateRooms = () => {
     if (!aiBrief.trim()) {
       alert('Please enter an AI brief first');
       return;
     }
+    const hasExistingContent =
+      event?.aiGenerationStatus === 'READY' ||
+      (event?.regions && event.regions.length > 0);
+    if (hasExistingContent) {
+      setShowGenerateConfirm(true);
+      return;
+    }
+    generateRooms();
+  };
+
+  const generateRooms = async () => {
+    setShowGenerateConfirm(false);
+    if (!aiBrief.trim()) return;
 
     setGenerating(true);
     setGenerationStatus({ status: 'GENERATING' });
@@ -428,6 +442,48 @@ export default function EventDetailPage() {
           onConfirm={handleConfirmReview}
         />
       )}
+      {/* Re-generate confirmation */}
+      {showGenerateConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Re-generate rooms?</h3>
+            <p className="text-gray-600 text-sm mb-6">
+              Are you sure you want to re-generate new rooms? All content generated up until now will be lost and replaced with the newest version. If you want to keep it, you can always modify the content manually on a per room/quest basis.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowGenerateConfirm(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200"
+              >
+                No – go back to page and no generation
+              </button>
+              <button
+                type="button"
+                onClick={() => generateRooms()}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+              >
+                Yes – go forward
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Generating overlay – locks panel until draft is ready */}
+      {generating && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Generating rooms</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              This may take a moment. When ready you can review and edit the AI content from this panel (AI content modification).
+            </p>
+            {generationStatus?.error && (
+              <p className="text-sm text-red-600 mt-2">{generationStatus.error}</p>
+            )}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -486,7 +542,7 @@ export default function EventDetailPage() {
                 {savingBrief ? 'Saving...' : 'Save Brief'}
               </button>
               <button
-                onClick={generateRooms}
+                onClick={startGenerateRooms}
                 disabled={generating || !aiBrief.trim() || event?.aiGenerationStatus === 'GENERATING'}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >

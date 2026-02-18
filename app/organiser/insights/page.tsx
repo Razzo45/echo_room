@@ -48,6 +48,13 @@ type ArtifactRow = {
   closedAt: string | null;
 };
 
+type ArchivedArtifactRow = {
+  id: string;
+  roomCode: string;
+  questName: string;
+  createdAt: string;
+};
+
 type BadgeStat = {
   badgeType: string;
   name: string;
@@ -61,6 +68,7 @@ type InsightsData = {
   participants: Participant[];
   rooms: Room[];
   artifacts: ArtifactRow[];
+  archivedArtifacts: ArchivedArtifactRow[];
   badgeStats: BadgeStat[];
 };
 
@@ -71,7 +79,7 @@ export default function OrganiserInsightsPage() {
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [loadingInsights, setLoadingInsights] = useState(false);
-  const [artifactFilter, setArtifactFilter] = useState<'all' | 'archived'>('all');
+  const [artifactFilter, setArtifactFilter] = useState<'all' | 'archived' | 'past'>('all');
 
   useEffect(() => {
     (async () => {
@@ -134,6 +142,28 @@ export default function OrganiserInsightsPage() {
       setTimeout(() => {
         printWindow.print();
       }, 400);
+    } catch (err) {
+      alert('Failed to open print view.');
+    }
+  };
+
+  const handlePrintArchivedArtifact = async (a: ArchivedArtifactRow) => {
+    try {
+      const res = await fetch(`/api/organiser/archived-artifact/${a.id}`);
+      const data = await res.json();
+      if (!res.ok || !data.htmlContent) {
+        alert(data?.error || 'Failed to load archived artifact');
+        return;
+      }
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Please allow popups to open the print view.');
+        return;
+      }
+      printWindow.document.write(data.htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 400);
     } catch (err) {
       alert('Failed to open print view.');
     }
@@ -337,9 +367,9 @@ export default function OrganiserInsightsPage() {
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  View in browser or open as PDF (Save as PDF in the print dialog).
+                  View in browser or open as PDF (Save as PDF in the print dialog). Past generations are preserved when you re-generate rooms.
                 </p>
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setArtifactFilter('all')}
@@ -362,6 +392,17 @@ export default function OrganiserInsightsPage() {
                   >
                     Archived (closed rooms)
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setArtifactFilter('past')}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                      artifactFilter === 'past'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Past generations
+                  </button>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -383,7 +424,49 @@ export default function OrganiserInsightsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {(() => {
+                    {artifactFilter === 'past' ? (
+                      (insights.archivedArtifacts ?? []).length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                            No artifacts from past generations
+                          </td>
+                        </tr>
+                      ) : (
+                        (insights.archivedArtifacts ?? []).map((a) => (
+                          <tr key={a.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <span className="font-mono text-sm text-gray-900">{a.roomCode}</span>
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800">
+                                Past generation
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{a.questName}</td>
+                            <td className="px-4 py-3 text-sm text-gray-500">
+                              {new Date(a.createdAt).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <Link
+                                  href={`/organiser/archived-artifact/${a.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                >
+                                  View
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrintArchivedArtifact(a)}
+                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                >
+                                  PDF
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )
+                    ) : (() => {
                       const filtered =
                         artifactFilter === 'archived'
                           ? insights.artifacts.filter((a) => a.roomStatus === 'CLOSED')

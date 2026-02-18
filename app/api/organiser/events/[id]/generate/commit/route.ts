@@ -81,6 +81,30 @@ export async function POST(
 
       if (existingGenerations.length > 0) {
         const oldGenerationIds = existingGenerations.map(g => g.id);
+        // Archive artifacts from rooms that will be deleted so organisers never lose them (insights panel).
+        const roomsWithArtifacts = await tx.room.findMany({
+          where: {
+            quest: { eventGenerationId: { in: oldGenerationIds } },
+            artifacts: { some: {} },
+          },
+          include: {
+            quest: { select: { name: true } },
+            artifacts: { select: { htmlContent: true } },
+          },
+        });
+        for (const room of roomsWithArtifacts) {
+          const artifact = room.artifacts[0];
+          if (artifact) {
+            await tx.eventArtifactArchive.create({
+              data: {
+                eventId,
+                roomCode: room.roomCode,
+                questName: room.quest?.name ?? 'Unknown',
+                htmlContent: artifact.htmlContent,
+              },
+            });
+          }
+        }
         await tx.quest.deleteMany({
           where: {
             eventGenerationId: { in: oldGenerationIds },

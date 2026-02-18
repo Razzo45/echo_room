@@ -57,6 +57,7 @@ model Event {
   regions             Region[]
   generations         EventGeneration[]
   retentionLogs       RetentionCleanupLog[]
+  archivedArtifacts   EventArtifactArchive[]
 }
 
 model EventCode {
@@ -304,6 +305,19 @@ model Artifact {
   createdAt   DateTime @default(now())
   
   room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+// Preserved artifact snapshot when event content is re-generated (so organisers never lose past artifacts).
+model EventArtifactArchive {
+  id          String   @id @default(cuid())
+  eventId     String
+  roomCode    String
+  questName   String
+  htmlContent String
+  createdAt   DateTime @default(now())
+  
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  @@index([eventId])
 }
 
 enum AnalyticsEventType {

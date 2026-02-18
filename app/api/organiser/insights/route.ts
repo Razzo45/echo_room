@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [participants, roomsWithMembers, artifactList, badgeStats] = await Promise.all([
+    const [participants, roomsWithMembers, artifactList, archivedArtifactList, badgeStats] = await Promise.all([
       prisma.user.findMany({
         where: { eventId },
         select: {
@@ -84,6 +84,11 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.eventArtifactArchive.findMany({
+        where: { eventId },
+        select: { id: true, roomCode: true, questName: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.userBadge.groupBy({
@@ -135,6 +140,12 @@ export async function GET(request: NextRequest) {
         createdAt: a.createdAt,
         roomStatus: a.room.status,
         closedAt: a.room.closedAt,
+      })),
+      archivedArtifacts: archivedArtifactList.map((a) => ({
+        id: a.id,
+        roomCode: a.roomCode,
+        questName: a.questName,
+        createdAt: a.createdAt,
       })),
       badgeStats: badgeStatsWithNames,
     });
