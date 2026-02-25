@@ -73,7 +73,7 @@ export default function AdminParticipantsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500 mx-auto mb-4" />
           <p className="text-gray-400">Loading participants...</p>
         </div>
       </div>
@@ -82,24 +82,18 @@ export default function AdminParticipantsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Link href="/admin" className="text-gray-400 hover:text-white mb-2 inline-block">
-                ← Back to Dashboard
-              </Link>
-              <h1 className="text-3xl font-bold text-white mb-2">Participants Management</h1>
-              <p className="text-sm text-gray-400">View and manage participant accounts</p>
-            </div>
-          </div>
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+            ← Back to Dashboard
+          </Link>
+          <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Participants Management</h1>
+          <p className="text-sm text-gray-400 mt-0.5">View and manage participant accounts</p>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
+        <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-sm">
           <table className="w-full">
             <thead className="bg-gray-700">
               <tr>
@@ -140,23 +134,24 @@ export default function AdminParticipantsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
+          <div className="mt-6 flex items-center justify-center gap-4">
             <button
+              type="button"
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn min-h-[48px] bg-gray-700 text-white border border-gray-600 rounded-2xl hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
-            <span className="text-gray-400">
+            <span className="text-gray-400 text-sm">
               Page {page} of {totalPages}
             </span>
             <button
+              type="button"
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn min-h-[48px] bg-gray-700 text-white border border-gray-600 rounded-2xl hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>

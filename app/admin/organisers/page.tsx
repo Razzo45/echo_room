@@ -90,7 +90,7 @@ export default function AdminOrganisersPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500 mx-auto mb-4" />
           <p className="text-gray-400">Loading organisers...</p>
         </div>
       </div>
@@ -99,30 +99,29 @@ export default function AdminOrganisersPage() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <Link href="/admin" className="text-gray-400 hover:text-white mb-2 inline-block">
+              <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
                 ← Back to Dashboard
               </Link>
-              <h1 className="text-3xl font-bold text-white mb-2">Organisers Management</h1>
-              <p className="text-sm text-gray-400">{organisers.length} total organisers</p>
+              <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Organisers Management</h1>
+              <p className="text-sm text-gray-400 mt-0.5">{organisers.length} total organisers</p>
             </div>
             <button
+              type="button"
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
+              className="btn btn-primary min-h-[48px]"
             >
               + Create Organiser
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
+        <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-sm">
           <table className="w-full">
             <thead className="bg-gray-700">
               <tr>
@@ -168,8 +167,9 @@ export default function AdminOrganisersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
+                      type="button"
                       onClick={() => handleToggleActive(organiser.id, organiser.isActive)}
-                      className={`px-3 py-1 rounded text-xs font-semibold ${
+                      className={`min-h-[40px] px-4 py-2 rounded-2xl text-xs font-semibold transition ${
                         organiser.isActive
                           ? 'bg-red-600 text-white hover:bg-red-700'
                           : 'bg-green-600 text-white hover:bg-green-700'
@@ -185,66 +185,62 @@ export default function AdminOrganisersPage() {
         </div>
       </div>
 
-      {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
-            <h2 className="text-2xl font-bold text-white mb-4">Create Organiser</h2>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-xl font-bold text-white mb-4">Create Organiser</h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                <label className="label text-gray-300">Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="input bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                <label className="label text-gray-300">Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="input bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                <label className="label text-gray-300">Password</label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="input bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                   required
                   minLength={8}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
+                <label className="label text-gray-300">Role</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  className="input bg-gray-700 border-gray-600 text-white"
                 >
                   <option value="ORGANISER">Organiser</option>
                   <option value="ADMIN">Admin</option>
                   <option value="SUPER_ADMIN">Super Admin</option>
                 </select>
               </div>
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
-                >
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="btn btn-primary flex-1">
                   Create
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition"
+                  className="btn btn-secondary flex-1 bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
                 >
                   Cancel
                 </button>

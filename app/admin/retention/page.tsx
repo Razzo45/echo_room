@@ -82,28 +82,27 @@ export default function AdminRetentionPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-white border-t-transparent" />
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/admin" className="text-gray-400 hover:text-white mb-2 inline-block">
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
             ← Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">Data lifecycle & retention</h1>
-          <p className="text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Data lifecycle & retention</h1>
+          <p className="text-sm text-gray-400 mt-0.5">
             Two weeks after an event’s end date, participant and activity data (sessions, rooms, votes, users, etc.) can be automatically removed. Events with “Keep data longer” are excluded.
           </p>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Run cleanup */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
+        <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-white mb-2">Run cleanup now</h2>
           <p className="text-sm text-gray-400 mb-4">
             {eligible.length === 0
@@ -111,17 +110,17 @@ export default function AdminRetentionPage() {
               : `${eligible.length} event(s) eligible for cleanup.`}
           </p>
           <button
+            type="button"
             onClick={runCleanup}
             disabled={running || eligible.length === 0}
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn min-h-[48px] bg-amber-600 text-white hover:bg-amber-700 rounded-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {running ? 'Running…' : 'Run cleanup for all eligible events'}
           </button>
         </div>
 
-        {/* Eligible events */}
         {eligible.length > 0 && (
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+          <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-white mb-4">Eligible for cleanup</h2>
             <ul className="space-y-2">
               {eligible.map((e) => (
@@ -133,8 +132,7 @@ export default function AdminRetentionPage() {
           </div>
         )}
 
-        {/* Audit log */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-white mb-4">Cleanup audit log</h2>
           {logs.length === 0 ? (
             <p className="text-sm text-gray-400">No cleanup runs yet.</p>

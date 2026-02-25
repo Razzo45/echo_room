@@ -53,32 +53,32 @@ export default function AdminAuditLogPage() {
   if (loading && logs.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-white border-t-transparent" />
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/admin" className="text-gray-400 hover:text-white mb-2 inline-block">
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
             ← Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">Admin audit log</h1>
-          <p className="text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Admin audit log</h1>
+          <p className="text-sm text-gray-400 mt-0.5">
             All Admin and SuperAdmin actions are logged here for compliance and audit.
           </p>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         <div className="mb-4 flex items-center gap-4">
-          <label className="text-sm text-gray-400">Action</label>
+          <label className="label text-gray-400 mb-0">Action</label>
           <select
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-            className="bg-gray-800 border border-gray-600 text-white rounded px-3 py-2 text-sm"
+            className="input min-w-[200px] bg-gray-800 border-gray-600 text-white"
           >
             <option value="">All</option>
             <option value="participant.remove">participant.remove</option>
@@ -89,7 +89,7 @@ export default function AdminAuditLogPage() {
           </select>
         </div>
 
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-sm">
           {logs.length === 0 ? (
             <div className="p-12 text-center text-gray-400">No audit entries yet.</div>
           ) : (
@@ -138,21 +138,23 @@ export default function AdminAuditLogPage() {
         </div>
 
         {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
+          <div className="mt-6 flex items-center justify-center gap-4">
             <button
+              type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn min-h-[48px] bg-gray-700 text-white border border-gray-600 rounded-2xl hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
-            <span className="text-gray-400">
+            <span className="text-gray-400 text-sm">
               Page {page} of {totalPages}
             </span>
             <button
+              type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn min-h-[48px] bg-gray-700 text-white border border-gray-600 rounded-2xl hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>

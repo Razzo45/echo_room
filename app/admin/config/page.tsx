@@ -48,7 +48,7 @@ export default function AdminConfigPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500 mx-auto mb-4" />
           <p className="text-gray-400">Loading configuration...</p>
         </div>
       </div>
@@ -57,27 +57,20 @@ export default function AdminConfigPage() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Link href="/admin" className="text-gray-400 hover:text-white mb-2 inline-block">
-                ← Back to Dashboard
-              </Link>
-              <h1 className="text-3xl font-bold text-white mb-2">System Configuration</h1>
-              <p className="text-sm text-gray-400">Configure system settings and preferences</p>
-            </div>
-          </div>
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block min-h-[48px] flex items-center">
+            ← Back to Dashboard
+          </Link>
+          <h1 className="text-2xl font-bold text-white tracking-tight mt-2">System Configuration</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Configure system settings and preferences</p>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         {config && (
           <div className="space-y-6">
-            {/* System Info */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-white mb-4">System Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -91,8 +84,7 @@ export default function AdminConfigPage() {
               </div>
             </div>
 
-            {/* Features */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-white mb-4">Features</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -134,8 +126,7 @@ export default function AdminConfigPage() {
               </div>
             </div>
 
-            {/* Limits */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-white mb-4">System Limits</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -153,7 +144,7 @@ export default function AdminConfigPage() {
               </div>
             </div>
 
-            <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+            <div className="bg-yellow-900/30 border-2 border-yellow-600/50 rounded-2xl p-4">
               <p className="text-yellow-200 text-sm">
                 <strong>Note:</strong> Configuration updates are not yet implemented. This page displays current system settings.
               </p>

@@ -126,7 +126,7 @@ export default function AdminEventsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500 mx-auto mb-4" />
           <p className="text-gray-400">Loading events...</p>
         </div>
       </div>
@@ -135,28 +135,24 @@ export default function AdminEventsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Link href="/admin" className="text-gray-400 hover:text-white mb-2 inline-block">
-                ← Back to Dashboard
-              </Link>
-              <h1 className="text-3xl font-bold text-white mb-2">Events Management</h1>
-              <p className="text-sm text-gray-400">{events.length} total events</p>
-              <Link href="/admin/retention" className="text-sm text-amber-400 hover:text-amber-300 mt-1 inline-block">
-                Data lifecycle & retention →
-              </Link>
-            </div>
+      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div>
+            <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+              ← Back to Dashboard
+            </Link>
+            <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Events Management</h1>
+            <p className="text-sm text-gray-400 mt-0.5">{events.length} total events</p>
+            <Link href="/admin/retention" className="text-sm text-primary-400 hover:text-primary-300 mt-2 inline-block font-medium">
+              Data lifecycle & retention →
+            </Link>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         {events.length === 0 ? (
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
+          <div className="bg-gray-800 rounded-3xl border border-gray-700 p-12 text-center shadow-sm">
             <p className="text-gray-400">No events found</p>
           </div>
         ) : (
@@ -164,7 +160,7 @@ export default function AdminEventsPage() {
             {events.map((event) => (
               <div
                 key={event.id}
-                className="bg-gray-800 rounded-xl border border-gray-700 p-6 hover:border-gray-600 transition"
+                className="bg-gray-800 rounded-2xl border border-gray-700 p-6 hover:border-primary-500/40 transition shadow-sm"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
