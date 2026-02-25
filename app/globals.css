@@ -6,58 +6,65 @@
   html {
     @apply h-full;
   }
-  
   body {
     @apply h-full bg-gray-50 text-gray-900 antialiased;
+  }
+  /* Mobile: safe area and touch targets */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500;
+    @apply inline-flex items-center justify-center min-h-[48px] px-6 py-3 rounded-2xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500;
   }
-  
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 shadow-md hover:shadow-lg;
+    @apply bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 shadow-lg active:scale-[0.98];
   }
-  
   .btn-secondary {
-    @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 shadow-sm;
+    @apply bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100;
   }
-  
   .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-md hover:shadow-lg;
+    @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-lg;
   }
-  
   .btn-ghost {
-    @apply bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900;
+    @apply bg-transparent text-gray-600 hover:bg-gray-100 active:bg-gray-200;
   }
-  
   .input {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition-shadow placeholder:text-gray-400;
+    @apply w-full min-h-[48px] px-4 py-3 border-2 border-gray-200 rounded-2xl bg-white focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 outline-none transition placeholder:text-gray-400 text-base;
   }
-  
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-200/80 p-6;
+    @apply bg-white rounded-3xl shadow-sm border border-gray-100 p-6;
   }
-  
   .card-elevated {
-    @apply bg-white rounded-2xl shadow-md border border-gray-200/60 p-6;
+    @apply bg-white rounded-3xl shadow-lg border border-gray-100 p-6;
   }
-  
   .label {
     @apply block text-sm font-semibold text-gray-700 mb-2;
   }
-  
   .page-container {
-    @apply min-h-screen px-4 py-6 sm:py-8 max-w-4xl mx-auto;
+    @apply min-h-screen px-4 pb-8 pt-4 max-w-lg mx-auto;
   }
-  
   .page-title {
-    @apply text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight;
+    @apply text-2xl font-bold text-gray-900 tracking-tight;
   }
-  
   .page-subtitle {
-    @apply text-gray-600 mt-1;
+    @apply text-gray-600 mt-1 text-sm;
+  }
+  /* Event-app hero block */
+  .hero-event {
+    @apply w-full min-h-[200px] flex flex-col items-center justify-center text-center px-4 py-10 bg-gradient-to-b from-primary-600 to-primary-800 rounded-b-[2rem];
+  }
+  /* Poll-style option tile (large tap target) */
+  .option-tile {
+    @apply w-full min-h-[72px] flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left;
+  }
+  /* Bottom safe area for sticky CTAs */
+  .safe-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 }

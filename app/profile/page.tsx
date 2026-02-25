@@ -84,30 +84,33 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="page-container bg-gray-50">
-      <div className="max-w-2xl mx-auto">
-        <header className="mb-8">
-          <h1 className="page-title">
-            {isEditing ? 'Edit your profile' : 'Create your profile'}
-          </h1>
-          <p className="page-subtitle">
-            {isEditing
-              ? 'Update your details anytime. Changes are saved to your account.'
-              : 'Tell us about yourself to get started.'}
-          </p>
-          {isEditing && profileUpdatedAt && (
+    <div className="min-h-screen bg-gray-50 pb-8">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+        <Link href="/world" className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
+        <h1 className="text-lg font-bold text-gray-900 flex-1">
+          {isEditing ? 'Edit profile' : 'Create profile'}
+        </h1>
+      </div>
+      <div className="max-w-lg mx-auto px-4 pt-4">
+        <p className="text-gray-500 text-sm mb-4">
+            {isEditing ? 'Update your details anytime.' : 'Tell us about yourself to get started.'}
+        </p>
+        {isEditing && profileUpdatedAt && (
             <p className="mt-2 text-xs text-gray-500">
               Last updated: {new Date(profileUpdatedAt).toLocaleString()}
             </p>
           )}
-          {isEditing && levelLabel && (
-            <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-              Level: {levelLabel}
-            </span>
-          )}
-        </header>
+        {isEditing && levelLabel && (
+          <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+            Level: {levelLabel}
+          </span>
+        )}
 
-        <form onSubmit={handleSubmit} className="card-elevated space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 space-y-5">
           {saveSuccess && (
             <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 font-medium">
               Profile updated successfully.
@@ -177,11 +180,11 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="btn btn-primary w-full">
+          <button type="submit" disabled={loading} className="btn btn-primary w-full text-base">
             {loading ? 'Saving…' : isEditing ? 'Save changes' : 'Continue to World Map'}
           </button>
 
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-xs text-gray-500 text-center pt-2">
             {isEditing ? (
               <Link href="/world" className="text-primary-600 hover:text-primary-700 font-medium">
                 ← Back to World Map

@@ -39,28 +39,30 @@ export default function ArtifactPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading artifact…</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <Link
           href={fromInsights ? '/organiser/insights' : '/me'}
-          className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm mb-6"
+          className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center gap-2"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          {fromInsights ? 'Back to Insights' : 'Back to My Rooms'}
+          <span className="font-medium text-sm">{fromInsights ? 'Insights' : 'My Rooms'}</span>
         </Link>
-
+        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4">Decision map</h1>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-4">
         <div
-          className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden [&_*]:max-w-full"
+          className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden [&_*]:max-w-full"
           dangerouslySetInnerHTML={{ __html: artifact.htmlContent }}
         />
       </div>

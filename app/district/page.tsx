@@ -77,7 +77,7 @@ export default function DistrictPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading quests…</p>
         </div>
       </div>
@@ -85,50 +85,44 @@ export default function DistrictPage() {
   }
 
   return (
-    <div className="page-container bg-gray-50">
-      <div className="max-w-2xl mx-auto">
-        <Link
-          href="/world"
-          className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm mb-6"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-gray-50 pb-8">
+      {/* Back bar - mobile */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+        <Link href="/world" className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to World Map
+          <span className="font-medium text-sm">World</span>
         </Link>
+        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 text-center pr-12">{regionName}</h1>
+      </div>
 
-        <header className="mb-8">
-          <h1 className="page-title">{regionName}</h1>
-          <p className="page-subtitle">Choose a quest to begin</p>
-        </header>
+      <main className="px-4 pt-4 max-w-lg mx-auto">
+        <p className="text-gray-500 text-sm mb-4">Choose a quest to begin</p>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {quests.map((quest) => (
-            <div key={quest.id} className="card-elevated hover:shadow-lg transition-shadow">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">{quest.name}</h2>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {quest.durationMinutes} min
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Team quest
-                    </span>
+            <div key={quest.id} className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="p-4">
+                <div className="flex gap-3 mb-3">
+                  <span className="w-12 h-12 rounded-2xl bg-primary-100 text-primary-600 flex items-center justify-center text-xl shrink-0">
+                    🎯
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-bold text-gray-900">{quest.name}</h2>
+                    <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                      <span>{quest.durationMinutes} min</span>
+                      <span>·</span>
+                      <span>Team quest</span>
+                    </div>
                   </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">{quest.description}</p>
                 </div>
+                <p className="text-gray-600 text-sm leading-relaxed mb-4">{quest.description}</p>
                 <button
                   type="button"
                   onClick={() => handleJoinQuest(quest.id)}
                   disabled={joiningId !== null}
-                  className="btn btn-primary shrink-0 w-full sm:w-auto"
+                  className="btn btn-primary w-full"
                 >
                   {joiningId === quest.id ? 'Joining…' : 'Join quest'}
                 </button>
@@ -138,12 +132,12 @@ export default function DistrictPage() {
         </div>
 
         {quests.length === 0 && (
-          <div className="card text-center py-12">
-            <p className="text-gray-500">No quests available in this region yet.</p>
-            <Link href="/world" className="btn btn-secondary mt-4">Back to World Map</Link>
+          <div className="bg-white rounded-3xl p-8 text-center">
+            <p className="text-gray-500 mb-4">No quests in this region yet.</p>
+            <Link href="/world" className="btn btn-secondary">Back to World</Link>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

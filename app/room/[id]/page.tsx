@@ -60,7 +60,7 @@ export default function RoomLobbyPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading room…</p>
         </div>
       </div>
@@ -71,68 +71,64 @@ export default function RoomLobbyPage() {
   const emptySlots = Math.max(0, maxPlayers - room.members.length);
 
   return (
-    <div className="page-container bg-gray-50">
-      <div className="max-w-2xl mx-auto">
-        <div className="card-elevated mb-6">
-          <header className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{room.questName}</h1>
-            <p className="text-gray-600">{room.questDescription}</p>
-          </header>
+    <div className="min-h-screen bg-gray-50 pb-8">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => router.push('/world')}
+          className="p-2 -ml-2 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4">Room</h1>
+      </div>
 
-          <div className="rounded-xl bg-primary-50 border border-primary-200 p-5 mb-6">
-            <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide text-center mb-1">Room code</p>
-            <p className="text-2xl font-mono font-bold text-primary-900 text-center tracking-widest">{room.roomCode}</p>
+      <main className="max-w-lg mx-auto px-4 pt-4">
+        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-primary-600 px-4 py-6 text-center">
+            <h2 className="text-xl font-bold text-white mb-1">{room.questName}</h2>
+            <p className="text-white/80 text-sm">{room.questDescription}</p>
           </div>
+          <div className="p-4">
+            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide text-center mb-1">Share this code</p>
+            <p className="text-3xl font-mono font-bold text-gray-900 text-center tracking-[0.25em] py-3">{room.roomCode}</p>
 
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Team members</h2>
-              <span className="text-sm text-gray-500">
-                {room.memberCount} / {maxPlayers} players
-              </span>
+            <div className="flex items-center justify-between mt-4 mb-2">
+              <h3 className="text-sm font-semibold text-gray-700">Team</h3>
+              <span className="text-xs text-gray-500">{room.memberCount} / {maxPlayers}</span>
             </div>
-            <div className="space-y-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1">
               {room.members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm shrink-0">
+                <div key={member.id} className="shrink-0 flex flex-col items-center gap-1">
+                  <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-900 truncate">{member.name}</p>
-                    <p className="text-sm text-gray-600 truncate">{member.role} at {member.organisation}</p>
-                  </div>
-                  <span className="shrink-0 px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Ready</span>
+                  <span className="text-xs font-medium text-gray-700 truncate max-w-[72px]">{member.name}</span>
                 </div>
               ))}
               {[...Array(emptySlots)].map((_, i) => (
-                <div key={`empty-${i}`} className="flex items-center gap-3 p-4 rounded-xl bg-gray-100/80 border border-dashed border-gray-300">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse shrink-0" />
-                  <p className="text-gray-500 text-sm">Waiting for player…</p>
+                <div key={`empty-${i}`} className="shrink-0 flex flex-col items-center gap-1">
+                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" />
+                  <span className="text-xs text-gray-400">—</span>
                 </div>
               ))}
             </div>
-          </div>
 
-          <div className="rounded-xl bg-primary-50/80 border border-primary-200 p-4">
-            <p className="text-sm text-primary-800">
-              <strong>Async play:</strong> The quest starts when at least {room.minPlayersToStart} player(s) have joined. Once it starts, the room is locked and everyone can answer the three decisions at their own pace. Results and the decision map appear when everyone has finished.
-            </p>
+            <div className="mt-4 p-4 rounded-2xl bg-primary-50 border border-primary-100">
+              <p className="text-sm text-primary-800">
+                Quest starts when {room.minPlayersToStart}+ have joined. Then everyone answers 3 decisions at their own pace. Decision map appears when all are done.
+              </p>
+            </div>
           </div>
         </div>
-
-        <p className="text-center">
-          <button
-            type="button"
-            onClick={() => router.push('/world')}
-            className="btn btn-ghost text-gray-500 text-sm"
-          >
+        <p className="text-center mt-4">
+          <button type="button" onClick={() => router.push('/world')} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
             Leave room
           </button>
         </p>
-      </div>
+      </main>
     </div>
   );
 }

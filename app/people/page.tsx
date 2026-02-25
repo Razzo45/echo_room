@@ -74,7 +74,7 @@ export default function PeoplePage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading…</p>
         </div>
       </div>
@@ -82,91 +82,84 @@ export default function PeoplePage() {
   }
 
   return (
-    <div className="page-container bg-gray-50">
-      <div className="max-w-2xl mx-auto">
-        <Link href="/world" className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm mb-6">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-gray-50 pb-8">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+        <Link href="/world" className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center gap-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to World Map
+          <span className="font-medium text-sm">World</span>
         </Link>
+        <h1 className="text-lg font-bold text-gray-900 flex-1">People</h1>
+      </div>
 
-        <header className="mb-6">
-          <h1 className="page-title">People</h1>
-          <p className="page-subtitle">
-            Find other participants who have chosen to appear in the directory.
-          </p>
-          {levelLabel && (
-            <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-              Your level: {levelLabel}
-            </span>
-          )}
-          {collabStats && (collabStats.uniqueCollaborators > 0 || collabStats.countriesCollaborated > 0) && (
-            <div className="mt-3 p-4 rounded-xl bg-gray-100 border border-gray-200">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Your collaboration</p>
-              <p className="text-sm text-gray-700">
-                You&apos;ve worked with {collabStats.uniqueCollaborators} unique professional{collabStats.uniqueCollaborators !== 1 ? 's' : ''}
-                {collabStats.countriesCollaborated > 0 && <> across {collabStats.countriesCollaborated} countr{collabStats.countriesCollaborated !== 1 ? 'ies' : 'y'}</>}.
-              </p>
-            </div>
-          )}
-          {neighbours.length > 0 && (
-            <div className="mt-3 p-4 rounded-xl bg-primary-50 border border-primary-200">
-              <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Decision neighbours</p>
-              <p className="text-sm text-primary-800 mb-1">You aligned most with:</p>
-              <ul className="text-sm font-medium text-primary-900">
-                {neighbours.slice(0, 5).map((n, i) => (
-                  <li key={i}>{n.name} ({n.agreementPercent}% agreement)</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </header>
-
-        <form onSubmit={handleSearchSubmit} className="mb-6">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by name, organisation, role, or headline…"
-              className="input flex-1"
-              maxLength={100}
-            />
-            <button type="submit" className="btn btn-primary whitespace-nowrap">Search</button>
+      <main className="max-w-lg mx-auto px-4 py-4">
+        <p className="text-sm text-gray-500 mb-3">Find participants who opted into the directory.</p>
+        {levelLabel && (
+          <span className="inline-flex items-center mb-3 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+            Level: {levelLabel}
+          </span>
+        )}
+        {collabStats && (collabStats.uniqueCollaborators > 0 || collabStats.countriesCollaborated > 0) && (
+          <div className="mb-3 p-3 rounded-2xl bg-gray-100 text-sm text-gray-700">
+            You’ve worked with {collabStats.uniqueCollaborators} professional{collabStats.uniqueCollaborators !== 1 ? 's' : ''}
+            {collabStats.countriesCollaborated > 0 && <> in {collabStats.countriesCollaborated} countr{collabStats.countriesCollaborated !== 1 ? 'ies' : 'y'}</>}.
           </div>
+        )}
+        {neighbours.length > 0 && (
+          <div className="mb-4 p-3 rounded-2xl bg-primary-50 border border-primary-200">
+            <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Decision neighbours</p>
+            <p className="text-sm text-primary-800">
+              {neighbours.slice(0, 3).map((n, i) => (
+                <span key={i}>{n.name} ({n.agreementPercent}%){i < Math.min(2, neighbours.length - 1) ? ', ' : ''}</span>
+              ))}
+            </p>
+          </div>
+        )}
+
+        <form onSubmit={handleSearchSubmit} className="mb-4 flex gap-2">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Name, org, role…"
+            className="input flex-1 min-h-[48px]"
+            maxLength={100}
+          />
+          <button type="submit" className="btn btn-primary shrink-0">Search</button>
         </form>
 
         {people.length === 0 ? (
-          <div className="card-elevated text-center py-12">
-            <p className="text-gray-600 mb-2">
-              {search ? 'No one matches your search.' : 'No one has opted in to the directory yet.'}
+          <div className="bg-white rounded-3xl p-8 text-center">
+            <p className="text-gray-500">
+              {search ? 'No matches.' : 'No one in the directory yet.'}
             </p>
-            <p className="text-sm text-gray-500">
-              {search ? 'Try a different search or clear the box.' : 'You can make yourself discoverable in your profile.'}
+            <p className="text-sm text-gray-400 mt-1">
+              {search ? 'Try another search.' : 'Opt in from your profile.'}
             </p>
           </div>
         ) : (
           <ul className="space-y-3">
             {people.map((person) => (
               <li key={person.id}>
-                <div className="card-elevated flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:shadow-lg transition-shadow">
+                <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-lg shrink-0">
+                    {person.name.charAt(0).toUpperCase()}
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg font-semibold text-gray-900 truncate">{person.name}</h2>
-                    {person.headline && (
-                      <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{person.headline}</p>
-                    )}
-                    <p className="text-sm text-gray-500 mt-1">{person.role} at {person.organisation}</p>
+                    <p className="font-bold text-gray-900 truncate">{person.name}</p>
+                    {person.headline && <p className="text-sm text-gray-600 line-clamp-1">{person.headline}</p>}
+                    <p className="text-xs text-gray-500">{person.role} at {person.organisation}</p>
                   </div>
                   {person.linkedinUrl && (
                     <a
                       href={person.linkedinUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#0A66C2] bg-[#0A66C2]/10 rounded-xl hover:bg-[#0A66C2]/20 transition shrink-0"
+                      className="shrink-0 p-2 rounded-xl bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2]/20"
+                      aria-label="LinkedIn"
                     >
                       <LinkedInIcon className="w-5 h-5" />
-                      LinkedIn
                     </a>
                   )}
                 </div>
@@ -175,10 +168,10 @@ export default function PeoplePage() {
           </ul>
         )}
 
-        <p className="mt-6 text-sm text-gray-500 text-center">
-          To show or hide yourself here, go to your <Link href="/profile" className="text-primary-600 hover:underline font-medium">profile</Link>.
+        <p className="text-center text-sm text-gray-500 mt-4">
+          <Link href="/profile" className="text-primary-600 font-medium">Profile</Link> to show or hide yourself here.
         </p>
-      </div>
+      </main>
     </div>
   );
 }

@@ -204,19 +204,20 @@ export default function QuestPlayPage() {
   if (room && room.status === 'COMPLETED') {
     if (room.artifactId) {
       return (
-        <div className="page-container bg-gray-50">
-          <div className="max-w-2xl mx-auto">
-            <div className="card-elevated mb-6">
-              <div className="text-center mb-6">
-                <span className="inline-flex w-14 h-14 rounded-2xl bg-green-100 text-green-600 items-center justify-center text-2xl mb-4">🎉</span>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Your decision map is ready</h1>
-                <p className="text-gray-600">This map reflects the 3 tradeoffs your team committed to.</p>
+        <div className="min-h-screen bg-gray-50 pb-24">
+          <main className="max-w-lg mx-auto px-4 py-6">
+            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+              <div className="bg-primary-600 px-4 py-8 text-center">
+                <span className="inline-flex w-16 h-16 rounded-2xl bg-white/20 items-center justify-center text-3xl mb-3">🎉</span>
+                <h1 className="text-xl font-bold text-white mb-1">Decision map ready</h1>
+                <p className="text-white/90 text-sm">Your team’s 3 tradeoffs, visualised.</p>
               </div>
-              <div className="mb-6 p-5 rounded-xl bg-primary-50 border border-primary-200">
-                <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Your decision style</p>
-                <p className="text-xl font-bold text-primary-900">{getDecisionPersonality()}</p>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">All votes are in. Here’s how everyone voted.</p>
+              <div className="p-5">
+                <div className="mb-4 p-4 rounded-2xl bg-primary-50 border-2 border-primary-200">
+                  <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Your decision style</p>
+                  <p className="text-lg font-bold text-primary-900">{getDecisionPersonality()}</p>
+                </div>
+                <p className="text-gray-600 text-sm mb-3">How everyone voted:</p>
               {[1, 2, 3].map((num) => {
                 const decision = room!.decisionsData?.decisions?.find((d: Decision) => d.number === num);
                 const votesForNum = (room!.votes || []).filter((v: Vote) => v.decisionNumber === num);
@@ -243,11 +244,12 @@ export default function QuestPlayPage() {
                   </div>
                 );
               })}
-              <a href={`/artifact/${room.artifactId}`} className="btn btn-primary w-full mt-6">
-                View decision map
-              </a>
+                <a href={`/artifact/${room.artifactId}`} className="btn btn-primary w-full mt-4">
+                  View decision map
+                </a>
+              </div>
             </div>
-          </div>
+          </main>
         </div>
       );
     }
@@ -306,17 +308,16 @@ export default function QuestPlayPage() {
   // I've finished all 3: show waiting for others
   if (myCurrentDecision === 4) {
     return (
-      <div className="page-container bg-gray-50">
-        <div className="max-w-xl mx-auto">
-          <div className="card-elevated text-center py-10">
-            <span className="inline-flex w-14 h-14 rounded-2xl bg-primary-100 text-primary-600 items-center justify-center text-2xl mb-4">✓</span>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">You’re done</h2>
-            <p className="text-gray-600 text-sm mb-4">
-              You’ve answered all three decisions. Results and the decision map will appear once everyone has finished.
-            </p>
-            <p className="text-sm font-semibold text-gray-700">
-              {completedCount} of {room.members.length} have completed all decisions
-            </p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+        <div className="max-w-lg w-full bg-white rounded-3xl shadow-lg border border-gray-100 p-8 text-center">
+          <span className="inline-flex w-16 h-16 rounded-2xl bg-green-100 text-green-600 items-center justify-center text-3xl mb-4">✓</span>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">You’re done</h2>
+          <p className="text-gray-600 text-sm mb-4">
+            Results and the decision map will appear once everyone has finished.
+          </p>
+          <p className="text-sm font-semibold text-primary-600">
+            {completedCount} of {room.members.length} completed
+          </p>
             {(() => {
               const totalVotes = room.votes.length;
               const avgLen = totalVotes > 0
@@ -343,8 +344,7 @@ export default function QuestPlayPage() {
                 </div>
               );
             })()}
-            <p className="mt-4 text-xs text-gray-400">This page updates every few seconds.</p>
-          </div>
+          <p className="mt-4 text-xs text-gray-400">Updates every few seconds.</p>
         </div>
       </div>
     );
@@ -378,80 +378,86 @@ export default function QuestPlayPage() {
   }
 
   return (
-    <div className="page-container bg-gray-50">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-bold text-gray-800">Decision {myCurrentDecision} of 3</span>
+          {room.memberCount != null && room.maxPlayers != null && (
+            <span className="text-xs text-gray-500">{room.memberCount}/{room.maxPlayers} in room</span>
+          )}
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(myVotes.length / 3) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
         {voteRecognition && (
-          <div className="mb-4 p-4 rounded-xl bg-primary-50 border border-primary-200 text-sm text-primary-800 font-medium">
+          <div className="mb-4 p-4 rounded-2xl bg-primary-50 border-2 border-primary-200 text-sm text-primary-800 font-medium">
             {voteRecognition}
           </div>
         )}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-700">Decision {myCurrentDecision} of 3</span>
-            {room.memberCount != null && room.maxPlayers != null && (
-              <span className="text-xs text-gray-500">{room.memberCount} of {room.maxPlayers} in room</span>
-            )}
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
-              style={{ width: `${(myVotes.length / 3) * 100}%` }}
-            />
-          </div>
-        </div>
 
-        <div className="card-elevated mb-6">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">{currentDecisionData.title}</h1>
+        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 mb-4">
+          <h1 className="text-lg font-bold text-gray-900 mb-2">{currentDecisionData.title}</h1>
           <p className="text-gray-600 text-sm leading-relaxed">{currentDecisionData.description}</p>
         </div>
 
-        <div className="space-y-3 mb-6">
+        <p className="text-sm font-semibold text-gray-700 mb-2">Choose one</p>
+        <div className="space-y-3 mb-4">
           {(['A', 'B', 'C'] as const).map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setSelectedOption(key)}
-              className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
+              className={`option-tile w-full ${
                 selectedOption === key
-                  ? 'border-primary-600 bg-primary-50 shadow-sm'
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+                  ? 'border-primary-600 bg-primary-600 text-white shadow-lg'
+                  : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50'
               }`}
             >
-              <div className="flex items-start gap-4">
-                <span
-                  className={`shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl font-bold text-sm ${
-                    selectedOption === key ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  {key}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900">{currentDecisionData.options[key].label}</p>
-                  <p className="text-sm text-gray-600 mt-0.5">{currentDecisionData.options[key].tradeoffs}</p>
-                </div>
+              <span className={`shrink-0 w-10 h-10 rounded-xl font-bold text-sm flex items-center justify-center ${
+                selectedOption === key ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+              }`}>
+                {key}
+              </span>
+              <div className="min-w-0 flex-1 text-left">
+                <p className={`font-semibold ${selectedOption === key ? 'text-white' : 'text-gray-900'}`}>
+                  {currentDecisionData.options[key].label}
+                </p>
+                <p className={`text-sm mt-0.5 ${selectedOption === key ? 'text-white/90' : 'text-gray-600'}`}>
+                  {currentDecisionData.options[key].tradeoffs}
+                </p>
               </div>
+              {selectedOption === key && (
+                <span className="shrink-0 w-6 h-6 rounded-full bg-white/30 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                </span>
+              )}
             </button>
           ))}
         </div>
 
         {selectedOption && (
-          <div className="card-elevated mb-6">
-            <label className="label">Why did you choose this option?</label>
-            <p className="text-xs text-gray-500 mb-2">Optional prompt (max 120 characters):</p>
+          <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 mb-4">
+            <label className="label">Why this option? (max 120 chars)</label>
             <div className="flex flex-wrap gap-2 mb-3">
               {[
-                { key: 'risk', label: '⚖️ Biggest risk?' },
-                { key: 'benefits', label: '🌍 Who benefits?' },
-                { key: 'tradeoff', label: '💸 Hidden tradeoff?' },
+                { key: 'risk', label: '⚖️ Risk?' },
+                { key: 'benefits', label: '🌍 Benefits?' },
+                { key: 'tradeoff', label: '💸 Tradeoff?' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setJustificationPrompt(key)}
-                  className={`px-3 py-2 rounded-xl text-sm border transition-colors ${
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                     justificationPrompt === key
-                      ? 'border-primary-600 bg-primary-50 text-primary-800'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {label}
@@ -461,12 +467,12 @@ export default function QuestPlayPage() {
             <textarea
               value={justification}
               onChange={(e) => setJustification(e.target.value.slice(0, 120))}
-              className="input min-h-[88px]"
-              rows={3}
+              className="input min-h-[80px]"
+              rows={2}
               maxLength={120}
               placeholder="Share your reasoning…"
             />
-            <p className="mt-2 text-sm text-gray-500">{justification.length}/120</p>
+            <p className="mt-1 text-xs text-gray-500">{justification.length}/120</p>
             {badgeHint && (
               <p className="mt-3 text-xs text-primary-800 bg-primary-50 rounded-xl px-3 py-2 border border-primary-200">
                 📖 Close to <strong>{badgeHint.name}</strong> — {badgeHint.hint}
@@ -474,14 +480,18 @@ export default function QuestPlayPage() {
             )}
           </div>
         )}
+      </main>
 
-        <button
-          onClick={handleVote}
-          disabled={!selectedOption || !justification.trim() || submitting}
-          className="btn btn-primary w-full"
-        >
-          {submitting ? 'Submitting…' : 'Submit vote'}
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-bottom z-20">
+        <div className="max-w-lg mx-auto">
+          <button
+            onClick={handleVote}
+            disabled={!selectedOption || !justification.trim() || submitting}
+            className="btn btn-primary w-full text-base"
+          >
+            {submitting ? 'Submitting…' : 'Submit vote'}
+          </button>
+        </div>
       </div>
     </div>
   );
