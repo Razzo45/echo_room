@@ -415,7 +415,7 @@ export default function EventDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading event...</p>
         </div>
       </div>
@@ -461,7 +461,7 @@ export default function EventDetailPage() {
               <button
                 type="button"
                 onClick={() => generateRooms()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
               >
                 Yes – go forward
               </button>
@@ -473,7 +473,7 @@ export default function EventDetailPage() {
       {generating && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+            <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Generating rooms</h3>
             <p className="text-gray-600 text-sm mb-4">
               This may take a moment. When ready you can review and edit the AI content from this panel (AI content modification).
@@ -512,7 +512,7 @@ export default function EventDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* AI Generation Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="card-elevated mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Room Generation</h3>
           
           <div className="space-y-4">
@@ -525,7 +525,7 @@ export default function EventDetailPage() {
                 onChange={(e) => setAiBrief(e.target.value)}
                 placeholder="Describe your event theme, goals, and the types of decisions you want participants to make. The AI will generate quests, decisions, and options based on this brief."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 disabled={generating || savingBrief}
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -544,7 +544,7 @@ export default function EventDetailPage() {
               <button
                 onClick={startGenerateRooms}
                 disabled={generating || !aiBrief.trim() || event?.aiGenerationStatus === 'GENERATING'}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generating || event?.aiGenerationStatus === 'GENERATING' ? 'Generating...' : 'Generate Rooms'}
               </button>
@@ -591,7 +591,7 @@ export default function EventDetailPage() {
           {/* Left Column - Stats */}
           <div className="lg:col-span-1 space-y-6">
             {/* Quick Stats */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="card-elevated">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -616,7 +616,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Event Info */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="card-elevated">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h3>
               <div className="space-y-3 text-sm">
                 {event.startDate && (
@@ -648,7 +648,7 @@ export default function EventDetailPage() {
           {/* Right Column - Event Codes & Quests */}
           <div className="lg:col-span-2 space-y-6">
             {/* Event Codes */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="card-elevated">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Event Codes</h3>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 gap-3">
@@ -664,7 +664,7 @@ export default function EventDetailPage() {
                     <button
                       onClick={generateCodes}
                       disabled={generating}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
                     >
                       {generating ? 'Generating...' : 'Generate'}
                     </button>
@@ -680,7 +680,7 @@ export default function EventDetailPage() {
                     <button
                       onClick={createCustomCode}
                       disabled={generating || !customCode.trim()}
-                      className="px-3 py-2 bg-white text-indigo-700 border border-indigo-200 rounded-lg text-sm font-semibold hover:bg-indigo-50 transition disabled:opacity-50"
+                      className="px-3 py-2 bg-white text-primary-700 border border-primary-200 rounded-lg text-sm font-semibold hover:bg-primary-50 transition disabled:opacity-50"
                     >
                       Add Custom
                     </button>
@@ -732,7 +732,7 @@ export default function EventDetailPage() {
                         </button>
                         <button
                           onClick={() => copyJoinLink(code.code)}
-                          className="px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg font-semibold transition"
+                          className="px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg font-semibold transition"
                         >
                           {copiedCode === code.code + '-link' ? '✓ Copied Link' : 'Copy Join Link'}
                         </button>
@@ -766,7 +766,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Quests & Script Editing */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="card-elevated">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Quests & Scripts</h3>
               <p className="text-sm text-gray-600 mb-4">Manage and remove generated quests by district. Deleting a quest is permanent.</p>
               {event.regions.length === 0 ? (
@@ -833,7 +833,7 @@ export default function EventDetailPage() {
                                   <div className="flex items-center gap-2">
                                     <Link
                                       href={`/organiser/quests/${quest.id}`}
-                                      className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold"
+                                      className="text-sm text-primary-600 hover:text-primary-800 font-semibold"
                                     >
                                       Edit script
                                     </Link>

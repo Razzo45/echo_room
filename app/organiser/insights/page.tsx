@@ -173,7 +173,7 @@ export default function OrganiserInsightsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -202,7 +202,7 @@ export default function OrganiserInsightsPage() {
                 id="event-select"
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[220px]"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-w-[220px]"
               >
                 <option value="">Select event</option>
                 {events.map((e) => (
@@ -218,20 +218,20 @@ export default function OrganiserInsightsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {!selectedEventId && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <div className="card-elevated p-12 text-center">
             <p className="text-gray-600">Select an event to view insights.</p>
           </div>
         )}
 
         {selectedEventId && loadingInsights && (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600" />
           </div>
         )}
 
         {selectedEventId && !loadingInsights && insights && (
           <>
-            <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <section className="card-elevated overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Participants</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
@@ -274,7 +274,7 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <section className="card-elevated overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Room compositions</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Who joined whom in each room</p>
@@ -286,7 +286,7 @@ export default function OrganiserInsightsPage() {
                   insights.rooms.map((room) => (
                     <div key={room.id} className="px-4 py-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-mono text-sm font-semibold text-indigo-600">
+                        <span className="font-mono text-sm font-semibold text-primary-600">
                           {room.roomCode}
                         </span>
                         <span className="text-xs text-gray-500">({room.questName})</span>
@@ -323,7 +323,7 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <section className="card-elevated overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Badge stats</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Badges earned by participants in this event</p>
@@ -363,7 +363,7 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <section className="card-elevated overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
@@ -375,7 +375,7 @@ export default function OrganiserInsightsPage() {
                     onClick={() => setArtifactFilter('all')}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
                       artifactFilter === 'all'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -386,7 +386,7 @@ export default function OrganiserInsightsPage() {
                     onClick={() => setArtifactFilter('archived')}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
                       artifactFilter === 'archived'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -397,7 +397,7 @@ export default function OrganiserInsightsPage() {
                     onClick={() => setArtifactFilter('past')}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
                       artifactFilter === 'past'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
@@ -450,14 +450,14 @@ export default function OrganiserInsightsPage() {
                                   href={`/organiser/archived-artifact/${a.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                  className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                                 >
                                   View
                                 </Link>
                                 <button
                                   type="button"
                                   onClick={() => handlePrintArchivedArtifact(a)}
-                                  className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                  className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                                 >
                                   PDF
                                 </button>
@@ -502,14 +502,14 @@ export default function OrganiserInsightsPage() {
                                 href={`/artifact/${a.id}?from=insights`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                               >
                                 View
                               </Link>
                               <button
                                 type="button"
                                 onClick={() => handlePrintArtifact(a)}
-                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                className="text-primary-600 hover:text-primary-800 text-sm font-medium"
                               >
                                 PDF
                               </button>
@@ -526,7 +526,7 @@ export default function OrganiserInsightsPage() {
         )}
 
         {selectedEventId && !loadingInsights && !insights?.event && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+          <div className="card-elevated p-8 text-center text-gray-500">
             Failed to load insights for this event.
           </div>
         )}

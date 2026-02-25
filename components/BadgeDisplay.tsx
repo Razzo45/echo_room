@@ -165,12 +165,12 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
       {/* Stats Summary */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="card text-center">
+          <div className="card-elevated text-center">
             <div className="text-2xl font-bold text-primary-600">{stats.total}</div>
             <div className="text-xs text-gray-600 mt-1">Total Badges</div>
           </div>
           {RARITY_ORDER.filter((r) => (stats.byRarity[r] ?? 0) > 0).map((rarity) => (
-            <div key={rarity} className="card text-center">
+            <div key={rarity} className="card-elevated text-center">
               <div className={`text-2xl font-bold ${rarityColors[rarity].split(' ')[2]}`}>
                 {stats.byRarity[rarity] ?? 0}
               </div>
@@ -185,7 +185,7 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
         {sortedBadges.map((badge) => (
           <div
             key={badge.id}
-            className={`card border-2 ${rarityColors[badge.rarity]} bg-gradient-to-br ${rarityGradients[badge.rarity]} hover:shadow-lg transition-all cursor-pointer`}
+            className={`rounded-2xl border-2 p-4 ${rarityColors[badge.rarity]} bg-gradient-to-br ${rarityGradients[badge.rarity]} hover:shadow-lg transition-all cursor-pointer`}
             title={badge.description}
           >
             <div className="text-center">

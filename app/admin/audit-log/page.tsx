@@ -89,7 +89,7 @@ export default function AdminAuditLogPage() {
           </select>
         </div>
 
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           {logs.length === 0 ? (
             <div className="p-12 text-center text-gray-400">No audit entries yet.</div>
           ) : (

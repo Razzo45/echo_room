@@ -32,7 +32,7 @@ export default function RoomLobbyPage() {
 
   useEffect(() => {
     loadRoom();
-    const interval = setInterval(loadRoom, 3000); // Poll every 3 seconds
+    const interval = setInterval(loadRoom, 3000);
     return () => clearInterval(interval);
   }, [roomId]);
 
@@ -40,114 +40,98 @@ export default function RoomLobbyPage() {
     try {
       const res = await fetch(`/api/room/${roomId}`);
       const data = await res.json();
-
       if (data.error) {
         router.push('/world');
         return;
       }
-
       setRoom(data.room);
       setLoading(false);
-
-      // Redirect if room already started
       if (data.room.status === 'IN_PROGRESS') {
         router.push(`/room/${roomId}/play`);
-      } else if (data.room.status === 'COMPLETED') {
-        if (data.room.hasArtifact) {
-          router.push(`/artifact/${data.room.artifactId}`);
-        }
+      } else if (data.room.status === 'COMPLETED' && data.room.hasArtifact) {
+        router.push(`/artifact/${data.room.artifactId}`);
       }
-    } catch (err) {
-      console.error('Failed to load room:', err);
+    } catch {
+      // keep previous state
     }
   };
 
   if (loading || !room) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading room...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading room…</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="card mb-6">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{room.questName}</h1>
-            <p className="text-lg text-gray-600">{room.questDescription}</p>
-          </div>
+  const maxPlayers = room.maxPlayers ?? 3;
+  const emptySlots = Math.max(0, maxPlayers - room.members.length);
 
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
-            <div className="text-center">
-              <p className="text-sm text-primary-700 font-semibold mb-1">Room Code</p>
-              <p className="text-2xl font-mono font-bold text-primary-900">{room.roomCode}</p>
-            </div>
+  return (
+    <div className="page-container bg-gray-50">
+      <div className="max-w-2xl mx-auto">
+        <div className="card-elevated mb-6">
+          <header className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{room.questName}</h1>
+            <p className="text-gray-600">{room.questDescription}</p>
+          </header>
+
+          <div className="rounded-xl bg-primary-50 border border-primary-200 p-5 mb-6">
+            <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide text-center mb-1">Room code</p>
+            <p className="text-2xl font-mono font-bold text-primary-900 text-center tracking-widest">{room.roomCode}</p>
           </div>
 
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Team Members</h2>
-              <span className="text-sm text-gray-600">
-                {room.memberCount} / {room.maxPlayers} players
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">Team members</h2>
+              <span className="text-sm text-gray-500">
+                {room.memberCount} / {maxPlayers} players
               </span>
             </div>
-
-            <div className="space-y-3">
+            <div className="space-y-2">
               {room.members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200"
+                  className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200"
                 >
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">{member.name}</p>
-                    <p className="text-sm text-gray-600">
-                      {member.role} at {member.organisation}
-                    </p>
+                  <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-sm shrink-0">
+                    {member.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                      Ready
-                    </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 truncate">{member.name}</p>
+                    <p className="text-sm text-gray-600 truncate">{member.role} at {member.organisation}</p>
                   </div>
+                  <span className="shrink-0 px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">Ready</span>
                 </div>
               ))}
-
-              {[...Array(Math.max(0, (room.maxPlayers ?? 3) - room.members.length))].map((_, i) => (
-                <div
-                  key={`empty-${i}`}
-                  className="flex items-center p-4 bg-gray-100 rounded-lg border border-gray-300 border-dashed"
-                >
-                  <div className="flex-1">
-                    <p className="text-gray-500">Waiting for player...</p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <div className="animate-pulse w-6 h-6 bg-gray-300 rounded-full"></div>
-                  </div>
+              {[...Array(emptySlots)].map((_, i) => (
+                <div key={`empty-${i}`} className="flex items-center gap-3 p-4 rounded-xl bg-gray-100/80 border border-dashed border-gray-300">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse shrink-0" />
+                  <p className="text-gray-500 text-sm">Waiting for player…</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Async play:</strong> The quest will start automatically when at least {room.minPlayersToStart} player(s) have joined. Once it starts, the room is locked and everyone can answer the three decisions at their own pace. Results and the decision map appear when everyone has finished.
+          <div className="rounded-xl bg-primary-50/80 border border-primary-200 p-4">
+            <p className="text-sm text-primary-800">
+              <strong>Async play:</strong> The quest starts when at least {room.minPlayersToStart} player(s) have joined. Once it starts, the room is locked and everyone can answer the three decisions at their own pace. Results and the decision map appear when everyone has finished.
             </p>
           </div>
         </div>
 
-        <div className="text-center">
+        <p className="text-center">
           <button
+            type="button"
             onClick={() => router.push('/world')}
-            className="text-gray-600 hover:text-gray-900"
+            className="btn btn-ghost text-gray-500 text-sm"
           >
-            Leave Room
+            Leave room
           </button>
-        </div>
+        </p>
       </div>
     </div>
   );

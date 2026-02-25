@@ -49,8 +49,8 @@ export default function AdminLoginPage() {
           <p className="text-gray-400">Enter admin password to continue</p>
         </div>
 
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card-elevated">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="label">Email (optional)</label>
               <input
@@ -61,7 +61,7 @@ export default function AdminLoginPage() {
                 placeholder="admin@example.com"
                 autoFocus
               />
-              <p className="text-xs text-gray-500 mt-1">Leave empty to use admin password</p>
+              <p className="text-xs text-gray-500 mt-1">Leave empty to use admin password only.</p>
             </div>
             <div>
               <label className="label">Password</label>
@@ -73,15 +73,13 @@ export default function AdminLoginPage() {
                 required
               />
             </div>
-
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="p-4 rounded-xl bg-red-50 border border-red-100">
+                <p className="text-sm text-red-800 font-medium">{error}</p>
               </div>
             )}
-
             <button type="submit" disabled={loading} className="btn btn-primary w-full">
-              {loading ? 'Verifying...' : 'Login'}
+              {loading ? 'Verifying…' : 'Log in'}
             </button>
           </form>
         </div>

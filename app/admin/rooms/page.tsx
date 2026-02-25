@@ -120,7 +120,7 @@ export default function AdminRoomsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
           <p className="text-gray-400">Loading rooms...</p>
         </div>
       </div>
@@ -155,7 +155,7 @@ export default function AdminRoomsPage() {
 
         <div className="space-y-4">
           {rooms.map((room) => (
-            <div key={room.id} className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div key={room.id} className="bg-gray-800 rounded-xl border border-gray-700 p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
@@ -252,7 +252,7 @@ export default function AdminRoomsPage() {
               {rooms
                 .filter((r) => r.status === 'CLOSED' && r.hasArtifact && r.artifactId)
                 .map((room) => (
-                  <div key={room.id} className="bg-gray-800 rounded-lg border border-gray-700 p-4 flex items-center justify-between">
+                  <div key={room.id} className="bg-gray-800 rounded-xl border border-gray-700 p-4 flex items-center justify-between">
                     <div>
                       <span className="font-mono text-white">{room.roomCode}</span>
                       <span className="text-gray-400 ml-2">· {room.questName}</span>

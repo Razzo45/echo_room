@@ -52,8 +52,8 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading dashboard…</p>
         </div>
       </div>
     );
@@ -140,52 +140,46 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+      <header className="bg-gray-800 border-b border-gray-700">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
-              <p className="text-sm text-gray-400">
-                {currentUser && (
-                  <>
-                    Logged in as <span className="font-semibold">{currentUser.name}</span> ({currentUser.role})
-                  </>
-                )}
+              <h1 className="text-2xl font-bold text-white">Admin dashboard</h1>
+              <p className="text-sm text-gray-400 mt-0.5">
+                {currentUser && <>Logged in as <span className="font-semibold">{currentUser.name}</span> ({currentUser.role})</>}
               </p>
             </div>
             <button
+              type="button"
               onClick={handleLogout}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600 transition"
+              className="px-4 py-2.5 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-600 transition"
             >
               Logout
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Stats Overview */}
       {stats && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <div className="text-gray-400 text-sm mb-1">Total Events</div>
-              <div className="text-3xl font-bold text-white">{stats.events}</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Events</div>
+              <div className="text-2xl font-bold text-white">{stats.events}</div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <div className="text-gray-400 text-sm mb-1">Organisers</div>
-              <div className="text-3xl font-bold text-white">{stats.organisers}</div>
+            <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Organisers</div>
+              <div className="text-2xl font-bold text-white">{stats.organisers}</div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <div className="text-gray-400 text-sm mb-1">Participants</div>
-              <div className="text-3xl font-bold text-white">{stats.participants}</div>
+            <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Participants</div>
+              <div className="text-2xl font-bold text-white">{stats.participants}</div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-              <div className="text-gray-400 text-sm mb-1">Total Rooms</div>
-              <div className="text-3xl font-bold text-white">{stats.rooms}</div>
-              {stats.activeRooms > 0 && (
-                <div className="text-sm text-green-400 mt-1">{stats.activeRooms} active</div>
-              )}
+            <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Rooms</div>
+              <div className="text-2xl font-bold text-white">{stats.rooms}</div>
+              {stats.activeRooms > 0 && <div className="text-sm text-green-400 mt-1">{stats.activeRooms} active</div>}
             </div>
           </div>
         </div>
@@ -198,24 +192,18 @@ export default function AdminDashboard() {
             <Link
               key={section.href}
               href={section.href}
-              className="block bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-gray-600 hover:bg-gray-750 transition group"
+              className="block bg-gray-800 rounded-xl border border-gray-700 p-5 hover:border-gray-600 transition group"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="text-gray-400 group-hover:text-white transition">
-                  {section.icon}
-                </div>
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-gray-400 group-hover:text-white transition">{section.icon}</div>
                 {section.count !== undefined && (
-                  <div className="bg-gray-700 text-white text-lg font-bold px-3 py-1 rounded">
-                    {section.count}
-                  </div>
+                  <span className="bg-gray-700 text-white text-lg font-bold px-2.5 py-0.5 rounded-lg">{section.count}</span>
                 )}
                 {section.badge !== undefined && section.badge > 0 && (
-                  <div className="bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
-                    {section.badge} active
-                  </div>
+                  <span className="bg-green-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">{section.badge} active</span>
                 )}
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{section.title}</h3>
+              <h3 className="text-lg font-bold text-white mb-1">{section.title}</h3>
               <p className="text-gray-400 text-sm">{section.description}</p>
             </Link>
           ))}

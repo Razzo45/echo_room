@@ -201,20 +201,22 @@ export default function QuestPlayPage() {
     return 'Bold Innovator';
   };
 
-  // COMPLETED: show vote breakdown and artifact link (async flow: artifact already generated when all voted)
   if (room && room.status === 'COMPLETED') {
     if (room.artifactId) {
       return (
-        <div className="min-h-screen bg-gray-50 py-8 px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="card mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">🎉 Your Decision Map is ready</h1>
-              <p className="text-gray-600 mb-4">This map reflects the 3 tradeoffs your team committed to.</p>
-              <div className="mb-6 p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-                <p className="text-sm font-semibold text-indigo-900 mb-1">🧠 Your Decision Style</p>
-                <p className="text-lg font-bold text-indigo-700">{getDecisionPersonality()}</p>
+        <div className="page-container bg-gray-50">
+          <div className="max-w-2xl mx-auto">
+            <div className="card-elevated mb-6">
+              <div className="text-center mb-6">
+                <span className="inline-flex w-14 h-14 rounded-2xl bg-green-100 text-green-600 items-center justify-center text-2xl mb-4">🎉</span>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Your decision map is ready</h1>
+                <p className="text-gray-600">This map reflects the 3 tradeoffs your team committed to.</p>
               </div>
-              <p className="text-gray-600 mb-6">All votes are in. Here’s how everyone voted, then view your decision map.</p>
+              <div className="mb-6 p-5 rounded-xl bg-primary-50 border border-primary-200">
+                <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Your decision style</p>
+                <p className="text-xl font-bold text-primary-900">{getDecisionPersonality()}</p>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">All votes are in. Here’s how everyone voted.</p>
               {[1, 2, 3].map((num) => {
                 const decision = room!.decisionsData?.decisions?.find((d: Decision) => d.number === num);
                 const votesForNum = (room!.votes || []).filter((v: Vote) => v.decisionNumber === num);
@@ -223,30 +225,25 @@ export default function QuestPlayPage() {
                   const k = v.optionKey as 'A' | 'B' | 'C';
                   if (k in counts) counts[k]++;
                 });
-                const majority = (['A', 'B', 'C'] as const).slice().sort(
-                  (a, b) => counts[b] - counts[a]
-                )[0];
+                const majority = (['A', 'B', 'C'] as const).slice().sort((a, b) => counts[b] - counts[a])[0];
                 return (
-                  <div key={num} className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                  <div key={num} className="mb-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                    <h2 className="text-base font-semibold text-gray-900 mb-1">
                       Decision {num}{decision ? `: ${decision.title}` : ''}
                     </h2>
-                    <p className="text-sm text-gray-600 mb-2">Majority: Option {majority}</p>
-                    <ul className="space-y-1 text-sm">
+                    <p className="text-xs text-gray-500 mb-2">Majority: Option {majority}</p>
+                    <ul className="space-y-1 text-sm text-gray-600">
                       {votesForNum.map((v: Vote) => (
                         <li key={`${v.userId}-${num}`}>
-                          <span className="font-medium">{v.userName}</span>: Option {v.optionKey}
-                          {v.justification ? ` — "${v.justification}"` : ''}
+                          <span className="font-medium text-gray-900">{v.userName}</span>: Option {v.optionKey}
+                          {v.justification ? ` — “${v.justification}”` : ''}
                         </li>
                       ))}
                     </ul>
                   </div>
                 );
               })}
-              <a
-                href={`/artifact/${room.artifactId}`}
-                className="btn btn-primary inline-block mt-4"
-              >
+              <a href={`/artifact/${room.artifactId}`} className="btn btn-primary w-full mt-6">
                 View decision map
               </a>
             </div>
@@ -255,10 +252,10 @@ export default function QuestPlayPage() {
       );
     }
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Preparing your decision map...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Preparing your decision map…</p>
         </div>
       </div>
     );
@@ -267,26 +264,20 @@ export default function QuestPlayPage() {
   if (loading || !room) {
     if (roomError) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Disconnected from room</h1>
-            <p className="text-gray-600 mb-4">{roomError}</p>
-            <button
-              onClick={() => router.push('/district')}
-              className="btn btn-primary"
-            >
-              Back to City District
-            </button>
+        <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+          <div className="text-center max-w-md">
+            <h1 className="text-xl font-bold text-gray-900 mb-2">Disconnected from room</h1>
+            <p className="text-gray-600 text-sm mb-6">{roomError}</p>
+            <button onClick={() => router.push('/district')} className="btn btn-primary">Back to district</button>
           </div>
         </div>
       );
     }
-
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading quest...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading quest…</p>
         </div>
       </div>
     );
@@ -295,19 +286,11 @@ export default function QuestPlayPage() {
   // Guard against quests that don't have decision data (e.g., FORM quests)
   if (!room.decisionsData || !Array.isArray(room.decisionsData.decisions)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Quest not supported</h1>
-          <p className="text-gray-600 mb-4">
-            This quest does not use the collaborative decision flow. Please return to the City
-            District and choose a decision room quest.
-          </p>
-          <button
-            onClick={() => router.push('/district')}
-            className="btn btn-primary"
-          >
-            Back to City District
-          </button>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Quest not supported</h1>
+          <p className="text-gray-600 text-sm mb-6">This quest doesn’t use the collaborative decision flow. Return to the district and choose a decision room quest.</p>
+          <button onClick={() => router.push('/district')} className="btn btn-primary">Back to district</button>
         </div>
       </div>
     );
@@ -323,14 +306,15 @@ export default function QuestPlayPage() {
   // I've finished all 3: show waiting for others
   if (myCurrentDecision === 4) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="card text-center py-12">
+      <div className="page-container bg-gray-50">
+        <div className="max-w-xl mx-auto">
+          <div className="card-elevated text-center py-10">
+            <span className="inline-flex w-14 h-14 rounded-2xl bg-primary-100 text-primary-600 items-center justify-center text-2xl mb-4">✓</span>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">You’re done</h2>
-            <p className="text-gray-600 mb-4">
-              You’ve answered all three decisions. Results and the decision map will appear once everyone in the room has finished.
+            <p className="text-gray-600 text-sm mb-4">
+              You’ve answered all three decisions. Results and the decision map will appear once everyone has finished.
             </p>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-semibold text-gray-700">
               {completedCount} of {room.members.length} have completed all decisions
             </p>
             {(() => {
@@ -346,7 +330,7 @@ export default function QuestPlayPage() {
                 return { num, leader, count: c[leader] || 0 };
               });
               return (
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl text-left max-w-sm mx-auto">
+                <div className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200 text-left max-w-sm mx-auto">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Live so far</p>
                   {totalVotes > 0 && (
                     <p className="text-sm text-gray-600 mb-2">Average justification length: {avgLen} characters</p>
@@ -372,10 +356,10 @@ export default function QuestPlayPage() {
 
   if (!currentDecisionData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Decision not found</h1>
-          <p className="text-gray-600 mb-4">Decision {myCurrentDecision} is not available.</p>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Decision not found</h1>
+          <p className="text-gray-600 text-sm mb-6">Decision {myCurrentDecision} is not available.</p>
           <button onClick={() => router.push('/world')} className="btn btn-primary">Back to World</button>
         </div>
       </div>
@@ -384,9 +368,9 @@ export default function QuestPlayPage() {
 
   if (!currentDecisionData.options?.A || !currentDecisionData.options?.B || !currentDecisionData.options?.C) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Options missing</h1>
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Options missing</h1>
           <button onClick={() => window.location.reload()} className="btn btn-primary">Refresh</button>
         </div>
       </div>
@@ -394,63 +378,56 @@ export default function QuestPlayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="page-container bg-gray-50">
+      <div className="max-w-2xl mx-auto">
         {voteRecognition && (
-          <div className="mb-4 p-3 rounded-lg bg-primary-50 border border-primary-200 text-sm text-primary-800">
+          <div className="mb-4 p-4 rounded-xl bg-primary-50 border border-primary-200 text-sm text-primary-800 font-medium">
             {voteRecognition}
           </div>
         )}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-600">
-              Your progress: Decision {myCurrentDecision} of 3
-            </span>
-            <span className="text-sm text-gray-500">
-              {room.memberCount != null && room.maxPlayers != null
-                ? `${room.memberCount} of ${room.maxPlayers} in room`
-                : null}
-            </span>
+            <span className="text-sm font-semibold text-gray-700">Decision {myCurrentDecision} of 3</span>
+            {room.memberCount != null && room.maxPlayers != null && (
+              <span className="text-xs text-gray-500">{room.memberCount} of {room.maxPlayers} in room</span>
+            )}
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div
-              className="bg-primary-600 h-2 rounded-full transition-all"
+              className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
               style={{ width: `${(myVotes.length / 3) * 100}%` }}
             />
           </div>
         </div>
 
-        <div className="card mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{currentDecisionData.title}</h1>
-          <p className="text-gray-700">{currentDecisionData.description}</p>
+        <div className="card-elevated mb-6">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{currentDecisionData.title}</h1>
+          <p className="text-gray-600 text-sm leading-relaxed">{currentDecisionData.description}</p>
         </div>
 
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3 mb-6">
           {(['A', 'B', 'C'] as const).map((key) => (
             <button
               key={key}
+              type="button"
               onClick={() => setSelectedOption(key)}
-              className={`w-full text-left p-6 rounded-lg border-2 transition-all ${
+              className={`w-full text-left p-5 rounded-xl border-2 transition-all ${
                 selectedOption === key
-                  ? 'border-primary-600 bg-primary-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                  ? 'border-primary-600 bg-primary-50 shadow-sm'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
               }`}
             >
-              <div className="flex items-start">
-                <div className="flex-shrink-0 mr-4">
-                  <span
-                    className={`inline-flex items-center justify-center w-10 h-10 rounded-full font-bold ${
-                      selectedOption === key ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {key}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900 mb-2">
-                    {currentDecisionData.options[key].label}
-                  </p>
-                  <p className="text-sm text-gray-600">{currentDecisionData.options[key].tradeoffs}</p>
+              <div className="flex items-start gap-4">
+                <span
+                  className={`shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl font-bold text-sm ${
+                    selectedOption === key ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {key}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900">{currentDecisionData.options[key].label}</p>
+                  <p className="text-sm text-gray-600 mt-0.5">{currentDecisionData.options[key].tradeoffs}</p>
                 </div>
               </div>
             </button>
@@ -458,20 +435,20 @@ export default function QuestPlayPage() {
         </div>
 
         {selectedOption && (
-          <div className="card mb-6">
+          <div className="card-elevated mb-6">
             <label className="label">Why did you choose this option?</label>
-            <p className="text-xs text-gray-500 mb-2">Pick a prompt to guide your answer (max 120 characters):</p>
+            <p className="text-xs text-gray-500 mb-2">Optional prompt (max 120 characters):</p>
             <div className="flex flex-wrap gap-2 mb-3">
               {[
-                { key: 'risk', label: '⚖️ What\'s the biggest risk?' },
-                { key: 'benefits', label: '🌍 Who benefits most?' },
+                { key: 'risk', label: '⚖️ Biggest risk?' },
+                { key: 'benefits', label: '🌍 Who benefits?' },
                 { key: 'tradeoff', label: '💸 Hidden tradeoff?' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setJustificationPrompt(key)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border ${
+                  className={`px-3 py-2 rounded-xl text-sm border transition-colors ${
                     justificationPrompt === key
                       ? 'border-primary-600 bg-primary-50 text-primary-800'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -484,15 +461,15 @@ export default function QuestPlayPage() {
             <textarea
               value={justification}
               onChange={(e) => setJustification(e.target.value.slice(0, 120))}
-              className="input"
+              className="input min-h-[88px]"
               rows={3}
               maxLength={120}
-              placeholder={justificationPrompt ? 'Share your reasoning...' : 'Pick a prompt above or share your reasoning...'}
+              placeholder="Share your reasoning…"
             />
             <p className="mt-2 text-sm text-gray-500">{justification.length}/120</p>
             {badgeHint && (
-              <p className="mt-2 text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">
-                📖 You&apos;re close to <strong>{badgeHint.name}</strong> — {badgeHint.hint}
+              <p className="mt-3 text-xs text-primary-800 bg-primary-50 rounded-xl px-3 py-2 border border-primary-200">
+                📖 Close to <strong>{badgeHint.name}</strong> — {badgeHint.hint}
               </p>
             )}
           </div>
@@ -501,9 +478,9 @@ export default function QuestPlayPage() {
         <button
           onClick={handleVote}
           disabled={!selectedOption || !justification.trim() || submitting}
-          className="btn btn-primary w-full text-lg"
+          className="btn btn-primary w-full"
         >
-          {submitting ? 'Submitting...' : 'Submit vote'}
+          {submitting ? 'Submitting…' : 'Submit vote'}
         </button>
       </div>
     </div>

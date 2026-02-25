@@ -90,7 +90,7 @@ export default function AdminOrganisersPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
           <p className="text-gray-400">Loading organisers...</p>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function AdminOrganisersPage() {
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
+              className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
             >
               + Create Organiser
             </button>
@@ -122,7 +122,7 @@ export default function AdminOrganisersPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-700">
               <tr>
@@ -188,7 +188,7 @@ export default function AdminOrganisersPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 w-full max-w-md">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
             <h2 className="text-2xl font-bold text-white mb-4">Create Organiser</h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
@@ -237,7 +237,7 @@ export default function AdminOrganisersPage() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
                 >
                   Create
                 </button>

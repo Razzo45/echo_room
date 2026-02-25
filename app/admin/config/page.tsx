@@ -48,7 +48,7 @@ export default function AdminConfigPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
           <p className="text-gray-400">Loading configuration...</p>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function AdminConfigPage() {
         {config && (
           <div className="space-y-6">
             {/* System Info */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
               <h2 className="text-xl font-bold text-white mb-4">System Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -92,7 +92,7 @@ export default function AdminConfigPage() {
             </div>
 
             {/* Features */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
               <h2 className="text-xl font-bold text-white mb-4">Features</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -135,7 +135,7 @@ export default function AdminConfigPage() {
             </div>
 
             {/* Limits */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
               <h2 className="text-xl font-bold text-white mb-4">System Limits</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>

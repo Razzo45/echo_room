@@ -14,101 +14,84 @@ export default function OrganiserLoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await fetch('/api/organiser/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error || 'Invalid password');
+        setError(data.error || 'Invalid credentials');
         setLoading(false);
         return;
       }
-
       router.push('/organiser/dashboard');
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-white/10 rounded-full mb-4">
-            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/10 items-center justify-center mb-5">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            Organiser Portal
-          </h1>
-          <p className="text-lg text-white/80">
-            Echo Room Management
-          </p>
+          <h1 className="text-3xl font-bold text-white mb-2">Organiser portal</h1>
+          <p className="text-primary-200 text-sm">Echo Room management</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-2xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card-elevated">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="label">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 mb-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="input"
                 required
                 autoFocus
               />
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
+            </div>
+            <div>
+              <label className="label">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your organiser password"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Organiser password"
+                className="input"
                 required
               />
             </div>
-
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="p-4 rounded-xl bg-red-50 border border-red-100">
+                <p className="text-sm text-red-800 font-medium">{error}</p>
               </div>
             )}
-
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn btn-primary w-full"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in…' : 'Log in'}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600 text-center">
-              Need access? Contact your system administrator.
-            </p>
-          </div>
+          <p className="mt-5 pt-5 border-t border-gray-200 text-center text-sm text-gray-500">
+            Need access? Contact your system administrator.
+          </p>
         </div>
 
-        <div className="mt-6 text-center">
-          <a href="/" className="text-white/80 hover:text-white text-sm">
-            ← Back to Participant Login
-          </a>
-        </div>
+        <p className="mt-6 text-center">
+          <a href="/" className="text-primary-200 hover:text-white text-sm font-medium">← Back to participant login</a>
+        </p>
       </div>
     </div>
   );

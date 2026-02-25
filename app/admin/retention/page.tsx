@@ -103,7 +103,7 @@ export default function AdminRetentionPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Run cleanup */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-white mb-2">Run cleanup now</h2>
           <p className="text-sm text-gray-400 mb-4">
             {eligible.length === 0
@@ -121,7 +121,7 @@ export default function AdminRetentionPage() {
 
         {/* Eligible events */}
         {eligible.length > 0 && (
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Eligible for cleanup</h2>
             <ul className="space-y-2">
               {eligible.map((e) => (
@@ -134,7 +134,7 @@ export default function AdminRetentionPage() {
         )}
 
         {/* Audit log */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Cleanup audit log</h2>
           {logs.length === 0 ? (
             <p className="text-sm text-gray-400">No cleanup runs yet.</p>

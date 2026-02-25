@@ -32,39 +32,35 @@ export default function ArtifactPage() {
         setArtifact(data.artifact);
         setLoading(false);
       })
-      .catch(() => {
-        router.push('/world');
-      });
+      .catch(() => router.push('/world'));
   }, [artifactId, router]);
 
   if (loading || !artifact) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading artifact...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading artifact…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <Link
-            href={fromInsights ? '/organiser/insights' : '/me'}
-            className="inline-flex items-center text-primary-600 hover:text-primary-700"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {fromInsights ? 'Back to Insights' : 'Back to My Rooms'}
-          </Link>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-6 px-4">
+      <div className="max-w-4xl mx-auto">
+        <Link
+          href={fromInsights ? '/organiser/insights' : '/me'}
+          className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm mb-6"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {fromInsights ? 'Back to Insights' : 'Back to My Rooms'}
+        </Link>
 
         <div
-          className="bg-white shadow-lg rounded-lg"
+          className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden [&_*]:max-w-full"
           dangerouslySetInnerHTML={{ __html: artifact.htmlContent }}
         />
       </div>

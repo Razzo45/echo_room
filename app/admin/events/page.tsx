@@ -126,7 +126,7 @@ export default function AdminEventsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-gray-600 border-t-white mx-auto mb-4" />
           <p className="text-gray-400">Loading events...</p>
         </div>
       </div>
@@ -156,7 +156,7 @@ export default function AdminEventsPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {events.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-12 text-center">
             <p className="text-gray-400">No events found</p>
           </div>
         ) : (
@@ -164,7 +164,7 @@ export default function AdminEventsPage() {
             {events.map((event) => (
               <div
                 key={event.id}
-                className="bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-gray-600 transition"
+                className="bg-gray-800 rounded-xl border border-gray-700 p-6 hover:border-gray-600 transition"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
