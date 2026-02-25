@@ -171,7 +171,7 @@ export default function OrganiserInsightsPage() {
 
   if (loadingEvents) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
@@ -182,27 +182,27 @@ export default function OrganiserInsightsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href="/organiser/dashboard"
-                className="text-gray-600 hover:text-gray-900"
+                className="text-primary-600 hover:text-primary-700 font-semibold text-sm"
               >
                 ← Dashboard
               </Link>
-              <h1 className="text-2xl font-bold text-gray-900">Insights</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Insights</h1>
             </div>
             <div className="flex items-center gap-3">
-              <label htmlFor="event-select" className="text-sm font-medium text-gray-700">
+              <label htmlFor="event-select" className="label mb-0 text-gray-700">
                 Event:
               </label>
               <select
                 id="event-select"
                 value={selectedEventId}
                 onChange={(e) => setSelectedEventId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-w-[220px]"
+                className="input min-w-[220px]"
               >
                 <option value="">Select event</option>
                 {events.map((e) => (
@@ -216,7 +216,7 @@ export default function OrganiserInsightsPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
         {!selectedEventId && (
           <div className="card-elevated p-12 text-center">
             <p className="text-gray-600">Select an event to view insights.</p>
@@ -231,8 +231,8 @@ export default function OrganiserInsightsPage() {
 
         {selectedEventId && !loadingInsights && insights && (
           <>
-            <section className="card-elevated overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <section className="card-elevated overflow-hidden rounded-3xl">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-3xl">
                 <h2 className="text-lg font-semibold text-gray-900">Participants</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
                   {insights.participants.length} participant{insights.participants.length !== 1 ? 's' : ''} in this event
@@ -274,7 +274,7 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="card-elevated overflow-hidden">
+            <section className="card-elevated overflow-hidden rounded-3xl">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Room compositions</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Who joined whom in each room</p>
@@ -306,7 +306,7 @@ export default function OrganiserInsightsPage() {
                         {room.members.map((m) => (
                           <li
                             key={m.userId}
-                            className="text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded border border-gray-200"
+                            className="text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-2xl border border-gray-200"
                           >
                             <span className="font-medium">{m.name}</span>
                             <span className="text-gray-500">
@@ -323,7 +323,7 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="card-elevated overflow-hidden">
+            <section className="card-elevated overflow-hidden rounded-3xl">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Badge stats</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Badges earned by participants in this event</p>
@@ -336,7 +336,7 @@ export default function OrganiserInsightsPage() {
                     {insights.badgeStats.map((b) => (
                       <div
                         key={b.badgeType}
-                        className="flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 bg-white"
+                        className="flex items-center gap-2 rounded-2xl border-2 border-gray-200 px-4 py-2 bg-white"
                       >
                         <span className="text-xl" title={b.name}>
                           {b.icon}
@@ -363,7 +363,7 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="card-elevated overflow-hidden">
+            <section className="card-elevated overflow-hidden rounded-3xl">
               <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                 <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
                 <p className="text-sm text-gray-500 mt-0.5">
@@ -373,7 +373,7 @@ export default function OrganiserInsightsPage() {
                   <button
                     type="button"
                     onClick={() => setArtifactFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                    className={`min-h-[44px] px-4 py-2 rounded-2xl text-sm font-semibold transition ${
                       artifactFilter === 'all'
                         ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -384,7 +384,7 @@ export default function OrganiserInsightsPage() {
                   <button
                     type="button"
                     onClick={() => setArtifactFilter('archived')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                    className={`min-h-[44px] px-4 py-2 rounded-2xl text-sm font-semibold transition ${
                       artifactFilter === 'archived'
                         ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -395,7 +395,7 @@ export default function OrganiserInsightsPage() {
                   <button
                     type="button"
                     onClick={() => setArtifactFilter('past')}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                    className={`min-h-[44px] px-4 py-2 rounded-2xl text-sm font-semibold transition ${
                       artifactFilter === 'past'
                         ? 'bg-primary-600 text-white'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'

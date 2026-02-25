@@ -445,7 +445,7 @@ export default function EventDetailPage() {
       {/* Re-generate confirmation */}
       {showGenerateConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="card-elevated max-w-md w-full p-6 rounded-3xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Re-generate rooms?</h3>
             <p className="text-gray-600 text-sm mb-6">
               Are you sure you want to re-generate new rooms? All content generated up until now will be lost and replaced with the newest version. If you want to keep it, you can always modify the content manually on a per room/quest basis.
@@ -454,14 +454,14 @@ export default function EventDetailPage() {
               <button
                 type="button"
                 onClick={() => setShowGenerateConfirm(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200"
+                className="btn btn-secondary"
               >
                 No – go back to page and no generation
               </button>
               <button
                 type="button"
                 onClick={() => generateRooms()}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700"
+                className="btn btn-primary"
               >
                 Yes – go forward
               </button>
@@ -472,7 +472,7 @@ export default function EventDetailPage() {
       {/* Generating overlay – locks panel until draft is ready */}
       {generating && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center">
+          <div className="card-elevated max-w-md w-full p-8 text-center rounded-3xl">
             <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Generating rooms</h3>
             <p className="text-gray-600 text-sm mb-4">
@@ -485,32 +485,33 @@ export default function EventDetailPage() {
         </div>
       )}
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center">
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center gap-4">
             <Link
               href="/organiser/dashboard"
-              className="text-gray-600 hover:text-gray-900 mr-4"
+              className="text-primary-600 hover:text-primary-700 font-semibold text-sm shrink-0"
             >
               ← Dashboard
             </Link>
-            <div className="flex-1">
-              <div className="flex items-center">
-                <h1 className="text-2xl font-bold text-gray-900">{event.name}</h1>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{event.name}</h1>
                 <div
-                  className="w-4 h-4 rounded-full ml-3"
+                  className="w-4 h-4 rounded-full shrink-0"
                   style={{ backgroundColor: event.brandColor }}
-                ></div>
+                  aria-hidden
+                />
               </div>
               {event.description && (
-                <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+                <p className="text-sm text-gray-600 mt-0.5 line-clamp-1">{event.description}</p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         {/* AI Generation Section */}
         <div className="card-elevated mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Room Generation</h3>
@@ -525,7 +526,7 @@ export default function EventDetailPage() {
                 onChange={(e) => setAiBrief(e.target.value)}
                 placeholder="Describe your event theme, goals, and the types of decisions you want participants to make. The AI will generate quests, decisions, and options based on this brief."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="input resize-y"
                 disabled={generating || savingBrief}
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -533,18 +534,18 @@ export default function EventDetailPage() {
               </p>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={saveAiBrief}
                 disabled={savingBrief || aiBrief === event?.aiBrief || !aiBrief.trim()}
-                className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg font-semibold hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-secondary"
               >
                 {savingBrief ? 'Saving...' : 'Save Brief'}
               </button>
               <button
                 onClick={startGenerateRooms}
                 disabled={generating || !aiBrief.trim() || event?.aiGenerationStatus === 'GENERATING'}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-primary"
               >
                 {generating || event?.aiGenerationStatus === 'GENERATING' ? 'Generating...' : 'Generate Rooms'}
               </button>
@@ -552,7 +553,7 @@ export default function EventDetailPage() {
 
             {/* Generation Status */}
             {(event?.aiGenerationStatus !== 'IDLE' || generationStatus) && (
-              <div className={`p-4 rounded-lg border ${
+              <div className={`p-4 rounded-2xl border-2 ${
                 event?.aiGenerationStatus === 'READY' || generationStatus?.status === 'READY'
                   ? 'bg-green-50 border-green-200'
                   : event?.aiGenerationStatus === 'GENERATING' || generationStatus?.status === 'GENERATING'
@@ -652,35 +653,35 @@ export default function EventDetailPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Event Codes</h3>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 gap-3">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="number"
                       min="1"
                       max="10"
                       value={codeCount}
                       onChange={(e) => setCodeCount(parseInt(e.target.value) || 1)}
-                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                      className="input w-20 text-center"
                     />
                     <button
                       onClick={generateCodes}
                       disabled={generating}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+                      className="btn btn-primary"
                     >
                       {generating ? 'Generating...' : 'Generate'}
                     </button>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="text"
                       placeholder="Custom code (e.g. SMARTCITY26)"
                       value={customCode}
                       onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="input flex-1 min-w-[140px]"
                     />
                     <button
                       onClick={createCustomCode}
                       disabled={generating || !customCode.trim()}
-                      className="px-3 py-2 bg-white text-primary-700 border border-primary-200 rounded-lg text-sm font-semibold hover:bg-primary-50 transition disabled:opacity-50"
+                      className="btn btn-secondary"
                     >
                       Add Custom
                     </button>
@@ -701,7 +702,7 @@ export default function EventDetailPage() {
                   {event.eventCodes.map((code) => (
                     <div
                       key={code.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
+                      className="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-50 rounded-2xl border-2 border-gray-200"
                     >
                       <div className="flex-1">
                         <div className="flex items-center">
@@ -723,28 +724,32 @@ export default function EventDetailPage() {
                           {code.maxUses && ` (max: ${code.maxUses})`}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => copyCode(code.code)}
-                          className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition"
+                          type="button"
+                          className="btn btn-ghost text-sm min-h-[44px]"
                         >
                           {copiedCode === code.code ? '✓ Copied' : 'Copy Code'}
                         </button>
                         <button
                           onClick={() => copyJoinLink(code.code)}
-                          className="px-3 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg font-semibold transition"
+                          type="button"
+                          className="btn btn-secondary text-sm min-h-[44px]"
                         >
                           {copiedCode === code.code + '-link' ? '✓ Copied Link' : 'Copy Join Link'}
                         </button>
                         <button
                           onClick={() => toggleCodeActive(code.id, !code.active)}
-                          className="px-3 py-2 text-sm rounded-lg transition border"
+                          type="button"
+                          className="btn btn-secondary text-sm min-h-[44px]"
                         >
                           {code.active ? 'Deactivate' : 'Activate'}
                         </button>
                         <button
                           onClick={() => deleteCode(code.id, code.usedCount)}
-                          className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition border border-red-200"
+                          type="button"
+                          className="btn btn-danger text-sm min-h-[44px]"
                         >
                           Delete
                         </button>
@@ -755,9 +760,9 @@ export default function EventDetailPage() {
               )}
 
               {event.eventCodes.length > 0 && (
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="text-sm font-semibold text-blue-900 mb-2">How to Share</h4>
-                  <p className="text-sm text-blue-800">
+                <div className="mt-6 p-4 bg-primary-50 border-2 border-primary-200 rounded-2xl">
+                  <h4 className="text-sm font-semibold text-primary-900 mb-2">How to Share</h4>
+                  <p className="text-sm text-primary-800">
                     Share the <strong>event code</strong> with participants, or use the <strong>join link</strong> to 
                     pre-fill the code. Participants visit {window.location.origin} and enter the code.
                   </p>
@@ -780,7 +785,7 @@ export default function EventDetailPage() {
                     const regionQuests = region.quests ?? [];
                     const hasDeletableQuests = regionQuests.some((q) => (q._count?.rooms ?? 0) === 0);
                     return (
-                      <div key={region.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div key={region.id} className="border-2 border-gray-200 rounded-2xl overflow-hidden">
                         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
                           <div>
                             <h4 className="text-md font-semibold text-gray-800">
@@ -820,7 +825,7 @@ export default function EventDetailPage() {
                               {regionQuests.map((quest) => (
                                 <div
                                   key={quest.id}
-                                  className="flex items-center justify-between rounded border border-gray-200 px-3 py-2"
+                                  className="flex items-center justify-between rounded-2xl border-2 border-gray-200 px-4 py-3"
                                 >
                                   <div>
                                     <p className="text-sm font-medium text-gray-900">
@@ -833,7 +838,7 @@ export default function EventDetailPage() {
                                   <div className="flex items-center gap-2">
                                     <Link
                                       href={`/organiser/quests/${quest.id}`}
-                                      className="text-sm text-primary-600 hover:text-primary-800 font-semibold"
+                                      className="btn btn-ghost text-sm min-h-[40px] text-primary-600 hover:text-primary-800 font-semibold"
                                     >
                                       Edit script
                                     </Link>
@@ -841,7 +846,7 @@ export default function EventDetailPage() {
                                       type="button"
                                       onClick={() => deleteQuest(quest)}
                                       disabled={deletingQuestId === quest.id || (quest._count?.rooms ?? 0) > 0}
-                                      className="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="btn btn-danger text-sm min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
                                       title={(quest._count?.rooms ?? 0) > 0 ? 'Remove or complete rooms first' : 'Delete this quest'}
                                     >
                                       {deletingQuestId === quest.id ? 'Deleting…' : 'Delete'}

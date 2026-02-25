@@ -206,17 +206,18 @@ export default function QuestEditPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center">
+      <div className="sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
-              className="text-gray-600 hover:text-gray-900 mr-4"
+              type="button"
+              className="text-primary-600 hover:text-primary-700 font-semibold text-sm min-h-[48px] flex items-center"
             >
               ← Back
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Edit Quest Script</h1>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Edit Quest Script</h1>
               <p className="text-sm text-gray-600">
                 {quest.region?.displayName ? `${quest.region.displayName} · ` : ''}
                 Quest ID: {quest.id}
@@ -227,14 +228,16 @@ export default function QuestEditPage() {
             <button
               onClick={handleRevert}
               disabled={reverting}
-              className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              type="button"
+              className="btn btn-secondary"
             >
               {reverting ? 'Reverting…' : 'Revert to AI baseline'}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50"
+              type="button"
+              className="btn btn-primary"
             >
               {saving ? 'Saving…' : 'Save script'}
             </button>
@@ -242,33 +245,29 @@ export default function QuestEditPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
         {/* Quest-level fields */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+        <div className="card-elevated space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Quest name
-            </label>
+            <label className="label">Quest name</label>
             <input
               type="text"
               value={quest.name}
               onChange={(e) =>
                 handleFieldChange(null, 'name', e.target.value)
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Quest description
-            </label>
+            <label className="label">Quest description</label>
             <textarea
               value={quest.description}
               onChange={(e) =>
                 handleFieldChange(null, 'description', e.target.value)
               }
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="input resize-y"
             />
           </div>
 
@@ -280,7 +279,7 @@ export default function QuestEditPage() {
             </p>
             <div className="flex flex-wrap gap-6">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Min players (to start)</label>
+                <label className="label text-xs">Min players (to start)</label>
                 <input
                   type="number"
                   min={2}
@@ -290,11 +289,11 @@ export default function QuestEditPage() {
                     const v = Math.min(5, Math.max(2, parseInt(e.target.value, 10) || 2));
                     setQuest((p) => (p ? { ...p, minTeamSize: v, teamSize: Math.max(p.teamSize, v) } : p));
                   }}
-                  className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg"
+                  className="input w-24"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Max players (per room)</label>
+                <label className="label text-xs">Max players (per room)</label>
                 <input
                   type="number"
                   min={2}
@@ -304,7 +303,7 @@ export default function QuestEditPage() {
                     const v = Math.min(5, Math.max(2, parseInt(e.target.value, 10) || 3));
                     setQuest((p) => (p ? { ...p, teamSize: v, minTeamSize: Math.min(p.minTeamSize, v) } : p));
                   }}
-                  className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg"
+                  className="input w-24"
                 />
               </div>
             </div>
@@ -315,7 +314,7 @@ export default function QuestEditPage() {
         {quest.decisions.map((d) => (
           <div
             key={d.id}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4"
+            className="card-elevated space-y-4"
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
@@ -325,9 +324,7 @@ export default function QuestEditPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Decision title
-              </label>
+              <label className="label">Decision title</label>
               <input
                 type="text"
                 value={d.title}
@@ -338,14 +335,12 @@ export default function QuestEditPage() {
                     e.target.value
                   )
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="input"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Context / background
-              </label>
+              <label className="label">Context / background</label>
               <textarea
                 value={d.context}
                 onChange={(e) =>
@@ -356,7 +351,7 @@ export default function QuestEditPage() {
                   )
                 }
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="input resize-y"
               />
             </div>
 
@@ -364,7 +359,7 @@ export default function QuestEditPage() {
               {d.options.map((o) => (
                 <div
                   key={o.id}
-                  className="border border-gray-200 rounded-lg p-4 space-y-3"
+                  className="border-2 border-gray-200 rounded-2xl p-4 space-y-3 bg-gray-50/50"
                 >
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-800 text-sm font-semibold">
@@ -374,9 +369,7 @@ export default function QuestEditPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Option title
-                    </label>
+                    <label className="label text-xs">Option title</label>
                     <input
                       type="text"
                       value={o.title}
@@ -387,14 +380,12 @@ export default function QuestEditPage() {
                           e.target.value
                         )
                       }
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="input text-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
+                    <label className="label text-xs">Description</label>
                     <textarea
                       value={o.description}
                       onChange={(e) =>
@@ -405,14 +396,12 @@ export default function QuestEditPage() {
                         )
                       }
                       rows={3}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="input text-sm resize-y"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Impact / outcomes
-                    </label>
+                    <label className="label text-xs">Impact / outcomes</label>
                     <textarea
                       value={o.impact}
                       onChange={(e) =>
@@ -423,14 +412,12 @@ export default function QuestEditPage() {
                         )
                       }
                       rows={3}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="input text-sm resize-y"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Tradeoffs
-                    </label>
+                    <label className="label text-xs">Tradeoffs</label>
                     <textarea
                       value={o.tradeoff}
                       onChange={(e) =>
@@ -441,7 +428,7 @@ export default function QuestEditPage() {
                         )
                       }
                       rows={3}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      className="input text-sm resize-y"
                     />
                   </div>
                 </div>

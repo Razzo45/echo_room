@@ -34,18 +34,18 @@ export default function OrganiserLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-primary-900 via-primary-800 to-primary-900">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex w-14 h-14 rounded-2xl bg-white/10 items-center justify-center mb-5">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Organiser portal</h1>
-          <p className="text-primary-200 text-sm">Echo Room management</p>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="hero-event rounded-b-[2rem]">
+        <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
         </div>
+        <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Organiser portal</h1>
+        <p className="text-white/90 text-base font-medium">Echo Room management</p>
+      </div>
 
+      <div className="flex-1 px-4 -mt-6 relative z-10 max-w-md mx-auto w-full pb-8 safe-bottom">
         <div className="card-elevated">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
@@ -72,7 +72,7 @@ export default function OrganiserLoginPage() {
               />
             </div>
             {error && (
-              <div className="p-4 rounded-xl bg-red-50 border border-red-100">
+              <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-100">
                 <p className="text-sm text-red-800 font-medium">{error}</p>
               </div>
             )}
@@ -90,7 +90,7 @@ export default function OrganiserLoginPage() {
         </div>
 
         <p className="mt-6 text-center">
-          <a href="/" className="text-primary-200 hover:text-white text-sm font-medium">← Back to participant login</a>
+          <a href="/" className="text-primary-600 hover:text-primary-700 text-sm font-medium">← Back to participant login</a>
         </p>
       </div>
     </div>

@@ -73,17 +73,17 @@ export default function NewEventPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
-          <Link href="/organiser/dashboard" className="inline-flex items-center text-gray-600 hover:text-gray-900 font-medium text-sm mb-3">
-            ← Back
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+          <Link href="/organiser/dashboard" className="inline-flex items-center min-h-[48px] text-primary-600 hover:text-primary-700 font-semibold text-sm">
+            ← Back to dashboard
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Create new event</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-2">Create new event</h1>
           <p className="text-sm text-gray-600 mt-0.5">Set up a new Echo Room event</p>
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-8 safe-bottom">
         <form onSubmit={handleSubmit} className="card-elevated space-y-6">
           <div>
             <label className="label">Event name *</label>
@@ -209,7 +209,7 @@ export default function NewEventPage() {
               <p className="text-sm text-red-800 font-medium">{error}</p>
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200">
             <Link href="/organiser/dashboard" className="btn btn-secondary">Cancel</Link>
             <button type="submit" disabled={loading || !formData.name} className="btn btn-primary">
               {loading ? 'Creating…' : 'Create event'}

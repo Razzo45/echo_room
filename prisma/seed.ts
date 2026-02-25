@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { getBadgeDefinition } from '../lib/badges';
+import { generateArtifact } from '../lib/artifact';
+import type { BadgeType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -103,13 +106,29 @@ async function main() {
   await prisma.quest.deleteMany();
   await prisma.region.deleteMany();
   await prisma.session.deleteMany();
+  await prisma.userBadge.deleteMany();
   await prisma.user.deleteMany();
   await prisma.eventCode.deleteMany();
   await prisma.event.deleteMany();
 
   console.log('✅ Cleared existing data');
 
-  // Create event
+  // Organiser who will own the event (so they can view it in the dashboard)
+  const testOrganiserEmail = 'organiser@test.com';
+  let organiser = await prisma.organiser.findUnique({ where: { email: testOrganiserEmail } });
+  if (!organiser) {
+    organiser = await prisma.organiser.create({
+      data: {
+        email: testOrganiserEmail,
+        name: 'Test Organiser',
+        passwordHash: await bcrypt.hash(DEFAULT_ORGANISER_PASSWORD, 10),
+        role: 'ORGANISER',
+      },
+    });
+    console.log('✅ Created organiser:', testOrganiserEmail);
+  }
+
+  // Create event (associated to organiser@test.com)
   const event = await prisma.event.create({
     data: {
       name: 'Smart City Hackathon March 2026',
@@ -117,6 +136,7 @@ async function main() {
       startDate: new Date('2026-03-15T09:00:00Z'),
       timezone: 'UTC',
       brandColor: '#0ea5e9',
+      organiserId: organiser.id,
     },
   });
 
@@ -470,6 +490,22 @@ async function main() {
 
   console.log(`✅ Created quest: ${quest3.name} with ${4} fields`);
 
+  // Seed badge definitions (required for UserBadges and organiser insights)
+  const badgeTypes: BadgeType[] = [
+    'FIRST_QUEST_COMPLETE', 'TEAM_PLAYER', 'COLLABORATOR', 'STORYTELLER', 'DECISION_MAKER',
+    'ARTIFACT_CREATOR', 'QUEST_MASTER', 'SOCIAL_CONNECTOR', 'PERFECT_TEAM', 'EARLY_BIRD',
+    'NIGHT_OWL', 'CONSENSUS_BUILDER', 'DIVERSITY_CHAMPION',
+  ];
+  for (const badgeType of badgeTypes) {
+    const def = getBadgeDefinition(badgeType);
+    await prisma.badge.upsert({
+      where: { badgeType },
+      update: { name: def.name, description: def.description, icon: def.icon, rarity: def.rarity },
+      create: { badgeType, name: def.name, description: def.description, icon: def.icon, rarity: def.rarity },
+    });
+  }
+  console.log(`✅ Seeded ${badgeTypes.length} badge definitions`);
+
   // Create default organiser and admin accounts so login works without env vars
   const organiserEmail = 'organiser@echo-room.local';
   const adminEmail = 'admin@echo-room.local';
@@ -498,15 +534,181 @@ async function main() {
     console.log('✅ Created default admin:', adminEmail);
   }
 
+  // --- Mock usage data for UI: users, finished rooms, artifacts, badges ---
+  const mockUsers = [
+    { name: 'Alex Chen', organisation: 'City Labs', role: 'Product Manager', country: 'Singapore', skill: 'Strategy', curiosity: 'Mobility' },
+    { name: 'Samira Khan', organisation: 'DataFlow', role: 'Data Scientist', country: 'India', skill: 'Analytics', curiosity: 'Sustainability' },
+    { name: 'Jordan Lee', organisation: 'UrbanTech', role: 'Engineer', country: 'South Korea', skill: 'Backend', curiosity: 'Smart grids' },
+    { name: 'Morgan Taylor', organisation: 'Civic Hub', role: 'Designer', country: 'UK', skill: 'UX', curiosity: 'Citizen engagement' },
+    { name: 'Riley O\'Brien', organisation: 'Green City', role: 'Policy Analyst', country: 'Ireland', skill: 'Research', curiosity: 'Energy' },
+    { name: 'Yuki Tanaka', organisation: 'Tokyo Mobility', role: 'Developer', country: 'Japan', skill: 'Frontend', curiosity: 'Traffic' },
+    { name: 'Elena Vasquez', organisation: 'Madrid Innovation', role: 'Project Lead', country: 'Spain', skill: 'Leadership', curiosity: 'Safety' },
+    { name: 'Omar Hassan', organisation: 'Cairo Digital', role: 'Architect', country: 'Egypt', skill: 'Systems', curiosity: 'Water' },
+    { name: 'Zara Williams', organisation: 'Melbourne Gov', role: 'Consultant', country: 'Australia', skill: 'Strategy', curiosity: 'Waste' },
+    { name: 'Lucas Berg', organisation: 'Stockholm Smart', role: 'Engineer', country: 'Sweden', skill: 'IoT', curiosity: 'Air quality' },
+    { name: 'Priya Patel', organisation: 'Mumbai Tech', role: 'Data Analyst', country: 'India', skill: 'Data', curiosity: 'Transport' },
+    { name: 'Felix Mueller', organisation: 'Berlin Labs', role: 'Developer', country: 'Germany', skill: 'Full-stack', curiosity: 'Mobility' },
+    { name: 'Nadia Kowalski', organisation: 'Warsaw City', role: 'Designer', country: 'Poland', skill: 'Service design', curiosity: 'Housing' },
+    { name: 'James Okonkwo', organisation: 'Lagos Smart', role: 'Engineer', country: 'Nigeria', skill: 'Backend', curiosity: 'Energy' },
+    { name: 'Sofia Rossi', organisation: 'Milan Innovation', role: 'PM', country: 'Italy', skill: 'Product', curiosity: 'Tourism' },
+  ];
+
+  const createdUsers = await Promise.all(
+    mockUsers.map((u) =>
+      prisma.user.create({
+        data: {
+          eventId: event.id,
+          name: u.name,
+          organisation: u.organisation,
+          role: u.role,
+          country: u.country,
+          skill: u.skill,
+          curiosity: u.curiosity,
+          isDiscoverable: Math.random() > 0.3,
+        },
+      })
+    )
+  );
+  console.log(`✅ Created ${createdUsers.length} mock participants`);
+
+  // Completed rooms (quest2 = The City Traffic Dilemma) with 3 members each, votes, commits, artifacts
+  const roomCodes = ['MOCK-A1', 'MOCK-A2', 'MOCK-A3', 'MOCK-A4', 'MOCK-A5'];
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+  for (let i = 0; i < roomCodes.length; i++) {
+    const roomCode = roomCodes[i];
+    const memberStart = i * 3;
+    const roomUsers = createdUsers.slice(memberStart, memberStart + 3);
+    if (roomUsers.length < 3) break;
+
+    const startedAt = new Date(oneHourAgo.getTime() + i * 10 * 60 * 1000);
+    const completedAt = new Date(startedAt.getTime() + 20 * 60 * 1000);
+
+    const room = await prisma.room.create({
+      data: {
+        eventId: event.id,
+        questId: quest2.id,
+        roomCode,
+        status: 'COMPLETED',
+        currentDecision: 4,
+        startedAt,
+        completedAt,
+        lastActivityAt: completedAt,
+        closedAt: completedAt,
+      },
+    });
+
+    for (const u of roomUsers) {
+      await prisma.roomMember.create({
+        data: { roomId: room.id, userId: u.id, completedAt },
+      });
+    }
+
+    const optionsByDecision: Record<number, string> = { 1: 'B', 2: 'A', 3: 'B' };
+    for (let d = 1; d <= 3; d++) {
+      const committed = optionsByDecision[d];
+      await prisma.decisionCommit.create({
+        data: { roomId: room.id, decisionNumber: d, committedOption: committed },
+      });
+      for (const u of roomUsers) {
+        await prisma.vote.create({
+          data: {
+            roomId: room.id,
+            userId: u.id,
+            decisionNumber: d,
+            optionKey: committed,
+            justification: `Mock justification from ${u.name} for decision ${d}. We chose this for balance and impact.`,
+          },
+        });
+      }
+    }
+
+    // Use real artifact generator so mock artifacts match the City Decision Map layout (PDF/HTML)
+    await generateArtifact(room.id);
+  }
+  console.log(`✅ Created ${roomCodes.length} completed rooms with artifacts`);
+
+  // Two open/in-progress rooms for UI variety
+  const openRoom = await prisma.room.create({
+    data: {
+      eventId: event.id,
+      questId: quest2.id,
+      roomCode: 'MOCK-OPEN',
+      status: 'OPEN',
+      lastActivityAt: now,
+    },
+  });
+  await prisma.roomMember.create({
+    data: { roomId: openRoom.id, userId: createdUsers[14].id },
+  });
+
+  const inProgressRoom = await prisma.room.create({
+    data: {
+      eventId: event.id,
+      questId: quest2.id,
+      roomCode: 'MOCK-LIVE',
+      status: 'IN_PROGRESS',
+      currentDecision: 2,
+      startedAt: new Date(now.getTime() - 15 * 60 * 1000),
+      lastActivityAt: now,
+    },
+  });
+  for (const u of createdUsers.slice(12, 15)) {
+    await prisma.roomMember.create({ data: { roomId: inProgressRoom.id, userId: u.id } });
+  }
+  await prisma.decisionCommit.create({
+    data: { roomId: inProgressRoom.id, decisionNumber: 1, committedOption: 'A' },
+  });
+  for (const u of createdUsers.slice(12, 15)) {
+    await prisma.vote.create({
+      data: { roomId: inProgressRoom.id, userId: u.id, decisionNumber: 1, optionKey: 'A', justification: 'Mock vote for decision 1.' },
+    });
+  }
+  console.log('✅ Created 1 OPEN and 1 IN_PROGRESS room');
+
+  // User badges for a subset of participants (so badge stats and profile show something)
+  const badgeRecords = await prisma.badge.findMany({ where: {} });
+  const teamPlayerBadge = badgeRecords.find((b) => b.badgeType === 'TEAM_PLAYER');
+  const artifactBadge = badgeRecords.find((b) => b.badgeType === 'ARTIFACT_CREATOR');
+  const firstQuestBadge = badgeRecords.find((b) => b.badgeType === 'FIRST_QUEST_COMPLETE');
+  const completedRooms = await prisma.room.findMany({ where: { eventId: event.id, status: 'COMPLETED' }, select: { id: true } });
+  if (teamPlayerBadge && artifactBadge && firstQuestBadge && completedRooms.length > 0) {
+    for (let i = 0; i < Math.min(createdUsers.length, 12); i++) {
+      const user = createdUsers[i];
+      const room = completedRooms[i % completedRooms.length];
+      await prisma.userBadge.createMany({
+        data: [
+          { userId: user.id, badgeId: firstQuestBadge.id, roomId: room.id },
+          { userId: user.id, badgeId: teamPlayerBadge.id, roomId: room.id },
+          { userId: user.id, badgeId: artifactBadge.id, roomId: room.id },
+        ],
+        skipDuplicates: true,
+      });
+    }
+    console.log('✅ Awarded mock badges to participants');
+  }
+
+  // Optional: archived artifacts (organiser insights)
+  await prisma.eventArtifactArchive.createMany({
+    data: [
+      { eventId: event.id, roomCode: 'LEGACY-1', questName: 'The City Traffic Dilemma', htmlContent: '<!DOCTYPE html><html><body><h1>Archived room LEGACY-1</h1><p>Historical decision map.</p></body></html>' },
+      { eventId: event.id, roomCode: 'LEGACY-2', questName: 'The City Traffic Dilemma', htmlContent: '<!DOCTYPE html><html><body><h1>Archived room LEGACY-2</h1><p>Historical decision map.</p></body></html>' },
+    ],
+  });
+  console.log('✅ Created 2 archived artifact records');
+
   console.log('\n🎉 Seed completed successfully!\n');
   console.log('📝 Credentials:');
   console.log(`   Event Code: ${eventCode.code}`);
+  console.log(`   Event owner (view in dashboard): ${testOrganiserEmail} / ${DEFAULT_ORGANISER_PASSWORD}`);
   console.log(`   Admin: ${adminEmail} / ${DEFAULT_ADMIN_PASSWORD}`);
   console.log(`   Organiser: ${organiserEmail} / ${DEFAULT_ORGANISER_PASSWORD}\n`);
   console.log('📊 Created:');
   console.log(`   1 Event: ${event.name}`);
   console.log(`   5 Districts (1 active, 4 locked)`);
-  console.log(`   3 Quests (Arrival, Traffic Dilemma, Follow-up)\n`);
+  console.log(`   3 Quests (Arrival, Traffic Dilemma, Follow-up)`);
+  console.log(`   ${createdUsers.length} mock participants, ${roomCodes.length + 2} rooms (${roomCodes.length} completed with artifacts), badges & archives\n`);
 }
 
 main()

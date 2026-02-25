@@ -43,7 +43,7 @@ export default function OrganiserDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading dashboard…</p>
         </div>
       </div>
@@ -52,18 +52,18 @@ export default function OrganiserDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 safe-bottom">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Echo Room</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Echo Room</h1>
               <p className="text-sm text-gray-600 mt-0.5">Organiser dashboard</p>
             </div>
             <div className="flex items-center gap-3">
-              <Link href="/organiser/insights" className="btn btn-secondary">
+              <Link href="/organiser/insights" className="btn btn-secondary min-h-[48px]">
                 Insights
               </Link>
-              <Link href="/organiser/events/new" className="btn btn-primary">
+              <Link href="/organiser/events/new" className="btn btn-primary min-h-[48px]">
                 + Create event
               </Link>
             </div>
@@ -71,10 +71,10 @@ export default function OrganiserDashboard() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-8 safe-bottom">
         {events.length === 0 ? (
-          <div className="card-elevated text-center py-14">
-            <div className="inline-flex w-16 h-16 rounded-2xl bg-gray-100 text-gray-400 items-center justify-center mb-4">
+          <div className="card-elevated text-center py-14 px-6">
+            <div className="inline-flex w-16 h-16 rounded-2xl bg-primary-100 text-primary-600 items-center justify-center mb-4">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -91,7 +91,7 @@ export default function OrganiserDashboard() {
               <Link
                 key={event.id}
                 href={`/organiser/events/${event.id}`}
-                className="card-elevated hover:shadow-lg transition-all block"
+                className="card-elevated hover:shadow-xl transition-all block active:scale-[0.99]"
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0 flex-1">
