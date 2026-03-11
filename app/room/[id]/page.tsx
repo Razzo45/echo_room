@@ -46,6 +46,14 @@ export default function RoomLobbyPage() {
       'PushManager' in window &&
       'Notification' in window;
     setPushSupported(isSupported);
+
+    if (isSupported) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .catch(() => {
+          // ignore registration errors; push UI will still be gated by support flag
+        });
+    }
   }, []);
 
   const enablePushNotifications = async () => {
