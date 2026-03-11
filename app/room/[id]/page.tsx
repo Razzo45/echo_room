@@ -48,17 +48,24 @@ export default function RoomLobbyPage() {
     setPushSupported(isSupported);
 
     if (isSupported) {
+      console.log('[EchoRoom] Push supported, registering service worker');
       navigator.serviceWorker
         .register('/sw.js')
-        .catch(() => {
-          // ignore registration errors; push UI will still be gated by support flag
+        .then(() => {
+          console.log('[EchoRoom] Service worker registered');
+        })
+        .catch((err) => {
+          console.error('[EchoRoom] Service worker registration failed', err);
         });
+    } else {
+      console.log('[EchoRoom] Push not supported in this browser');
     }
   }, []);
 
   const enablePushNotifications = async () => {
     setPushError(null);
     try {
+      console.log('[EchoRoom] Enable push clicked');
       if (!pushSupported) return;
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
@@ -81,7 +88,9 @@ export default function RoomLobbyPage() {
       });
 
       setPushEnabled(true);
-    } catch {
+      console.log('[EchoRoom] Push subscription created and sent to server');
+    } catch (err) {
+      console.error('[EchoRoom] Failed to enable push notifications', err);
       setPushError('Something went wrong enabling notifications.');
     }
   };
