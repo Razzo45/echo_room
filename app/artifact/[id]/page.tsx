@@ -35,6 +35,12 @@ export default function ArtifactPage() {
       .catch(() => router.push('/world'));
   }, [artifactId, router]);
 
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
+  };
+
   if (loading || !artifact) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -59,6 +65,13 @@ export default function ArtifactPage() {
           <span className="font-medium text-sm">{fromInsights ? 'Insights' : 'My Rooms'}</span>
         </Link>
         <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4">Decision map</h1>
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-500 text-primary-600 hover:bg-primary-50"
+        >
+          Save as PDF
+        </button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-4">
         <div
