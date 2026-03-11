@@ -7,3 +7,4 @@ artifacts
 *.log
 public/sw.js
 public/workbox-*.js
+video-library/.concat-list.txt
