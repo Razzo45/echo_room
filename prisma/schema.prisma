@@ -93,6 +93,7 @@ model User {
   roomMembers RoomMember[]
   votes       Vote[]
   badges      UserBadge[]
+  pushSubscriptions PushSubscription[]
 
   @@index([eventId])
   @@index([eventId, isDiscoverable])
@@ -488,4 +489,19 @@ model AdminAuditLog {
   @@index([organiserId])
   @@index([action])
   @@index([createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

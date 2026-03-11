@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { joinRoomSchema } from '@/lib/validation';
 import crypto from 'crypto';
+import { sendRoomReadyPush } from '@/lib/push';
 
 export async function POST(request: NextRequest) {
   try {
@@ -100,6 +101,12 @@ export async function POST(request: NextRequest) {
           lastActivityAt: now,
         },
       });
+      if (shouldAutoStart) {
+        // Fire-and-forget push notification when room becomes ready
+        sendRoomReadyPush(room.id).catch((err) => {
+          console.error('Failed to send room ready push notification', err);
+        });
+      }
     } else {
       // Create new room
       console.log(`Creating new room for quest ${questId} (no open rooms with space)`);

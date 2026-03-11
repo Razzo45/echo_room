@@ -29,12 +29,65 @@ export default function RoomLobbyPage() {
 
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   useEffect(() => {
     loadRoom();
     const interval = setInterval(loadRoom, 3000);
     return () => clearInterval(interval);
   }, [roomId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isSupported =
+      'serviceWorker' in navigator &&
+      'PushManager' in window &&
+      'Notification' in window;
+    setPushSupported(isSupported);
+  }, []);
+
+  const enablePushNotifications = async () => {
+    setPushError(null);
+    try {
+      if (!pushSupported) return;
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushError('Notifications were blocked. You can enable them in your browser settings.');
+        return;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const response = await fetch('/api/push/vapid-public-key');
+      const { publicKey } = await response.json();
+      const applicationServerKey = urlBase64ToUint8Array(publicKey);
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription),
+      });
+
+      setPushEnabled(true);
+    } catch {
+      setPushError('Something went wrong enabling notifications.');
+    }
+  };
+
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
 
   const loadRoom = async () => {
     try {
@@ -121,6 +174,33 @@ export default function RoomLobbyPage() {
                 Quest starts when {room.minPlayersToStart}+ have joined. Then everyone answers 3 decisions at their own pace. Decision map appears when all are done.
               </p>
             </div>
+          {pushSupported && (
+            <div className="mt-3 p-3 rounded-2xl bg-white border border-dashed border-primary-200">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    Get a notification when your room is ready
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    We’ll send a push notification on this device when enough people have joined.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={enablePushNotifications}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-500 text-primary-600 hover:bg-primary-50 disabled:opacity-60"
+                  disabled={pushEnabled}
+                >
+                  {pushEnabled ? 'Enabled' : 'Enable'}
+                </button>
+              </div>
+              {pushError && (
+                <p className="mt-2 text-xs text-red-500">
+                  {pushError}
+                </p>
+              )}
+            </div>
+          )}
           </div>
         </div>
         <p className="text-center mt-4">
