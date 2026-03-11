@@ -45,6 +45,7 @@ export default function RoomLobbyPage() {
       'serviceWorker' in navigator &&
       'PushManager' in window &&
       'Notification' in window;
+    console.log('[EchoRoom] pushSupported initial:', isSupported);
     setPushSupported(isSupported);
 
     if (isSupported) {
@@ -65,22 +66,28 @@ export default function RoomLobbyPage() {
   const enablePushNotifications = async () => {
     setPushError(null);
     try {
-      console.log('[EchoRoom] Enable push clicked');
+      console.log('[EchoRoom] Enable push clicked, pushSupported =', pushSupported);
       if (!pushSupported) return;
       const permission = await Notification.requestPermission();
+      console.log('[EchoRoom] Notification permission result:', permission);
       if (permission !== 'granted') {
         setPushError('Notifications were blocked. You can enable them in your browser settings.');
         return;
       }
       const registration = await navigator.serviceWorker.ready;
+      console.log('[EchoRoom] Service worker ready:', registration);
+      console.log('[EchoRoom] Fetching VAPID public key...');
       const response = await fetch('/api/push/vapid-public-key');
+      console.log('[EchoRoom] VAPID public key response status:', response.status);
       const { publicKey } = await response.json();
+      console.log('[EchoRoom] VAPID public key length:', publicKey?.length);
       const applicationServerKey = urlBase64ToUint8Array(publicKey);
+      console.log('[EchoRoom] Subscribing with PushManager...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey,
       });
-
+      console.log('[EchoRoom] Subscription object:', subscription);
       await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
