@@ -206,7 +206,8 @@ export default function RoomLobbyPage() {
                     Get a notification when your room is ready
                   </p>
                   <p className="text-xs text-gray-500">
-                    We’ll send a push notification on this device when enough people have joined.
+                    We’ll send a push notification on this device when enough people have joined. Make sure
+                    notifications are turned on for this browser on your device.
                   </p>
                 </div>
                 <button
