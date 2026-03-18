@@ -57,12 +57,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find open room for this quest (only OPEN – once IN_PROGRESS we lock joining)
+    // Find an available room for this quest.
+    // We allow joining rooms that have already auto-started (IN_PROGRESS)
+    // as long as they are not full yet, so late joiners land in the same room.
     const openRoom = await prisma.room.findFirst({
       where: {
         questId,
-        status: 'OPEN',
         eventId: user.eventId,
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
       },
       include: {
         _count: {
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     let room;
 
     if (openRoom && openRoom._count.members < quest.teamSize) {
-      // Join existing room
+      // Join existing room (OPEN or IN_PROGRESS but not yet full)
       const memberCount = openRoom._count.members + 1;
       console.log(`Joining existing room ${openRoom.id} with ${memberCount} members (max: ${quest.teamSize}, minToStart: ${minTeamSize})`);
       room = openRoom;
