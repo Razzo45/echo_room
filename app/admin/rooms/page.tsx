@@ -17,6 +17,13 @@ type RoomSummary = {
   lastActivityAt: string | null;
   closedAt: string | null;
   createdAt: string;
+  storyState?: {
+    phase?: string;
+    currentBeat?: number;
+    readyCheck?: { readyByPlayerId?: Record<string, boolean> };
+    beats?: Record<string, { submissions?: Record<string, string>; rolls?: Record<string, unknown>; consequence?: { text: string } | null }>;
+    finalSynthesis?: { status?: string };
+  } | null;
 };
 
 export default function AdminRoomsPage() {
@@ -96,6 +103,25 @@ export default function AdminRoomsPage() {
       }
     } catch (err) {
       alert('Failed to close inactive rooms');
+    }
+  };
+
+  const runRoomAction = async (roomId: string, action: string, confirmText: string) => {
+    if (!confirm(confirmText)) return;
+    try {
+      const res = await fetch('/api/admin/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, roomId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Action failed');
+        return;
+      }
+      await loadRooms();
+    } catch {
+      alert('Action failed');
     }
   };
 
@@ -206,6 +232,19 @@ export default function AdminRoomsPage() {
                   {formatTimer(room) && (
                     <p className="text-xs text-amber-400 mt-1">{formatTimer(room)}</p>
                   )}
+                  <div className="mt-2 text-xs text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-1">
+                    <p>Phase: <span className="font-semibold text-white">{room.storyState?.phase || 'n/a'}</span></p>
+                    <p>Current beat: <span className="font-semibold text-white">{room.storyState?.currentBeat ?? 'n/a'}</span></p>
+                    <p>
+                      Ready: <span className="font-semibold text-white">
+                        {Object.values(room.storyState?.readyCheck?.readyByPlayerId || {}).filter(Boolean).length}/
+                        {Object.keys(room.storyState?.readyCheck?.readyByPlayerId || {}).length}
+                      </span>
+                    </p>
+                    <p>
+                      Final synthesis: <span className="font-semibold text-white">{room.storyState?.finalSynthesis?.status || 'n/a'}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -228,6 +267,41 @@ export default function AdminRoomsPage() {
                     Close room
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => runRoomAction(room.id, 'reset_ready_check', 'Reset ready-check for this room?')}
+                  className="btn min-h-[44px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl text-sm"
+                >
+                  Reset ready-check
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runRoomAction(room.id, 'reopen_beat', 'Reopen current beat for edits?')}
+                  className="btn min-h-[44px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl text-sm"
+                >
+                  Reopen beat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runRoomAction(room.id, 'skip_beat', 'Skip current beat?')}
+                  className="btn min-h-[44px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl text-sm"
+                >
+                  Skip beat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runRoomAction(room.id, 'force_consequence_generation', 'Force consequence state now?')}
+                  className="btn min-h-[44px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl text-sm"
+                >
+                  Force consequence
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runRoomAction(room.id, 'regenerate_final_synthesis', 'Request final synthesis regeneration?')}
+                  className="btn min-h-[44px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl text-sm"
+                >
+                  Regenerate final
+                </button>
                 {room.status === 'CLOSED' && room.hasArtifact && room.artifactId && (
                   <Link
                     href={`/artifact/${room.artifactId}`}
