@@ -47,6 +47,56 @@ type Event = {
   };
 };
 
+type ScenarioSlots = {
+  eventType: string;
+  audienceType: string;
+  toneMood: string;
+  playfulnessLevel: string;
+  endingFeel: string;
+  outputStyle: string;
+  gameplayFeel: string;
+  themesMotifs: string;
+  constraints: string;
+  brandContext: string;
+  forbiddenDirections: string;
+  customNotes: string;
+};
+
+const DEFAULT_SCENARIO_SLOTS: ScenarioSlots = {
+  eventType: '',
+  audienceType: '',
+  toneMood: '',
+  playfulnessLevel: '',
+  endingFeel: '',
+  outputStyle: '',
+  gameplayFeel: '',
+  themesMotifs: '',
+  constraints: '',
+  brandContext: '',
+  forbiddenDirections: '',
+  customNotes: '',
+};
+
+function buildScenarioBrief(slots: ScenarioSlots): string {
+  return [
+    'Scenario generation slots:',
+    `- Event type: ${slots.eventType || 'Not specified'}`,
+    `- Audience type: ${slots.audienceType || 'Not specified'}`,
+    `- Tone/mood: ${slots.toneMood || 'Not specified'}`,
+    `- Playfulness level: ${slots.playfulnessLevel || 'Not specified'}`,
+    `- Desired ending feel: ${slots.endingFeel || 'Not specified'}`,
+    `- Output style: ${slots.outputStyle || 'Not specified'}`,
+    `- Gameplay feel: ${slots.gameplayFeel || 'Not specified'}`,
+    `- Themes/motifs: ${slots.themesMotifs || 'Not specified'}`,
+    `- Constraints: ${slots.constraints || 'None'}`,
+    `- Brand context: ${slots.brandContext || 'None'}`,
+    `- Forbidden tones/directions: ${slots.forbiddenDirections || 'None'}`,
+    `- Custom notes: ${slots.customNotes || 'None'}`,
+    '',
+    'Generate a 3-beat collaborative storytelling scenario suitable for live multiplayer play.',
+  ].join('\n');
+}
+
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,6 +115,7 @@ export default function EventDetailPage() {
     error?: string;
   } | null>(null);
   const [reviewDraft, setReviewDraft] = useState<any>(null);
+  const [scenarioSlots, setScenarioSlots] = useState<ScenarioSlots>(DEFAULT_SCENARIO_SLOTS);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
@@ -112,6 +163,14 @@ export default function EventDetailPage() {
       console.error('Load event error:', error);
       router.push('/organiser/dashboard');
     }
+  };
+
+  const updateScenarioSlot = (key: keyof ScenarioSlots, value: string) => {
+    setScenarioSlots((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const applyScenarioSlotsToBrief = () => {
+    setAiBrief(buildScenarioBrief(scenarioSlots));
   };
 
   const deleteQuest = async (quest: { id: string; name: string; _count?: { rooms: number } }) => {
@@ -517,6 +576,27 @@ export default function EventDetailPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Room Generation</h3>
           
           <div className="space-y-4">
+            <div className="rounded-2xl border-2 border-gray-200 p-4 bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Structured scenario setup</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input className="input" placeholder="Event type (e.g. community night)" value={scenarioSlots.eventType} onChange={(e) => updateScenarioSlot('eventType', e.target.value)} />
+                <input className="input" placeholder="Audience type" value={scenarioSlots.audienceType} onChange={(e) => updateScenarioSlot('audienceType', e.target.value)} />
+                <input className="input" placeholder="Tone / mood" value={scenarioSlots.toneMood} onChange={(e) => updateScenarioSlot('toneMood', e.target.value)} />
+                <input className="input" placeholder="Playfulness level" value={scenarioSlots.playfulnessLevel} onChange={(e) => updateScenarioSlot('playfulnessLevel', e.target.value)} />
+                <input className="input" placeholder="Desired ending feel" value={scenarioSlots.endingFeel} onChange={(e) => updateScenarioSlot('endingFeel', e.target.value)} />
+                <input className="input" placeholder="Output style (artifact style)" value={scenarioSlots.outputStyle} onChange={(e) => updateScenarioSlot('outputStyle', e.target.value)} />
+                <input className="input" placeholder="Gameplay feel" value={scenarioSlots.gameplayFeel} onChange={(e) => updateScenarioSlot('gameplayFeel', e.target.value)} />
+                <input className="input" placeholder="Themes / motifs" value={scenarioSlots.themesMotifs} onChange={(e) => updateScenarioSlot('themesMotifs', e.target.value)} />
+                <input className="input" placeholder="Constraints" value={scenarioSlots.constraints} onChange={(e) => updateScenarioSlot('constraints', e.target.value)} />
+                <input className="input" placeholder="Brand context" value={scenarioSlots.brandContext} onChange={(e) => updateScenarioSlot('brandContext', e.target.value)} />
+                <input className="input md:col-span-2" placeholder="Forbidden tones / directions" value={scenarioSlots.forbiddenDirections} onChange={(e) => updateScenarioSlot('forbiddenDirections', e.target.value)} />
+                <textarea className="input md:col-span-2 min-h-[90px]" placeholder="Custom notes" value={scenarioSlots.customNotes} onChange={(e) => updateScenarioSlot('customNotes', e.target.value)} />
+              </div>
+              <button type="button" onClick={applyScenarioSlotsToBrief} className="btn btn-secondary mt-3">
+                Assemble prompt into AI brief
+              </button>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 AI Brief *
@@ -530,7 +610,7 @@ export default function EventDetailPage() {
                 disabled={generating || savingBrief}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Example: "A smart city hackathon focused on urban sustainability. Teams will make decisions about renewable energy, public transportation, and waste management."
+                You can type freeform, or use structured scenario setup and then assemble into this brief.
               </p>
             </div>
 
