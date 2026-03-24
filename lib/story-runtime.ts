@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+
 type RoomPhase =
   | 'waiting'
   | 'room_full'
@@ -163,7 +165,8 @@ export function computeScoreboard(state: StoryState, playerIds: string[]): void 
 }
 
 export function stripInternalStoryState(state: StoryState): Omit<StoryState, 'internal'> {
-  const { internal: _internal, ...safeState } = state;
+  const safeState = { ...state };
+  delete safeState.internal;
   return safeState;
 }
 
@@ -172,7 +175,7 @@ export function stripInternalStoryState(state: StoryState): Omit<StoryState, 'in
  * This prevents concurrent read-modify-write clobbering of storyState.
  */
 export async function lockRoomForUpdate(
-  tx: { $executeRaw: (...args: any[]) => Promise<unknown> },
+  tx: Prisma.TransactionClient,
   roomId: string
 ): Promise<void> {
   await tx.$executeRaw`SELECT 1 FROM "Room" WHERE id = ${roomId} FOR UPDATE`;
