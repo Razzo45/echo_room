@@ -238,6 +238,7 @@ model Room {
   roomCode        String      @unique
   status          RoomStatus  @default(OPEN)
   currentDecision Int         @default(1)
+  storyState      Json?
   startedAt       DateTime?
   completedAt     DateTime?
   lastActivityAt  DateTime?   // Updated on vote, commit, start, join, complete

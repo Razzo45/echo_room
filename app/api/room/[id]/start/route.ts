@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { requireAdminAuth } from '@/lib/auth-organiser';
+import { createInitialStoryState, lockRoomForUpdate, normalizeStoryState } from '@/lib/story-runtime';
 
 export async function POST(
   request: NextRequest,
@@ -10,73 +12,87 @@ export async function POST(
     const user = await requireAuth();
     const roomId = params.id;
 
-    const room = await prisma.room.findUnique({
-      where: { id: roomId },
-      include: {
-        _count: {
-          select: { members: true },
-        },
-        members: true,
-        quest: {
-          select: {
-            teamSize: true,
-            minTeamSize: true,
-          },
-        },
-      },
-    });
-
-    if (!room) {
-      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-    }
-
-    // Check if user is a member
-    const isMember = room.members.some((m) => m.userId === user.id);
-    if (!isMember) {
-      return NextResponse.json(
-        { error: 'Not a member of this room' },
-        { status: 403 }
-      );
-    }
-
-    // Check if room can be started
-    if (room.status === 'IN_PROGRESS') {
-      return NextResponse.json(
-        { error: 'Room already in progress' },
-        { status: 400 }
-      );
-    }
-
-    if (room.status === 'COMPLETED') {
-      return NextResponse.json(
-        { error: 'Room already completed' },
-        { status: 400 }
-      );
-    }
-
     // Admin can force start; otherwise need minTeamSize members (defaults to 2)
     const body = await request.json();
     const isAdminOverride = body.adminOverride === true;
-
-    const minTeamSize = room.quest.minTeamSize ?? 2;
-
-    if (!isAdminOverride && room._count.members < minTeamSize) {
-      return NextResponse.json(
-        { error: `Need at least ${minTeamSize} member(s) to start quest` },
-        { status: 400 }
-      );
+    if (isAdminOverride) {
+      try {
+        await requireAdminAuth();
+      } catch {
+        return NextResponse.json({ error: 'Admin access required for override' }, { status: 403 });
+      }
     }
 
-    // Start the room
-    const now = new Date();
-    await prisma.room.update({
-      where: { id: roomId },
-      data: {
-        status: 'IN_PROGRESS',
-        startedAt: now,
-        lastActivityAt: now,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      await lockRoomForUpdate(tx, roomId);
+      const room = await tx.room.findUnique({
+        where: { id: roomId },
+        include: {
+          _count: {
+            select: { members: true },
+          },
+          members: true,
+          quest: {
+            select: {
+              minTeamSize: true,
+            },
+          },
+        },
+      });
+
+      if (!room) {
+        return { kind: 'error' as const, status: 404, error: 'Room not found' };
+      }
+
+      const isMember = room.members.some((m) => m.userId === user.id);
+      if (!isMember) {
+        return { kind: 'error' as const, status: 403, error: 'Not a member of this room' };
+      }
+
+      if (room.status === 'IN_PROGRESS') {
+        return { kind: 'error' as const, status: 400, error: 'Room already in progress' };
+      }
+
+      if (room.status === 'COMPLETED') {
+        return { kind: 'error' as const, status: 400, error: 'Room already completed' };
+      }
+
+      const minTeamSize = room.quest.minTeamSize ?? 2;
+      if (!isAdminOverride && room._count.members < minTeamSize) {
+        return {
+          kind: 'error' as const,
+          status: 400,
+          error: `Need at least ${minTeamSize} member(s) to start quest`,
+        };
+      }
+
+      const now = new Date();
+      const memberIds = room.members.map((m) => m.userId);
+      const storyState = room.storyState
+        ? normalizeStoryState(room.storyState, memberIds)
+        : createInitialStoryState(memberIds);
+      if (storyState.phase === 'waiting' || storyState.phase === 'room_full') {
+        storyState.phase = 'ready_check';
+        storyState.readyCheck.startedAt = now.toISOString();
+        storyState.readyCheck.deadlineAt = new Date(now.getTime() + 60_000).toISOString();
+      }
+
+      await tx.room.update({
+        where: { id: roomId },
+        data: {
+          status: 'IN_PROGRESS',
+          startedAt: now,
+          storyState,
+          lastActivityAt: now,
+        },
+      });
+
+      return { kind: 'ok' as const };
     });
+
+    if (result.kind === 'error') {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json({
       success: true,
