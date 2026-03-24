@@ -366,10 +366,11 @@ export default function QuestPlayPage() {
   const submissionCount = Object.keys(currentBeat.submissions).length;
   const rollCount = Object.keys(currentBeat.rolls).length;
 
+  const isBriefingReadyPhase =
+    storyState.phase === 'room_full' || storyState.phase === 'ready_check';
+
   const showStoryContent =
-    storyState.phase !== 'waiting' &&
-    storyState.phase !== 'room_full' &&
-    storyState.phase !== 'ready_check';
+    storyState.phase !== 'waiting' && !isBriefingReadyPhase;
 
   const cc = storyState.consequenceContinue;
   const myContinueAck =
@@ -385,8 +386,8 @@ export default function QuestPlayPage() {
 
   const phaseTitle: Record<RoomPhase, string> = {
     waiting: 'Waiting for more players',
-    room_full: 'Room is full',
-    ready_check: 'Ready check',
+    room_full: 'Before we start',
+    ready_check: 'Before we start',
     preamble: `Beat ${storyState.currentBeat}: briefing`,
     beat_input: `Beat ${storyState.currentBeat}: your move`,
     roll_reveal: `Beat ${storyState.currentBeat}: roll reveal`,
@@ -407,20 +408,39 @@ export default function QuestPlayPage() {
       </div>
 
       <main className="max-w-lg mx-auto px-4 py-5 space-y-4">
-        {(storyState.phase === 'waiting' || storyState.phase === 'room_full') && (
+        {storyState.phase === 'waiting' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
-            <h1 className="text-lg font-bold text-gray-900 mb-2">Waiting to start</h1>
+            <h1 className="text-lg font-bold text-gray-900 mb-2">Waiting for players</h1>
             <p className="text-sm text-gray-600">
-              The room starts once everyone is in and the ready check opens.
+              The room opens the briefing and ready button once enough players have joined ({room.memberCount}/
+              {room.maxPlayers} here now).
             </p>
           </div>
         )}
 
-        {storyState.phase === 'ready_check' && (
+        {isBriefingReadyPhase && (
           <div className="space-y-4">
+            {(room.questDescription || room.questName) && (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                  Beat 0 · Briefing
+                </p>
+                <p className="text-base font-bold text-gray-900">{room.questName}</p>
+                {room.questDescription ? (
+                  <p className="text-sm text-gray-600 mt-3 whitespace-pre-wrap leading-relaxed">
+                    {room.questDescription}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-3 italic">No scenario briefing was set for this quest.</p>
+                )}
+              </div>
+            )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-              <h1 className="text-lg font-bold text-gray-900 mb-2">Ready check</h1>
-              <p className="text-sm text-gray-600 mb-4">Confirm when you are ready to begin the story.</p>
+              <h1 className="text-lg font-bold text-gray-900 mb-2">Ready to begin</h1>
+              <p className="text-sm text-gray-600 mb-4">
+                When everyone has read the briefing above, confirm you are ready. The story starts once all players
+                tap the button.
+              </p>
               <p className="text-sm font-medium text-primary-700 mb-4">
                 {readyCount} of {players.length} ready
               </p>
@@ -433,32 +453,11 @@ export default function QuestPlayPage() {
                 {myReady ? 'You are ready' : readySubmitting ? 'Saving...' : "I'm ready"}
               </button>
             </div>
-            {(room.questDescription || room.questName) && (
-              <div className="bg-primary-50/90 border border-primary-100 rounded-2xl p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary-800 mb-1">Scenario</p>
-                <p className="text-sm font-semibold text-primary-950">{room.questName}</p>
-                {room.questDescription ? (
-                  <p className="text-sm text-primary-900/85 mt-2 whitespace-pre-wrap">{room.questDescription}</p>
-                ) : null}
-              </div>
-            )}
           </div>
         )}
 
         {showStoryContent && (
           <>
-            {(room.questDescription || room.questName) && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Beat 0 · Briefing</p>
-                <p className="text-sm font-bold text-gray-900">{room.questName}</p>
-                {room.questDescription ? (
-                  <p className="text-sm text-gray-600 mt-2 whitespace-pre-wrap">{room.questDescription}</p>
-                ) : (
-                  <p className="text-sm text-gray-500 mt-2 italic">No briefing text provided for this quest.</p>
-                )}
-              </div>
-            )}
-
             {decisionsData?.decisions?.length ? (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">All beats</p>

@@ -125,8 +125,15 @@ export async function POST(request: NextRequest) {
                 state.phase = 'ready_check';
                 state.readyCheck.startedAt = now.toISOString();
                 state.readyCheck.deadlineAt = readyDeadline;
-              } else if (state.phase === 'waiting' && memberCount >= quest.teamSize) {
-                state.phase = 'room_full';
+              } else if (
+                state.phase === 'waiting' &&
+                memberCount >= quest.teamSize &&
+                quest.teamSize > 0
+              ) {
+                // Same UX as min-met start: briefing + ready on one screen (avoid a separate “room full” step).
+                state.phase = 'ready_check';
+                state.readyCheck.startedAt = now.toISOString();
+                state.readyCheck.deadlineAt = readyDeadline;
               }
               return state;
             })(),
