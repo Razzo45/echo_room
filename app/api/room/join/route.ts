@@ -6,6 +6,17 @@ import crypto from 'crypto';
 import { sendRoomReadyPush } from '@/lib/push';
 import { createInitialStoryState, normalizeStoryState } from '@/lib/story-runtime';
 
+function isStoryStateColumnMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  const msg = (e.message || '').toLowerCase();
+  return (
+    e.code === 'P2022' ||
+    msg.includes('storystate') ||
+    msg.includes('column') && msg.includes('does not exist')
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
@@ -101,22 +112,35 @@ export async function POST(request: NextRequest) {
       const now = new Date();
       // Auto-start when we reach min players (lock room; no more joins)
       const shouldAutoStart = memberCount >= minTeamSize;
-      await prisma.room.update({
-        where: { id: room.id },
-        data: {
-          status: shouldAutoStart ? 'IN_PROGRESS' : memberCount >= quest.teamSize ? 'FULL' : 'OPEN',
-          ...(shouldAutoStart && { startedAt: now }),
-          storyState: (() => {
-            const memberIds = [...new Set([...room.members.map((m) => m.userId), user.id])];
-            const state = normalizeStoryState(room.storyState, memberIds);
-            if (state.phase === 'waiting' && memberCount >= quest.teamSize) {
-              state.phase = 'room_full';
-            }
-            return state;
-          })(),
-          lastActivityAt: now,
-        },
-      });
+      try {
+        await prisma.room.update({
+          where: { id: room.id },
+          data: {
+            status: shouldAutoStart ? 'IN_PROGRESS' : memberCount >= quest.teamSize ? 'FULL' : 'OPEN',
+            ...(shouldAutoStart && { startedAt: now }),
+            storyState: (() => {
+              const memberIds = [...new Set([...room.members.map((m) => m.userId), user.id])];
+              const state = normalizeStoryState(room.storyState, memberIds);
+              if (state.phase === 'waiting' && memberCount >= quest.teamSize) {
+                state.phase = 'room_full';
+              }
+              return state;
+            })(),
+            lastActivityAt: now,
+          },
+        });
+      } catch (error) {
+        if (!isStoryStateColumnMissing(error)) throw error;
+        // Hotfix fallback for environments where Room.storyState migration has not deployed yet.
+        await prisma.room.update({
+          where: { id: room.id },
+          data: {
+            status: shouldAutoStart ? 'IN_PROGRESS' : memberCount >= quest.teamSize ? 'FULL' : 'OPEN',
+            ...(shouldAutoStart && { startedAt: now }),
+            lastActivityAt: now,
+          },
+        });
+      }
       if (shouldAutoStart) {
         // Fire-and-forget push notification when room becomes ready
         sendRoomReadyPush(room.id).catch((err) => {
@@ -129,21 +153,40 @@ export async function POST(request: NextRequest) {
       const roomCode = `ROOM-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
       
       const now = new Date();
-      room = await prisma.room.create({
-        data: {
-          eventId: user.eventId,
-          questId,
-          roomCode,
-          status: 'OPEN',
-          storyState: createInitialStoryState([user.id]),
-          lastActivityAt: now,
-          members: {
-            create: {
-              userId: user.id,
+      try {
+        room = await prisma.room.create({
+          data: {
+            eventId: user.eventId,
+            questId,
+            roomCode,
+            status: 'OPEN',
+            storyState: createInitialStoryState([user.id]),
+            lastActivityAt: now,
+            members: {
+              create: {
+                userId: user.id,
+              },
             },
           },
-        },
-      });
+        });
+      } catch (error) {
+        if (!isStoryStateColumnMissing(error)) throw error;
+        // Hotfix fallback for environments where Room.storyState migration has not deployed yet.
+        room = await prisma.room.create({
+          data: {
+            eventId: user.eventId,
+            questId,
+            roomCode,
+            status: 'OPEN',
+            lastActivityAt: now,
+            members: {
+              create: {
+                userId: user.id,
+              },
+            },
+          },
+        });
+      }
     }
 
     return NextResponse.json({
