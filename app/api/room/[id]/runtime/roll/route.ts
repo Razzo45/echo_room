@@ -3,11 +3,16 @@ import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { runtimeRollSchema } from '@/lib/validation';
 import {
+  computeScoreboard,
   isStoryStateColumnMissing,
   lockRoomForUpdate,
   normalizeStoryState,
   stripInternalStoryState,
 } from '@/lib/story-runtime';
+import {
+  buildDeterministicBeatConsequence,
+  generateFinalSynthesisWithFallback,
+} from '@/lib/story-synthesis';
 
 export async function POST(
   request: NextRequest,
@@ -29,7 +34,7 @@ export async function POST(
       await lockRoomForUpdate(tx, roomId);
       const room = await tx.room.findUnique({
         where: { id: roomId },
-        include: { members: true },
+        include: { members: { include: { user: true } } },
       });
 
       if (!room) {
@@ -67,6 +72,37 @@ export async function POST(
       if (rollCount === playerIds.length) {
         state.beats[beatKey].revealed = true;
         state.phase = 'beat_consequence';
+        const submissionList = room.members.map((member) => ({
+          name: member.user.name,
+          text: state.beats[beatKey].submissions[member.userId] || 'support the team plan',
+        }));
+        const rollValues = Object.values(state.beats[beatKey].rolls).map((r) => r.value);
+        const averageRoll = rollValues.length
+          ? rollValues.reduce((sum, current) => sum + current, 0) / rollValues.length
+          : 0;
+        const generated = buildDeterministicBeatConsequence({
+          beat,
+          submissions: submissionList,
+          averageRoll,
+        });
+        state.beats[beatKey].consequence = {
+          text: generated.text,
+          mode: generated.mode,
+          generatedAt: now.toISOString(),
+        };
+        state.beats[beatKey].resolved = true;
+        computeScoreboard(state, playerIds);
+        if (beat === 3) {
+          const synthesis = await generateFinalSynthesisWithFallback(
+            state,
+            room.members.map((m) => ({ id: m.userId, name: m.user.name }))
+          );
+          state.finalSynthesis = {
+            status: 'done',
+            text: synthesis.text,
+            mode: synthesis.mode,
+          };
+        }
       }
 
       await tx.room.update({

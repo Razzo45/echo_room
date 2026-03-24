@@ -75,34 +75,6 @@ function bandLabel(band: RollBand): string {
   return 'Critical fail';
 }
 
-function buildConsequenceText(
-  beat: number,
-  submissions: Array<{ name: string; text: string }>,
-  averageRoll: number
-): { mode: string; text: string } {
-  const opener = `Beat ${beat} resolves with the team acting in sync.`;
-  const highlights = submissions
-    .slice(0, 3)
-    .map((s) => `${s.name} chose to ${s.text}`)
-    .join('; ');
-  if (averageRoll >= 15) {
-    return {
-      mode: 'high_momentum',
-      text: `${opener} Their combined momentum pays off (${averageRoll.toFixed(1)} avg roll): ${highlights}. The path opens with clear advantage.`,
-    };
-  }
-  if (averageRoll >= 10) {
-    return {
-      mode: 'mixed_result',
-      text: `${opener} The move works with tradeoffs (${averageRoll.toFixed(1)} avg roll): ${highlights}. Progress is real, but tension rises.`,
-    };
-  }
-  return {
-    mode: 'hard_choice',
-    text: `${opener} The move succeeds only partially (${averageRoll.toFixed(1)} avg roll): ${highlights}. The team must adapt quickly to new pressure.`,
-  };
-}
-
 export default function QuestPlayPage() {
   const router = useRouter();
   const params = useParams();
@@ -119,7 +91,7 @@ export default function QuestPlayPage() {
   const [rollDisplayValue, setRollDisplayValue] = useState<number | null>(null);
   const [rollSubmitting, setRollSubmitting] = useState(false);
   const [completeSubmitting, setCompleteSubmitting] = useState(false);
-  const consequenceInFlightRef = useRef(false);
+  const advanceInFlightRef = useRef(false);
 
   const loadRoom = async () => {
     try {
@@ -193,41 +165,24 @@ export default function QuestPlayPage() {
     }
   }, [myRoll, rolling]);
 
-  useEffect(() => {
-    const run = async () => {
-      if (!storyState || !currentBeat || !myUserId) return;
-      if (storyState.phase !== 'beat_consequence') return;
-      if (currentBeat.consequence) return;
-      if (consequenceInFlightRef.current) return;
-      if (players.length === 0 || players[0].id !== myUserId) return;
-
-      const rollValues = Object.values(currentBeat.rolls).map((r) => r.value);
-      if (rollValues.length !== players.length) return;
-      const averageRoll = rollValues.reduce((a, b) => a + b, 0) / rollValues.length;
-      const submissionList = players.map((p) => ({
-        name: p.name,
-        text: currentBeat.submissions[p.id] || 'support the team plan',
-      }));
-      const generated = buildConsequenceText(storyState.currentBeat, submissionList, averageRoll);
-
-      consequenceInFlightRef.current = true;
-      try {
-        await fetch(`/api/room/${roomId}/runtime/consequence`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            beat: storyState.currentBeat,
-            text: generated.text,
-            mode: generated.mode,
-          }),
-        });
-        await loadRoom();
-      } finally {
-        consequenceInFlightRef.current = false;
+  const handleAdvanceFromConsequence = async () => {
+    if (!storyState || storyState.phase !== 'beat_consequence') return;
+    if (!currentBeat?.consequence) return;
+    if (advanceInFlightRef.current) return;
+    advanceInFlightRef.current = true;
+    try {
+      const res = await fetch(`/api/room/${roomId}/runtime/advance`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Could not continue yet.');
       }
-    };
-    run();
-  }, [storyState, currentBeat, myUserId, players, roomId]);
+      await loadRoom();
+    } finally {
+      advanceInFlightRef.current = false;
+    }
+  };
 
   const handleReady = async () => {
     setReadySubmitting(true);
@@ -494,6 +449,13 @@ export default function QuestPlayPage() {
                   {currentBeat.consequence.mode}
                 </p>
                 <p className="text-sm text-gray-700">{currentBeat.consequence.text}</p>
+                <button
+                  type="button"
+                  onClick={handleAdvanceFromConsequence}
+                  className="btn btn-primary w-full mt-4"
+                >
+                  Continue
+                </button>
               </>
             ) : (
               <p className="text-sm text-gray-600">The story is resolving this beat now.</p>

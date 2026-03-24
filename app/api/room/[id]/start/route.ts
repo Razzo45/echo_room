@@ -14,12 +14,12 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
     const roomId = params.id;
 
     // Admin can force start; otherwise need minTeamSize members (defaults to 2)
     const body = await request.json();
     const isAdminOverride = body.adminOverride === true;
+    const user = isAdminOverride ? null : await requireAuth();
     if (isAdminOverride) {
       try {
         await requireAdminAuth();
@@ -49,7 +49,7 @@ export async function POST(
         return { kind: 'error' as const, status: 404, error: 'Room not found' };
       }
 
-      const isMember = room.members.some((m) => m.userId === user.id);
+      const isMember = !!user && room.members.some((m) => m.userId === user.id);
       if (!isMember && !isAdminOverride) {
         return { kind: 'error' as const, status: 403, error: 'Not a member of this room' };
       }

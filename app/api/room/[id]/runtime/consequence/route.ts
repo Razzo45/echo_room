@@ -10,13 +10,13 @@ import {
   normalizeStoryState,
   stripInternalStoryState,
 } from '@/lib/story-runtime';
+import { generateFinalSynthesisWithFallback } from '@/lib/story-synthesis';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth();
     const roomId = params.id;
 
     const body = await request.json();
@@ -27,6 +27,7 @@ export async function POST(
 
     const { beat, text, mode, adminOverride } = validation.data;
     let canUseAdminOverride = false;
+    const user = adminOverride ? null : await requireAuth();
     if (adminOverride) {
       try {
         await requireAdminAuth();
@@ -40,7 +41,7 @@ export async function POST(
       await lockRoomForUpdate(tx, roomId);
       const room = await tx.room.findUnique({
         where: { id: roomId },
-        include: { members: true },
+        include: { members: { include: { user: true } } },
       });
 
       if (!room) {
@@ -48,7 +49,7 @@ export async function POST(
       }
 
       const playerIds = room.members.map((m) => m.userId);
-      if (!playerIds.includes(user.id)) {
+      if (!canUseAdminOverride && (!user || !playerIds.includes(user.id))) {
         return { kind: 'error' as const, status: 403, error: 'Not a member of this room' };
       }
 
@@ -90,11 +91,17 @@ export async function POST(
 
       computeScoreboard(state, playerIds);
 
-      if (beat < 3) {
-        state.currentBeat = (beat + 1) as 1 | 2 | 3;
-        state.phase = 'beat_input';
-      } else {
-        state.phase = 'final_panel';
+      state.phase = 'beat_consequence';
+      if (beat === 3) {
+        const synthesis = await generateFinalSynthesisWithFallback(
+          state,
+          room.members.map((member) => ({ id: member.userId, name: member.user.name }))
+        );
+        state.finalSynthesis = {
+          status: 'done',
+          text: synthesis.text,
+          mode: synthesis.mode,
+        };
       }
 
       await tx.room.update({

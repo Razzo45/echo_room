@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
-import { createInitialStoryState, normalizeStoryState } from '@/lib/story-runtime';
+import { createInitialStoryState, lockRoomForUpdate, normalizeStoryState } from '@/lib/story-runtime';
+import { logAdminAction } from '@/lib/admin-audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminAuth();
+    const organiser = await requireAdminAuth();
 
     const body = await request.json();
     const { action, roomId, userId, targetRoomId } = body;
@@ -76,132 +77,210 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'force_start':
         {
-          const room = await prisma.room.findUnique({
-            where: { id: roomId },
-            include: { members: { select: { userId: true } } },
+          await prisma.$transaction(async (tx) => {
+            await lockRoomForUpdate(tx, roomId);
+            const room = await tx.room.findUnique({
+              where: { id: roomId },
+              include: { members: { select: { userId: true } } },
+            });
+            if (!room) throw new Error('ROOM_NOT_FOUND');
+
+            const now = new Date();
+            const memberIds = room.members.map((m) => m.userId);
+            const storyState = room.storyState
+              ? normalizeStoryState(room.storyState, memberIds)
+              : createInitialStoryState(memberIds);
+
+            if (storyState.phase === 'waiting' || storyState.phase === 'room_full') {
+              storyState.phase = 'ready_check';
+              storyState.readyCheck.startedAt = now.toISOString();
+              storyState.readyCheck.deadlineAt = new Date(now.getTime() + 60_000).toISOString();
+            }
+
+            await tx.room.update({
+              where: { id: roomId },
+              data: {
+                status: 'IN_PROGRESS',
+                startedAt: now,
+                storyState,
+                lastActivityAt: now,
+              },
+            });
           });
-          if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-
-          const now = new Date();
-          const memberIds = room.members.map((m) => m.userId);
-          const storyState = room.storyState
-            ? normalizeStoryState(room.storyState, memberIds)
-            : createInitialStoryState(memberIds);
-
-          if (storyState.phase === 'waiting' || storyState.phase === 'room_full') {
-            storyState.phase = 'ready_check';
-            storyState.readyCheck.startedAt = now.toISOString();
-            storyState.readyCheck.deadlineAt = new Date(now.getTime() + 60_000).toISOString();
-          }
-
-          await prisma.room.update({
-            where: { id: roomId },
-            data: {
-              status: 'IN_PROGRESS',
-              startedAt: now,
-              storyState,
-              lastActivityAt: now,
-            },
+          await logAdminAction({
+            organiserId: organiser.id,
+            action: 'room.force_start',
+            resourceType: 'room',
+            resourceId: roomId,
           });
         }
         return NextResponse.json({ success: true, message: 'Room force started' });
 
       case 'reset_ready_check': {
-        const room = await prisma.room.findUnique({
-          where: { id: roomId },
-          include: { members: { select: { userId: true } } },
-        });
-        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-        const playerIds = room.members.map((m) => m.userId);
-        const readyByPlayerId = Object.fromEntries(playerIds.map((id) => [id, false]));
-        const now = new Date();
-        const current = (room.storyState as any) || {};
-        const storyState = {
-          ...current,
-          phase: 'ready_check',
-          readyCheck: {
+        await prisma.$transaction(async (tx) => {
+          await lockRoomForUpdate(tx, roomId);
+          const room = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) throw new Error('ROOM_NOT_FOUND');
+          const playerIds = room.members.map((m) => m.userId);
+          const readyByPlayerId = Object.fromEntries(playerIds.map((id) => [id, false]));
+          const now = new Date();
+          const storyState = normalizeStoryState(room.storyState, playerIds);
+          storyState.phase = 'ready_check';
+          storyState.readyCheck = {
             startedAt: now.toISOString(),
             deadlineAt: new Date(now.getTime() + 60_000).toISOString(),
             readyByPlayerId,
-          },
-        };
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { storyState, lastActivityAt: now },
+          };
+          await tx.room.update({
+            where: { id: roomId },
+            data: { storyState, lastActivityAt: now },
+          });
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.reset_ready_check',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Ready-check reset' });
       }
 
       case 'reopen_beat': {
-        const room = await prisma.room.findUnique({ where: { id: roomId } });
-        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-        const current = (room.storyState as any) || {};
-        const beat = String(current.currentBeat || 1);
-        const beats = current.beats || {};
-        if (beats[beat]) {
-          beats[beat].consequence = null;
-          beats[beat].resolved = false;
-        }
-        const storyState = { ...current, phase: 'beat_input', beats };
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { storyState, lastActivityAt: new Date() },
+        await prisma.$transaction(async (tx) => {
+          await lockRoomForUpdate(tx, roomId);
+          const room = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) throw new Error('ROOM_NOT_FOUND');
+          const playerIds = room.members.map((m) => m.userId);
+          const storyState = normalizeStoryState(room.storyState, playerIds);
+          const beatKey = String(storyState.currentBeat) as '1' | '2' | '3';
+          storyState.phase = 'beat_input';
+          storyState.beats[beatKey].consequence = null;
+          storyState.beats[beatKey].resolved = false;
+          storyState.beats[beatKey].revealed = false;
+          storyState.beats[beatKey].rolls = {};
+          await tx.room.update({
+            where: { id: roomId },
+            data: { storyState, lastActivityAt: new Date() },
+          });
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.reopen_beat',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Beat reopened' });
       }
 
       case 'skip_beat': {
-        const room = await prisma.room.findUnique({ where: { id: roomId } });
-        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-        const current = (room.storyState as any) || {};
-        const beat = Number(current.currentBeat || 1);
-        const storyState = {
-          ...current,
-          phase: beat < 3 ? 'beat_input' : 'final_panel',
-          currentBeat: beat < 3 ? beat + 1 : beat,
-        };
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { storyState, lastActivityAt: new Date() },
+        await prisma.$transaction(async (tx) => {
+          await lockRoomForUpdate(tx, roomId);
+          const room = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) throw new Error('ROOM_NOT_FOUND');
+          const playerIds = room.members.map((m) => m.userId);
+          const storyState = normalizeStoryState(room.storyState, playerIds);
+          const beat = storyState.currentBeat;
+          storyState.phase = beat < 3 ? 'beat_input' : 'final_panel';
+          storyState.currentBeat = beat < 3 ? ((beat + 1) as 1 | 2 | 3) : beat;
+          await tx.room.update({
+            where: { id: roomId },
+            data: { storyState, lastActivityAt: new Date() },
+          });
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.skip_beat',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Beat skipped' });
       }
 
       case 'force_consequence_generation': {
-        const room = await prisma.room.findUnique({ where: { id: roomId } });
-        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-        const current = (room.storyState as any) || {};
-        const storyState = { ...current, phase: 'beat_consequence' };
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { storyState, lastActivityAt: new Date() },
+        await prisma.$transaction(async (tx) => {
+          await lockRoomForUpdate(tx, roomId);
+          const room = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) throw new Error('ROOM_NOT_FOUND');
+          const playerIds = room.members.map((m) => m.userId);
+          const storyState = normalizeStoryState(room.storyState, playerIds);
+          storyState.phase = 'beat_consequence';
+          await tx.room.update({
+            where: { id: roomId },
+            data: { storyState, lastActivityAt: new Date() },
+          });
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.force_consequence_generation',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Consequence generation forced' });
       }
 
       case 'regenerate_final_synthesis': {
-        const room = await prisma.room.findUnique({ where: { id: roomId } });
-        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-        const current = (room.storyState as any) || {};
-        const storyState = {
-          ...current,
-          phase: 'final_panel',
-          finalSynthesis: { status: 'pending', text: '', mode: 'admin_regen' },
-        };
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { storyState, lastActivityAt: new Date() },
+        await prisma.$transaction(async (tx) => {
+          await lockRoomForUpdate(tx, roomId);
+          const room = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) throw new Error('ROOM_NOT_FOUND');
+          const playerIds = room.members.map((m) => m.userId);
+          const storyState = normalizeStoryState(room.storyState, playerIds);
+          storyState.phase = 'final_panel';
+          storyState.finalSynthesis = { status: 'pending', text: '', mode: 'admin_regen' };
+          await tx.room.update({
+            where: { id: roomId },
+            data: { storyState, lastActivityAt: new Date() },
+          });
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.regenerate_final_synthesis',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Final synthesis regeneration requested' });
       }
 
       case 'mark_completed':
-        await prisma.room.update({
-          where: { id: roomId },
-          data: {
-            status: 'COMPLETED',
-            completedAt: new Date(),
-          },
+        await prisma.$transaction(async (tx) => {
+          await lockRoomForUpdate(tx, roomId);
+          const room = await tx.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) throw new Error('ROOM_NOT_FOUND');
+          const playerIds = room.members.map((m) => m.userId);
+          const storyState = normalizeStoryState(room.storyState, playerIds);
+          storyState.phase = 'completed';
+          await tx.room.update({
+            where: { id: roomId },
+            data: {
+              status: 'COMPLETED',
+              completedAt: new Date(),
+              storyState,
+            },
+          });
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.mark_completed',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Room marked completed' });
 
@@ -223,6 +302,12 @@ export async function POST(request: NextRequest) {
         await prisma.room.update({
           where: { id: roomId },
           data: { status: 'CLOSED', closedAt: now },
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.close',
+          resourceType: 'room',
+          resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Room closed' });
       }
@@ -251,11 +336,32 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+        const sourceRuntimeActive = await prisma.room.findUnique({
+          where: { id: roomId },
+          select: { status: true },
+        });
+        const targetRuntimeActive = await prisma.room.findUnique({
+          where: { id: targetRoomId },
+          select: { status: true },
+        });
+        if (sourceRuntimeActive?.status === 'IN_PROGRESS' || targetRuntimeActive?.status === 'IN_PROGRESS') {
+          return NextResponse.json(
+            { error: 'Cannot move users into or out of rooms that are in progress.' },
+            { status: 409 }
+          );
+        }
         await prisma.roomMember.deleteMany({
           where: { userId, roomId },
         });
         await prisma.roomMember.create({
           data: { userId, roomId: targetRoomId },
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.move_user',
+          resourceType: 'room',
+          resourceId: roomId,
+          details: { userId, targetRoomId },
         });
         return NextResponse.json({ success: true, message: 'User moved' });
       }
@@ -264,6 +370,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
   } catch (error) {
+    if (error instanceof Error && error.message === 'ROOM_NOT_FOUND') {
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+    }
     console.error('Admin room action error:', error);
     return NextResponse.json(
       { error: 'An error occurred' },

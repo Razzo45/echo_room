@@ -8,6 +8,7 @@ import { POST as actionPost } from '@/app/api/room/[id]/runtime/action/route';
 import { POST as rollPost } from '@/app/api/room/[id]/runtime/roll/route';
 import { POST as consequencePost } from '@/app/api/room/[id]/runtime/consequence/route';
 import { POST as startPost } from '@/app/api/room/[id]/start/route';
+import { POST as advancePost } from '@/app/api/room/[id]/runtime/advance/route';
 
 jest.mock('@/lib/db', () => ({
   prisma: {
@@ -177,5 +178,186 @@ describe('runtime-state endpoints', () => {
       params: { id: 'r1' },
     });
     expect(res.status).toBe(403);
+  });
+
+  it('start adminOverride succeeds for admin even when not room member', async () => {
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          status: 'OPEN',
+          members: [{ userId: 'u2' }, { userId: 'u3' }],
+          _count: { members: 2 },
+          quest: { minTeamSize: 2 },
+          storyState: null,
+        })
+      )
+    );
+
+    const res = await startPost(req('http://localhost/api/room/r1/start', { adminOverride: true }) as any, {
+      params: { id: 'r1' },
+    });
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+  });
+
+  it('consequence adminOverride succeeds for admin even when not room member', async () => {
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          members: [{ userId: 'u2' }, { userId: 'u3' }],
+          storyState: {
+            phase: 'beat_consequence',
+            currentBeat: 1,
+            readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u2: true, u3: true } },
+            beats: {
+              '1': {
+                submissions: { u2: 'a', u3: 'b' },
+                revealed: true,
+                rolls: {
+                  u2: { value: 10, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+                  u3: { value: 12, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+                },
+                consequence: null,
+                resolved: false,
+              },
+              '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+            },
+            scoreboard: { playerTotals: { u2: 10, u3: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
+            finalSynthesis: { status: 'idle', text: '', mode: '' },
+          },
+        })
+      )
+    );
+
+    const res = await consequencePost(
+      req('http://localhost/api/room/r1/runtime/consequence', { beat: 1, text: 'admin persisted', mode: 'admin', adminOverride: true }) as any,
+      { params: { id: 'r1' } }
+    );
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.consequence.text).toBe('admin persisted');
+  });
+
+  it('advance moves beat_consequence to next beat input when consequence exists', async () => {
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          members: [{ userId: 'u1' }, { userId: 'u2' }],
+          storyState: {
+            phase: 'beat_consequence',
+            currentBeat: 1,
+            readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true, u2: true } },
+            beats: {
+              '1': {
+                submissions: { u1: 'a', u2: 'b' },
+                revealed: true,
+                rolls: {
+                  u1: { value: 10, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+                  u2: { value: 12, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+                },
+                consequence: { text: 'ready', mode: 'auto', generatedAt: '2026-03-24T00:00:00.000Z' },
+                resolved: true,
+              },
+              '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+            },
+            scoreboard: { playerTotals: { u1: 10, u2: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
+            finalSynthesis: { status: 'idle', text: '', mode: '' },
+          },
+        })
+      )
+    );
+
+    const res = await advancePost(req('http://localhost/api/room/r1/runtime/advance', {}) as any, {
+      params: { id: 'r1' },
+    });
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.advanced).toBe(true);
+    expect(json.storyState.phase).toBe('beat_input');
+    expect(json.storyState.currentBeat).toBe(2);
+  });
+
+  it('advance returns 409 when consequence is missing in beat_consequence', async () => {
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          members: [{ userId: 'u1' }, { userId: 'u2' }],
+          storyState: {
+            phase: 'beat_consequence',
+            currentBeat: 2,
+            readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true, u2: true } },
+            beats: {
+              '1': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '2': {
+                submissions: { u1: 'a', u2: 'b' },
+                revealed: true,
+                rolls: {
+                  u1: { value: 9, band: 'fail', rolledAt: '2026-03-24T00:00:00.000Z' },
+                  u2: { value: 11, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+                },
+                consequence: null,
+                resolved: false,
+              },
+              '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+            },
+            scoreboard: { playerTotals: { u1: 9, u2: 11 }, teamAverage: 10, teamBand: 'critical_fail' },
+            finalSynthesis: { status: 'idle', text: '', mode: '' },
+          },
+        })
+      )
+    );
+
+    const res = await advancePost(req('http://localhost/api/room/r1/runtime/advance', {}) as any, {
+      params: { id: 'r1' },
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it('advance is idempotent outside beat_consequence phase', async () => {
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          members: [{ userId: 'u1' }, { userId: 'u2' }],
+          storyState: {
+            phase: 'final_panel',
+            currentBeat: 3,
+            readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true, u2: true } },
+            beats: {
+              '1': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '3': {
+                submissions: { u1: 'a', u2: 'b' },
+                revealed: true,
+                rolls: {
+                  u1: { value: 18, band: 'success', rolledAt: '2026-03-24T00:00:00.000Z' },
+                  u2: { value: 19, band: 'critical_success', rolledAt: '2026-03-24T00:00:00.000Z' },
+                },
+                consequence: { text: 'done', mode: 'auto', generatedAt: '2026-03-24T00:00:00.000Z' },
+                resolved: true,
+              },
+            },
+            scoreboard: { playerTotals: { u1: 18, u2: 19 }, teamAverage: 18.5, teamBand: 'success' },
+            finalSynthesis: { status: 'done', text: 'summary', mode: 'ai' },
+          },
+        })
+      )
+    );
+
+    const res = await advancePost(req('http://localhost/api/room/r1/runtime/advance', {}) as any, {
+      params: { id: 'r1' },
+    });
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.advanced).toBe(false);
+    expect(json.storyState.phase).toBe('final_panel');
   });
 });

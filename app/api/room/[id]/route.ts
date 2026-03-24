@@ -92,6 +92,24 @@ export async function GET(
 
     const memberIds = room.members.map((m) => m.userId);
     const storyState = normalizeStoryState(room.storyState, memberIds);
+    const visibleStoryState = (() => {
+      const state = stripInternalStoryState(storyState) as any;
+      if (!['preamble', 'beat_input'].includes(state.phase)) {
+        return state;
+      }
+      const beatKey = String(state.currentBeat) as '1' | '2' | '3';
+      const beat = state.beats?.[beatKey];
+      if (!beat || typeof beat.submissions !== 'object') {
+        return state;
+      }
+      state.beats[beatKey] = {
+        ...beat,
+        submissions: {
+          [user.id]: beat.submissions[user.id] ?? '',
+        },
+      };
+      return state;
+    })();
 
     return NextResponse.json({
       room: {
@@ -119,7 +137,7 @@ export async function GET(
           optionKey: v.optionKey,
           justification: v.justification,
         })),
-        storyState: stripInternalStoryState(storyState),
+        storyState: visibleStoryState,
         hasArtifact: !!room.artifact,
         artifactId: room.artifact?.id,
       },

@@ -55,6 +55,60 @@ export async function generateArtifact(roomId: string) {
     throw new Error('Room not found');
   }
 
+  const storyState = room.storyState as any;
+
+  // Story-runtime artifact path (new storytelling flow)
+  if (storyState?.beats) {
+    const teamMembers = room.members.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      organisation: m.user.organisation,
+      role: m.user.role,
+    }));
+    const beatKeys = ['1', '2', '3'] as const;
+    const beats = beatKeys
+      .map((key) => {
+        const beat = storyState.beats?.[key];
+        if (!beat) return null;
+        return {
+          number: Number(key),
+          submissions: beat.submissions || {},
+          rolls: beat.rolls || {},
+          consequence: beat.consequence || null,
+        };
+      })
+      .filter(Boolean) as Array<{
+      number: number;
+      submissions: Record<string, string>;
+      rolls: Record<string, { value: number; band: string }>;
+      consequence: { text: string; mode: string } | null;
+    }>;
+
+    const teamAverage = Number(storyState?.scoreboard?.teamAverage ?? 0);
+    const teamBand = String(storyState?.scoreboard?.teamBand ?? 'mixed');
+    const finalText = String(storyState?.finalSynthesis?.text || '').trim();
+    const finalSummary =
+      finalText ||
+      `The team closes with a ${teamBand.replace('_', ' ')} ending and a team score of ${teamAverage}/60.`;
+
+    const narrativeHtml = generateStoryHTML(
+      room.quest.name,
+      teamMembers,
+      beats,
+      teamAverage,
+      teamBand,
+      finalSummary,
+      room.completedAt || new Date()
+    );
+
+    return prisma.artifact.create({
+      data: {
+        roomId,
+        htmlContent: narrativeHtml,
+      },
+    });
+  }
+
   // Try to parse from deprecated decisionsData field first (for backward compatibility)
   let decisionsData: DecisionData | null = null;
   
@@ -108,60 +162,6 @@ export async function generateArtifact(roomId: string) {
   // At this point, decisionsData should never be null (we throw if we can't build it)
   if (!decisionsData) {
     throw new Error('Failed to build decision data');
-  }
-
-  const storyState = room.storyState as any;
-
-  // Story-runtime artifact path (new storytelling flow)
-  if (storyState?.beats) {
-    const teamMembers = room.members.map((m) => ({
-      id: m.user.id,
-      name: m.user.name,
-      organisation: m.user.organisation,
-      role: m.user.role,
-    }));
-    const beatKeys = ['1', '2', '3'] as const;
-    const beats = beatKeys
-      .map((key) => {
-        const beat = storyState.beats?.[key];
-        if (!beat) return null;
-        return {
-          number: Number(key),
-          submissions: beat.submissions || {},
-          rolls: beat.rolls || {},
-          consequence: beat.consequence || null,
-        };
-      })
-      .filter(Boolean) as Array<{
-      number: number;
-      submissions: Record<string, string>;
-      rolls: Record<string, { value: number; band: string }>;
-      consequence: { text: string; mode: string } | null;
-    }>;
-
-    const teamAverage = Number(storyState?.scoreboard?.teamAverage ?? 0);
-    const teamBand = String(storyState?.scoreboard?.teamBand ?? 'mixed');
-    const finalText = String(storyState?.finalSynthesis?.text || '').trim();
-    const finalSummary =
-      finalText ||
-      `The team closes with a ${teamBand.replace('_', ' ')} ending and a team score of ${teamAverage}/60.`;
-
-    const narrativeHtml = generateStoryHTML(
-      room.quest.name,
-      teamMembers,
-      beats,
-      teamAverage,
-      teamBand,
-      finalSummary,
-      room.completedAt || new Date()
-    );
-
-    return prisma.artifact.create({
-      data: {
-        roomId,
-        htmlContent: narrativeHtml,
-      },
-    });
   }
 
   // Legacy decision-map artifact path
@@ -232,13 +232,22 @@ function generateStoryHTML(
   finalSummary: string,
   completedAt: Date
 ) {
+  const framingByBand: Record<string, string> = {
+    critical_success: 'shaped a breakthrough turning point',
+    success: 'built strong momentum for the team',
+    mixed: 'kept the team resilient through uncertainty',
+    fail: 'helped stabilize the story under pressure',
+    critical_fail: 'kept the team grounded and moving forward',
+  };
+  const baseFraming = framingByBand[teamBand] ?? framingByBand.mixed;
+
   const playerHighlights = teamMembers
     .map((member) => {
       const rollValues = beats
         .map((b) => b.rolls[member.id]?.value)
         .filter((v): v is number => typeof v === 'number');
       const best = rollValues.length ? Math.max(...rollValues) : 0;
-      return `<li><strong>${member.name}</strong> kept momentum with a best roll of <strong>${best}</strong>.</li>`;
+      return `<li><strong>${member.name}</strong> ${baseFraming} with a best roll of <strong>${best}</strong>.</li>`;
     })
     .join('');
 

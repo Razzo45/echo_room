@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { generateArtifact } from '@/lib/artifact';
-import { isStoryStateColumnMissing } from '@/lib/story-runtime';
+import { isStoryStateColumnMissing, normalizeStoryState } from '@/lib/story-runtime';
+import { generateFinalSynthesisWithFallback } from '@/lib/story-synthesis';
 
 /**
  * POST /api/room/[id]/complete
@@ -20,7 +21,11 @@ export async function POST(
     const room = await prisma.room.findUnique({
       where: { id: roomId },
       include: {
-        members: true,
+        members: {
+          include: {
+            user: true,
+          },
+        },
         artifact: true,
       },
     });
@@ -72,20 +77,68 @@ export async function POST(
 
     let artifactId: string | null = room.artifact ? room.artifact.id : null;
 
-    // Generate artifact only once all members have completed and no artifact exists
-    if (allCompleted && !artifactId) {
-      const artifact = await generateArtifact(roomId);
-      artifactId = artifact.id;
-      await prisma.room.update({
+    let artifactError: string | null = null;
+
+    if (allCompleted) {
+      const memberIds = updatedMembers.map((m) => m.userId);
+      // Re-load room so storyState matches DB (avoid clobbering phase with stale in-memory state)
+      const roomForSynthesis = await prisma.room.findUnique({
         where: { id: roomId },
-        data: { lastActivityAt: new Date() },
+        include: {
+          members: { include: { user: true } },
+        },
       });
+      if (roomForSynthesis) {
+        const currentState = normalizeStoryState(roomForSynthesis.storyState, memberIds);
+        currentState.phase = 'completed';
+        if (
+          !String(currentState.finalSynthesis?.text || '').trim() ||
+          currentState.finalSynthesis?.status === 'pending'
+        ) {
+          const synthesis = await generateFinalSynthesisWithFallback(
+            currentState,
+            roomForSynthesis.members.map((member) => ({
+              id: member.userId,
+              name: member.user.name,
+            }))
+          );
+          currentState.finalSynthesis = {
+            status: 'done',
+            text: synthesis.text,
+            mode: synthesis.mode,
+          };
+          await prisma.room.update({
+            where: { id: roomId },
+            data: { storyState: currentState, lastActivityAt: new Date() },
+          });
+        }
+      } else {
+        console.error('Complete: room disappeared during synthesis step', roomId);
+      }
+    }
+
+    // Generate artifact only once all members have completed and no artifact exists.
+    // Artifact generation must never block completion success.
+    if (allCompleted && !artifactId) {
+      try {
+        const artifact = await generateArtifact(roomId);
+        artifactId = artifact.id;
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { lastActivityAt: new Date() },
+        });
+      } catch (generationError) {
+        artifactError = generationError instanceof Error ? generationError.message : 'Artifact generation failed';
+        console.error('Artifact generation failed during completion:', generationError);
+      }
     }
 
     return NextResponse.json({
       success: true,
       allCompleted,
       artifactId,
+      artifactGenerationFailed: artifactError !== null,
+      artifactGenerationError: artifactError,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

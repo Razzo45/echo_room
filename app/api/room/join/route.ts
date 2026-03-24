@@ -70,13 +70,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Find an available room for this quest.
-    // We allow joining rooms that have already auto-started (IN_PROGRESS)
-    // as long as they are not full yet, so late joiners land in the same room.
+    // Do not allow joining IN_PROGRESS rooms: runtime membership must remain stable.
     const openRoom = await prisma.room.findFirst({
       where: {
         questId,
         eventId: user.eventId,
-        status: { in: ['OPEN', 'IN_PROGRESS'] },
+        status: 'OPEN',
       },
       include: {
         members: {
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
     let room;
 
     if (openRoom && openRoom._count.members < quest.teamSize) {
-      // Join existing room (OPEN or IN_PROGRESS but not yet full)
+      // Join existing open room
       const memberCount = openRoom._count.members + 1;
       console.log(`Joining existing room ${openRoom.id} with ${memberCount} members (max: ${quest.teamSize}, minToStart: ${minTeamSize})`);
       room = openRoom;
@@ -112,6 +111,7 @@ export async function POST(request: NextRequest) {
       const now = new Date();
       // Auto-start when we reach min players (lock room; no more joins)
       const shouldAutoStart = memberCount >= minTeamSize;
+      const readyDeadline = new Date(now.getTime() + 60_000).toISOString();
       try {
         await prisma.room.update({
           where: { id: room.id },
@@ -121,7 +121,11 @@ export async function POST(request: NextRequest) {
             storyState: (() => {
               const memberIds = [...new Set([...room.members.map((m) => m.userId), user.id])];
               const state = normalizeStoryState(room.storyState, memberIds);
-              if (state.phase === 'waiting' && memberCount >= quest.teamSize) {
+              if (shouldAutoStart && (state.phase === 'waiting' || state.phase === 'room_full')) {
+                state.phase = 'ready_check';
+                state.readyCheck.startedAt = now.toISOString();
+                state.readyCheck.deadlineAt = readyDeadline;
+              } else if (state.phase === 'waiting' && memberCount >= quest.teamSize) {
                 state.phase = 'room_full';
               }
               return state;
