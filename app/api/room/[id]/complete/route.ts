@@ -36,11 +36,24 @@ export async function POST(
       );
     }
 
-    if (room.status !== 'COMPLETED') {
+    const storyState = (room.storyState ?? null) as { phase?: string } | null;
+    const runtimeAllowsCompletion = storyState?.phase === 'final_panel' || storyState?.phase === 'completed';
+    if (room.status !== 'COMPLETED' && !runtimeAllowsCompletion) {
       return NextResponse.json(
         { error: 'Room is not yet completed' },
         { status: 400 }
       );
+    }
+
+    if (room.status !== 'COMPLETED') {
+      await prisma.room.update({
+        where: { id: roomId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+          storyState: storyState ? { ...storyState, phase: 'completed' } : undefined,
+        },
+      });
     }
 
     // Mark this member as completed

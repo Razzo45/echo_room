@@ -267,6 +267,15 @@ export default function AdminRoomsPage() {
                     Close room
                   </button>
                 )}
+                {room.status === 'IN_PROGRESS' && (
+                  <button
+                    type="button"
+                    onClick={() => runRoomAction(room.id, 'mark_completed', 'Mark this room as completed now?')}
+                    className="btn min-h-[44px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl text-sm"
+                  >
+                    Mark completed
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => runRoomAction(room.id, 'reset_ready_check', 'Reset ready-check for this room?')}
