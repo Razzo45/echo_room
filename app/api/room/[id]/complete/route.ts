@@ -7,8 +7,9 @@ import { generateFinalSynthesisWithFallback } from '@/lib/story-synthesis';
 
 /**
  * POST /api/room/[id]/complete
- * Mark the current participant as having finished the quest.
- * When all room members have completed, generate the artifact (once).
+ * Mark the current participant as having finished the final panel.
+ * The room stays in play until everyone has tapped "Finish story"; only then we
+ * mark the room COMPLETED, run final synthesis if needed, and create the artifact.
  */
 export async function POST(
   request: NextRequest,
@@ -43,32 +44,24 @@ export async function POST(
     }
 
     const storyState = (room.storyState ?? null) as { phase?: string } | null;
-    const runtimeAllowsCompletion = storyState?.phase === 'final_panel' || storyState?.phase === 'completed';
-    if (room.status !== 'COMPLETED' && !runtimeAllowsCompletion) {
+    const runtimeAllowsCompletion =
+      storyState?.phase === 'final_panel' ||
+      storyState?.phase === 'completed' ||
+      room.status === 'COMPLETED';
+    if (!runtimeAllowsCompletion) {
       return NextResponse.json(
         { error: 'Room is not yet completed' },
         { status: 400 }
       );
     }
 
-    if (room.status !== 'COMPLETED') {
-      await prisma.room.update({
-        where: { id: roomId },
-        data: {
-          status: 'COMPLETED',
-          completedAt: new Date(),
-          storyState: storyState ? { ...storyState, phase: 'completed' } : undefined,
-        },
+    if (!membership.completedAt) {
+      await prisma.roomMember.update({
+        where: { id: membership.id },
+        data: { completedAt: new Date() },
       });
     }
 
-    // Mark this member as completed
-    await prisma.roomMember.update({
-      where: { id: membership.id },
-      data: { completedAt: new Date() },
-    });
-
-    // Re-check all members' completion
     const updatedMembers = await prisma.roomMember.findMany({
       where: { roomId },
     });
@@ -81,15 +74,16 @@ export async function POST(
 
     if (allCompleted) {
       const memberIds = updatedMembers.map((m) => m.userId);
-      // Re-load room so storyState matches DB (avoid clobbering phase with stale in-memory state)
-      const roomForSynthesis = await prisma.room.findUnique({
+      const roomFresh = await prisma.room.findUnique({
         where: { id: roomId },
         include: {
           members: { include: { user: true } },
+          artifact: true,
         },
       });
-      if (roomForSynthesis) {
-        const currentState = normalizeStoryState(roomForSynthesis.storyState, memberIds);
+
+      if (roomFresh) {
+        const currentState = normalizeStoryState(roomFresh.storyState, memberIds);
         currentState.phase = 'completed';
         if (
           !String(currentState.finalSynthesis?.text || '').trim() ||
@@ -97,7 +91,7 @@ export async function POST(
         ) {
           const synthesis = await generateFinalSynthesisWithFallback(
             currentState,
-            roomForSynthesis.members.map((member) => ({
+            roomFresh.members.map((member) => ({
               id: member.userId,
               name: member.user.name,
             }))
@@ -107,30 +101,42 @@ export async function POST(
             text: synthesis.text,
             mode: synthesis.mode,
           };
-          await prisma.room.update({
-            where: { id: roomId },
-            data: { storyState: currentState, lastActivityAt: new Date() },
-          });
+        }
+
+        await prisma.room.update({
+          where: { id: roomId },
+          data: {
+            status: 'COMPLETED',
+            completedAt: roomFresh.completedAt ?? new Date(),
+            storyState: currentState,
+            lastActivityAt: new Date(),
+          },
+        });
+
+        artifactId = roomFresh.artifact?.id ?? null;
+
+        if (!artifactId) {
+          try {
+            const artifact = await generateArtifact(roomId);
+            artifactId = artifact.id;
+            await prisma.room.update({
+              where: { id: roomId },
+              data: { lastActivityAt: new Date() },
+            });
+          } catch (generationError) {
+            artifactError =
+              generationError instanceof Error ? generationError.message : 'Artifact generation failed';
+            console.error('Artifact generation failed during completion:', generationError);
+          }
         }
       } else {
         console.error('Complete: room disappeared during synthesis step', roomId);
       }
-    }
-
-    // Generate artifact only once all members have completed and no artifact exists.
-    // Artifact generation must never block completion success.
-    if (allCompleted && !artifactId) {
-      try {
-        const artifact = await generateArtifact(roomId);
-        artifactId = artifact.id;
-        await prisma.room.update({
-          where: { id: roomId },
-          data: { lastActivityAt: new Date() },
-        });
-      } catch (generationError) {
-        artifactError = generationError instanceof Error ? generationError.message : 'Artifact generation failed';
-        console.error('Artifact generation failed during completion:', generationError);
-      }
+    } else {
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { lastActivityAt: new Date() },
+      });
     }
 
     return NextResponse.json({
@@ -157,4 +163,3 @@ export async function POST(
     );
   }
 }
-

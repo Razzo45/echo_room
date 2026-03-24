@@ -47,6 +47,39 @@ export async function POST(
         return { kind: 'error' as const, status: 409, error: 'Consequence is not ready yet' };
       }
 
+      if (!state.consequenceContinue || state.consequenceContinue.beat !== beat) {
+        state.consequenceContinue = {
+          beat,
+          byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
+        };
+      }
+      for (const id of playerIds) {
+        if (!(id in state.consequenceContinue.byPlayerId)) {
+          state.consequenceContinue.byPlayerId[id] = false;
+        }
+      }
+      state.consequenceContinue.byPlayerId[user.id] = true;
+      const continueReady = playerIds.filter((id) => state.consequenceContinue!.byPlayerId[id]).length;
+      const allContinueReady = playerIds.every((id) => state.consequenceContinue!.byPlayerId[id]);
+
+      if (!allContinueReady) {
+        await tx.room.update({
+          where: { id: roomId },
+          data: {
+            storyState: state,
+            lastActivityAt: new Date(),
+          },
+        });
+        return {
+          kind: 'ok' as const,
+          advanced: false,
+          continueAck: { ready: continueReady, total: playerIds.length },
+          storyState: stripInternalStoryState(state),
+        };
+      }
+
+      state.consequenceContinue = null;
+
       if (beat < 3) {
         state.currentBeat = (beat + 1) as 1 | 2 | 3;
         state.phase = 'beat_input';
@@ -65,6 +98,7 @@ export async function POST(
       return {
         kind: 'ok' as const,
         advanced: true,
+        continueAck: { ready: playerIds.length, total: playerIds.length },
         storyState: stripInternalStoryState(state),
       };
     });
@@ -73,11 +107,15 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
-    return NextResponse.json({
+    const body: Record<string, unknown> = {
       success: true,
       advanced: result.advanced,
       storyState: result.storyState,
-    });
+    };
+    if ('continueAck' in result && result.continueAck) {
+      body.continueAck = result.continueAck;
+    }
+    return NextResponse.json(body);
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

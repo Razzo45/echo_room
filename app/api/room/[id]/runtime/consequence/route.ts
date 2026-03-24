@@ -92,6 +92,10 @@ export async function POST(
       computeScoreboard(state, playerIds);
 
       state.phase = 'beat_consequence';
+      state.consequenceContinue = {
+        beat,
+        byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
+      };
       if (beat === 3) {
         const synthesis = await generateFinalSynthesisWithFallback(
           state,

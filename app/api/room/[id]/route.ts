@@ -129,6 +129,7 @@ export async function GET(
           name: m.user.name,
           organisation: m.user.organisation,
           role: m.user.role,
+          completedAt: m.completedAt ? m.completedAt.toISOString() : null,
         })),
         votes: room.votes.map((v) => ({
           userId: v.userId,

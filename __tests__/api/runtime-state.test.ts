@@ -37,10 +37,14 @@ function req(url: string, body: unknown) {
 }
 
 function txForRoom(room: any) {
+  const merged = {
+    ...room,
+    quest: room.quest ?? { decisions: [] },
+  };
   return {
     $executeRaw: jest.fn(),
     room: {
-      findUnique: jest.fn().mockResolvedValue(room),
+      findUnique: jest.fn().mockResolvedValue(merged),
       update: jest.fn().mockResolvedValue({}),
     },
   };
@@ -248,18 +252,17 @@ describe('runtime-state endpoints', () => {
       fn(
         txForRoom({
           id: 'r1',
-          members: [{ userId: 'u1' }, { userId: 'u2' }],
+          members: [{ userId: 'u1' }],
           storyState: {
             phase: 'beat_consequence',
             currentBeat: 1,
-            readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true, u2: true } },
+            readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true } },
             beats: {
               '1': {
-                submissions: { u1: 'a', u2: 'b' },
+                submissions: { u1: 'a' },
                 revealed: true,
                 rolls: {
                   u1: { value: 10, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
-                  u2: { value: 12, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
                 },
                 consequence: { text: 'ready', mode: 'auto', generatedAt: '2026-03-24T00:00:00.000Z' },
                 resolved: true,
@@ -267,7 +270,7 @@ describe('runtime-state endpoints', () => {
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u1: 10, u2: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
+            scoreboard: { playerTotals: { u1: 10 }, teamAverage: 10, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -282,6 +285,75 @@ describe('runtime-state endpoints', () => {
     expect(json.advanced).toBe(true);
     expect(json.storyState.phase).toBe('beat_input');
     expect(json.storyState.currentBeat).toBe(2);
+  });
+
+  it('advance after consequence waits until every player has continued', async () => {
+    const storyState = {
+      phase: 'beat_consequence',
+      currentBeat: 1,
+      readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true, u2: true } },
+      beats: {
+        '1': {
+          submissions: { u1: 'a', u2: 'b' },
+          revealed: true,
+          rolls: {
+            u1: { value: 10, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+            u2: { value: 12, band: 'mixed', rolledAt: '2026-03-24T00:00:00.000Z' },
+          },
+          consequence: { text: 'ready', mode: 'auto', generatedAt: '2026-03-24T00:00:00.000Z' },
+          resolved: true,
+        },
+        '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+        '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+      },
+      scoreboard: { playerTotals: { u1: 10, u2: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
+      finalSynthesis: { status: 'idle', text: '', mode: '' },
+      consequenceContinue: {
+        beat: 1,
+        byPlayerId: { u1: false, u2: false },
+      },
+    };
+
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          members: [{ userId: 'u1' }, { userId: 'u2' }],
+          storyState: JSON.parse(JSON.stringify(storyState)),
+        })
+      )
+    );
+
+    const res1 = await advancePost(req('http://localhost/api/room/r1/runtime/advance', {}) as any, {
+      params: { id: 'r1' },
+    });
+    const json1 = await res1.json();
+    expect(res1.status).toBe(200);
+    expect(json1.advanced).toBe(false);
+    expect(json1.continueAck).toEqual({ ready: 1, total: 2 });
+
+    requireAuth.mockResolvedValue({ id: 'u2' });
+    prisma.$transaction.mockImplementation(async (fn: any) =>
+      fn(
+        txForRoom({
+          id: 'r1',
+          members: [{ userId: 'u1' }, { userId: 'u2' }],
+          storyState: {
+            ...storyState,
+            consequenceContinue: { beat: 1, byPlayerId: { u1: true, u2: false } },
+          },
+        })
+      )
+    );
+
+    const res2 = await advancePost(req('http://localhost/api/room/r1/runtime/advance', {}) as any, {
+      params: { id: 'r1' },
+    });
+    const json2 = await res2.json();
+    expect(res2.status).toBe(200);
+    expect(json2.advanced).toBe(true);
+    expect(json2.storyState.phase).toBe('beat_input');
+    expect(json2.storyState.currentBeat).toBe(2);
   });
 
   it('advance returns 409 when consequence is missing in beat_consequence', async () => {

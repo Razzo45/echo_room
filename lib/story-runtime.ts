@@ -40,6 +40,11 @@ type StoryState = {
     text: string;
     mode: string;
   };
+  /** While in beat_consequence, each player must POST /runtime/advance before the story moves on. */
+  consequenceContinue: {
+    beat: 1 | 2 | 3;
+    byPlayerId: Record<string, boolean>;
+  } | null;
   internal?: {
     decisionCommitBeat?: 1 | 2 | 3;
     decisionCommitAt?: string;
@@ -97,6 +102,7 @@ export function createInitialStoryState(playerIds: string[]): StoryState {
       text: '',
       mode: '',
     },
+    consequenceContinue: null,
   };
 }
 
@@ -133,6 +139,10 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
       ...fallback.finalSynthesis,
       ...(parsed.finalSynthesis ?? {}),
     },
+    consequenceContinue:
+      parsed.consequenceContinue === undefined
+        ? fallback.consequenceContinue
+        : parsed.consequenceContinue,
     internal: parsed.internal ?? fallback.internal,
   };
 
@@ -143,6 +153,19 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
     if (!(playerId in state.scoreboard.playerTotals)) {
       state.scoreboard.playerTotals[playerId] = 0;
     }
+  }
+
+  const cb = state.currentBeat;
+  const cbKey = String(cb) as '1' | '2' | '3';
+  if (
+    state.phase === 'beat_consequence' &&
+    state.beats[cbKey]?.consequence &&
+    (!state.consequenceContinue || state.consequenceContinue.beat !== cb)
+  ) {
+    state.consequenceContinue = {
+      beat: cb,
+      byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
+    };
   }
 
   return state;

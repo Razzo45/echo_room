@@ -68,3 +68,26 @@
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 }
+
+@layer utilities {
+  @keyframes d20-tumble {
+    0% {
+      transform: rotateX(-20deg) rotateY(0deg) scale(1);
+    }
+    25% {
+      transform: rotateX(200deg) rotateY(90deg) scale(1.06);
+    }
+    50% {
+      transform: rotateX(120deg) rotateY(200deg) scale(0.98);
+    }
+    75% {
+      transform: rotateX(300deg) rotateY(280deg) scale(1.04);
+    }
+    100% {
+      transform: rotateX(340deg) rotateY(360deg) scale(1);
+    }
+  }
+  .animate-d20-tumble {
+    animation: d20-tumble 1.85s cubic-bezier(0.45, 0.05, 0.25, 1) infinite;
+  }
+}

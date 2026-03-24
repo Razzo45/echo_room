@@ -26,30 +26,94 @@ export function buildDeterministicFinalSynthesis(state: StoryState, playerIds: s
 export function buildDeterministicBeatConsequence(input: {
   beat: number;
   submissions: Array<{ name: string; text: string }>;
+  rolls?: Array<{ name: string; value: number; band: string }>;
   averageRoll: number;
 }): { mode: string; text: string } {
-  const { beat, submissions, averageRoll } = input;
+  const { beat, submissions, rolls, averageRoll } = input;
   const opener = `Beat ${beat} resolves with the team acting in sync.`;
   const highlights = submissions
     .slice(0, 3)
-    .map((s) => `${s.name} chose to ${s.text}`)
+    .map((s) => `${s.name}: "${s.text}"`)
     .join('; ');
+  const rollLine =
+    rolls && rolls.length > 0
+      ? ` Rolls: ${rolls.map((r) => `${r.name} ${r.value} (${titleCaseBand(r.band)})`).join('; ')}.`
+      : '';
   if (averageRoll >= 15) {
     return {
       mode: 'high_momentum',
-      text: `${opener} Their combined momentum pays off (${averageRoll.toFixed(1)} avg roll): ${highlights}. The path opens with clear advantage.`,
+      text: `${opener} Their combined momentum pays off (${averageRoll.toFixed(1)} team average d20). ${highlights}.${rollLine} The moment lands with clear advantage.`,
     };
   }
   if (averageRoll >= 10) {
     return {
       mode: 'mixed_result',
-      text: `${opener} The move works with tradeoffs (${averageRoll.toFixed(1)} avg roll): ${highlights}. Progress is real, but tension rises.`,
+      text: `${opener} The move works with tradeoffs (${averageRoll.toFixed(1)} team average). ${highlights}.${rollLine} Progress is real, but tension rises.`,
     };
   }
   return {
     mode: 'hard_choice',
-    text: `${opener} The move succeeds only partially (${averageRoll.toFixed(1)} avg roll): ${highlights}. The team must adapt quickly to new pressure.`,
+    text: `${opener} The dice demand a hard landing (${averageRoll.toFixed(1)} team average). ${highlights}.${rollLine} The team must adapt quickly.`,
   };
+}
+
+export async function generateBeatConsequenceWithFallback(input: {
+  beat: number;
+  beatTitle: string;
+  beatScene: string;
+  paths: Array<{ key: string; label: string; summary: string }>;
+  submissions: Array<{ name: string; text: string }>;
+  rolls: Array<{ name: string; value: number; band: string }>;
+  averageRoll: number;
+}): Promise<{ text: string; mode: string }> {
+  const fallback = buildDeterministicBeatConsequence({
+    beat: input.beat,
+    submissions: input.submissions,
+    rolls: input.rolls,
+    averageRoll: input.averageRoll,
+  });
+
+  if (!openai) {
+    return { text: fallback.text, mode: 'deterministic_fallback' };
+  }
+
+  const pathLines = input.paths
+    .map((p) => `Path ${p.key}: ${p.label} — ${p.summary}`)
+    .join('\n');
+  const actionLines = input.submissions.map((s) => `${s.name}: ${s.text}`).join(' | ');
+  const rollLines = input.rolls
+    .map((r) => `${r.name}: d20=${r.value} (${titleCaseBand(r.band)})`)
+    .join(' | ');
+
+  try {
+    const prompt = [
+      `You are narrating one beat in a collaborative tabletop-style story.`,
+      `Beat title: ${input.beatTitle}`,
+      `Scene / stakes: ${input.beatScene || '(not specified)'}`,
+      `Possible narrative paths (informational; players did not "vote", they wrote free actions):\n${pathLines || '(none)'}`,
+      `What each player did: ${actionLines}`,
+      `Dice: ${rollLines}. Team average roll: ${input.averageRoll.toFixed(1)}.`,
+      `Write ONE short paragraph (70–130 words) that:`,
+      `- References the scene and each player's action concretely.`,
+      `- Explains how the combined rolls shape the outcome (use average as guide).`,
+      `- Optionally alludes to how their actions relate to paths A/B/C without forcing a "winner" path.`,
+      `Plain text only, present tense or immediate past, no bullet points.`,
+    ].join('\n');
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.65,
+      max_tokens: 280,
+    });
+    const text = completion.choices[0]?.message?.content?.trim();
+    if (!text) {
+      return { text: fallback.text, mode: 'deterministic_fallback' };
+    }
+    return { text, mode: 'ai' };
+  } catch {
+    return { text: fallback.text, mode: 'deterministic_fallback' };
+  }
 }
 
 export async function generateFinalSynthesisWithFallback(

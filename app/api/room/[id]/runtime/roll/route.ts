@@ -10,7 +10,7 @@ import {
   stripInternalStoryState,
 } from '@/lib/story-runtime';
 import {
-  buildDeterministicBeatConsequence,
+  generateBeatConsequenceWithFallback,
   generateFinalSynthesisWithFallback,
 } from '@/lib/story-synthesis';
 
@@ -34,7 +34,17 @@ export async function POST(
       await lockRoomForUpdate(tx, roomId);
       const room = await tx.room.findUnique({
         where: { id: roomId },
-        include: { members: { include: { user: true } } },
+        include: {
+          members: { include: { user: true } },
+          quest: {
+            include: {
+              decisions: {
+                orderBy: { decisionNumber: 'asc' },
+                include: { options: { orderBy: { optionKey: 'asc' } } },
+              },
+            },
+          },
+        },
       });
 
       if (!room) {
@@ -80,9 +90,30 @@ export async function POST(
         const averageRoll = rollValues.length
           ? rollValues.reduce((sum, current) => sum + current, 0) / rollValues.length
           : 0;
-        const generated = buildDeterministicBeatConsequence({
+        const rollList = room.members.map((member) => {
+          const r = state.beats[beatKey].rolls[member.userId];
+          return {
+            name: member.user.name,
+            value: r?.value ?? 0,
+            band: r?.band ?? 'mixed',
+          };
+        });
+        const decision = room.quest.decisions.find((d) => d.decisionNumber === beat);
+        const beatTitle = decision?.title ?? `Beat ${beat}`;
+        const beatScene = decision?.context ?? '';
+        const paths =
+          decision?.options.map((o) => ({
+            key: o.optionKey,
+            label: o.title,
+            summary: [o.description, o.impact, o.tradeoff].filter(Boolean).join(' — ') || o.title,
+          })) ?? [];
+        const generated = await generateBeatConsequenceWithFallback({
           beat,
+          beatTitle,
+          beatScene,
+          paths,
           submissions: submissionList,
+          rolls: rollList,
           averageRoll,
         });
         state.beats[beatKey].consequence = {
@@ -91,6 +122,10 @@ export async function POST(
           generatedAt: now.toISOString(),
         };
         state.beats[beatKey].resolved = true;
+        state.consequenceContinue = {
+          beat,
+          byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
+        };
         computeScoreboard(state, playerIds);
         if (beat === 3) {
           const synthesis = await generateFinalSynthesisWithFallback(

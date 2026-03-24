@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { D20Die } from '@/components/D20Die';
 
 type RoomPhase =
   | 'waiting'
@@ -39,16 +40,38 @@ type StoryState = {
     teamAverage: number;
     teamBand: string;
   };
+  consequenceContinue?: {
+    beat: 1 | 2 | 3;
+    byPlayerId: Record<string, boolean>;
+  } | null;
 };
+
+type DecisionOption = {
+  label: string;
+  tradeoffs?: string;
+  risks?: string[];
+  outcomes?: string[];
+};
+
+type QuestDecisionData = {
+  number: number;
+  title: string;
+  description: string;
+  options: Record<string, DecisionOption>;
+};
+
+type DecisionsPayload = { decisions: QuestDecisionData[] };
 
 type RoomResponse = {
   room: {
     id: string;
     status: string;
     questName: string;
+    questDescription?: string;
+    decisionsData?: DecisionsPayload | null;
     memberCount: number;
     maxPlayers: number;
-    members: Array<{ id: string; name: string }>;
+    members: Array<{ id: string; name: string; completedAt?: string | null }>;
     storyState: StoryState;
     hasArtifact: boolean;
     artifactId?: string;
@@ -75,6 +98,26 @@ function bandLabel(band: RollBand): string {
   return 'Critical fail';
 }
 
+function getBeatMeta(
+  decisionsData: DecisionsPayload | null | undefined,
+  beat: number
+): QuestDecisionData | null {
+  if (!decisionsData?.decisions?.length) return null;
+  return decisionsData.decisions.find((d) => d.number === beat) ?? null;
+}
+
+function optionBlurb(opt: DecisionOption | undefined): string {
+  if (!opt) return '';
+  const bits = [
+    opt.label,
+    opt.tradeoffs,
+    ...(opt.outcomes ?? []),
+    ...(opt.risks ?? []),
+  ].filter(Boolean);
+  const s = bits.join(' · ');
+  return s || opt.label || '';
+}
+
 export default function QuestPlayPage() {
   const router = useRouter();
   const params = useParams();
@@ -92,6 +135,7 @@ export default function QuestPlayPage() {
   const [rollSubmitting, setRollSubmitting] = useState(false);
   const [completeSubmitting, setCompleteSubmitting] = useState(false);
   const advanceInFlightRef = useRef(false);
+  const [advanceSubmitting, setAdvanceSubmitting] = useState(false);
 
   const loadRoom = async () => {
     try {
@@ -143,8 +187,10 @@ export default function QuestPlayPage() {
 
   const storyState = room?.storyState;
   const currentBeatKey = String(storyState?.currentBeat ?? 1) as '1' | '2' | '3';
-  const currentBeat = storyState?.beats[currentBeatKey];
+  const currentBeat = storyState?.beats?.[currentBeatKey];
   const players = room?.members ?? [];
+  const decisionsData = room?.decisionsData ?? null;
+  const currentMeta = storyState ? getBeatMeta(decisionsData, storyState.currentBeat) : null;
 
   const mySubmittedAction = useMemo(
     () => (myUserId && currentBeat ? currentBeat.submissions[myUserId] : undefined),
@@ -168,19 +214,21 @@ export default function QuestPlayPage() {
   const handleAdvanceFromConsequence = async () => {
     if (!storyState || storyState.phase !== 'beat_consequence') return;
     if (!currentBeat?.consequence) return;
-    if (advanceInFlightRef.current) return;
+    if (advanceInFlightRef.current || advanceSubmitting) return;
     advanceInFlightRef.current = true;
+    setAdvanceSubmitting(true);
     try {
       const res = await fetch(`/api/room/${roomId}/runtime/advance`, {
         method: 'POST',
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         alert(data.error || 'Could not continue yet.');
       }
       await loadRoom();
     } finally {
       advanceInFlightRef.current = false;
+      setAdvanceSubmitting(false);
     }
   };
 
@@ -297,11 +345,18 @@ export default function QuestPlayPage() {
 
   if (room.status === 'COMPLETED' && room.hasArtifact && room.artifactId) return null;
   if (room.status === 'COMPLETED' && !room.artifactId) {
+    const allMembersTappedFinish = players.length > 0 && players.every((p) => p.completedAt);
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-100 shadow p-5 text-center">
-          <p className="text-sm font-semibold text-gray-900 mb-1">Wrapping up story...</p>
-          <p className="text-xs text-gray-500">Please wait</p>
+          <p className="text-sm font-semibold text-gray-900 mb-1">
+            {allMembersTappedFinish ? 'Building your artifact…' : 'Waiting for everyone to finish'}
+          </p>
+          <p className="text-xs text-gray-500">
+            {allMembersTappedFinish
+              ? 'This usually takes a few seconds. Keep this page open.'
+              : 'Each player needs to tap “Finish story” on the final panel. This screen will refresh automatically.'}
+          </p>
         </div>
       </div>
     );
@@ -310,6 +365,23 @@ export default function QuestPlayPage() {
   const myReady = Boolean(storyState.readyCheck.readyByPlayerId[myUserId]);
   const submissionCount = Object.keys(currentBeat.submissions).length;
   const rollCount = Object.keys(currentBeat.rolls).length;
+
+  const showStoryContent =
+    storyState.phase !== 'waiting' &&
+    storyState.phase !== 'room_full' &&
+    storyState.phase !== 'ready_check';
+
+  const cc = storyState.consequenceContinue;
+  const myContinueAck =
+    cc && cc.beat === storyState.currentBeat ? Boolean(cc.byPlayerId[myUserId]) : false;
+  const continueReady =
+    cc && cc.beat === storyState.currentBeat
+      ? Object.entries(cc.byPlayerId).filter(([, v]) => v).length
+      : 0;
+  const continueTotal = players.length;
+
+  const myFinalTapped = Boolean(players.find((p) => p.id === myUserId)?.completedAt);
+  const allFinalTapped = players.length > 0 && players.every((p) => p.completedAt);
 
   const phaseTitle: Record<RoomPhase, string> = {
     waiting: 'Waiting for more players',
@@ -322,6 +394,8 @@ export default function QuestPlayPage() {
     final_panel: 'Final panel',
     completed: 'Complete',
   };
+
+  const pathKeys = currentMeta?.options ? ['A', 'B', 'C'].filter((k) => currentMeta.options[k]) : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -343,27 +417,120 @@ export default function QuestPlayPage() {
         )}
 
         {storyState.phase === 'ready_check' && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-            <h1 className="text-lg font-bold text-gray-900 mb-2">Ready check</h1>
-            <p className="text-sm text-gray-600 mb-4">Confirm when you are ready to begin the story.</p>
-            <p className="text-sm font-medium text-primary-700 mb-4">{readyCount} of {players.length} ready</p>
-            <button
-              type="button"
-              onClick={handleReady}
-              disabled={myReady || readySubmitting}
-              className="btn btn-primary w-full"
-            >
-              {myReady ? 'You are ready' : readySubmitting ? 'Saving...' : "I'm ready"}
-            </button>
+          <div className="space-y-4">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+              <h1 className="text-lg font-bold text-gray-900 mb-2">Ready check</h1>
+              <p className="text-sm text-gray-600 mb-4">Confirm when you are ready to begin the story.</p>
+              <p className="text-sm font-medium text-primary-700 mb-4">
+                {readyCount} of {players.length} ready
+              </p>
+              <button
+                type="button"
+                onClick={handleReady}
+                disabled={myReady || readySubmitting}
+                className="btn btn-primary w-full"
+              >
+                {myReady ? 'You are ready' : readySubmitting ? 'Saving...' : "I'm ready"}
+              </button>
+            </div>
+            {(room.questDescription || room.questName) && (
+              <div className="bg-primary-50/90 border border-primary-100 rounded-2xl p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary-800 mb-1">Scenario</p>
+                <p className="text-sm font-semibold text-primary-950">{room.questName}</p>
+                {room.questDescription ? (
+                  <p className="text-sm text-primary-900/85 mt-2 whitespace-pre-wrap">{room.questDescription}</p>
+                ) : null}
+              </div>
+            )}
           </div>
+        )}
+
+        {showStoryContent && (
+          <>
+            {(room.questDescription || room.questName) && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Beat 0 · Briefing</p>
+                <p className="text-sm font-bold text-gray-900">{room.questName}</p>
+                {room.questDescription ? (
+                  <p className="text-sm text-gray-600 mt-2 whitespace-pre-wrap">{room.questDescription}</p>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2 italic">No briefing text provided for this quest.</p>
+                )}
+              </div>
+            )}
+
+            {decisionsData?.decisions?.length ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">All beats</p>
+                <div className="space-y-2">
+                  {decisionsData.decisions
+                    .slice()
+                    .sort((a, b) => a.number - b.number)
+                    .map((d) => (
+                      <div
+                        key={d.number}
+                        className={`rounded-xl border p-3 text-sm ${
+                          d.number === storyState.currentBeat
+                            ? 'border-primary-300 bg-primary-50/60'
+                            : 'border-gray-100 bg-gray-50/40'
+                        }`}
+                      >
+                        <p className="font-semibold text-gray-900">
+                          Beat {d.number}
+                          {d.number === storyState.currentBeat ? ' · now' : ''}
+                        </p>
+                        <p className="text-gray-800 font-medium mt-0.5">{d.title}</p>
+                        <p className="text-gray-600 mt-1 whitespace-pre-wrap">{d.description}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
 
         {(storyState.phase === 'preamble' || storyState.phase === 'beat_input') && (
           <div className="space-y-4">
             {storyState.phase === 'preamble' && (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-                <h1 className="text-lg font-bold text-gray-900 mb-2">Beat {storyState.currentBeat}</h1>
-                <p className="text-sm text-gray-600">Type one short sentence describing your move.</p>
+              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+                <h1 className="text-lg font-bold text-gray-900">Beat {storyState.currentBeat}</h1>
+                {currentMeta ? (
+                  <>
+                    <p className="text-sm font-semibold text-gray-800">{currentMeta.title}</p>
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-600">Your facilitator will set the tone for this beat.</p>
+                )}
+                <p className="text-sm text-gray-600">Write one short sentence describing your move.</p>
+              </div>
+            )}
+            {pathKeys.length > 0 && (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Paths (reference only)
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  These are not votes—use them as inspiration, then write your own line.
+                </p>
+                <div className="grid gap-2">
+                  {pathKeys.map((key) => (
+                    <div key={key} className="rounded-xl bg-white border border-gray-100 p-3 text-sm">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary-100 text-primary-800 text-xs font-bold mr-2">
+                        {key}
+                      </span>
+                      <span className="font-semibold text-gray-900">{currentMeta?.options[key]?.label}</span>
+                      <p className="text-gray-600 mt-1 pl-9">{optionBlurb(currentMeta?.options[key])}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {storyState.phase === 'beat_input' && currentMeta && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">This beat</p>
+                <p className="text-sm font-bold text-gray-900">{currentMeta.title}</p>
+                <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{currentMeta.description}</p>
               </div>
             )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
@@ -371,9 +538,7 @@ export default function QuestPlayPage() {
                 <>
                   <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Locked in</p>
                   <p className="text-sm text-gray-700 mb-4">{mySubmittedAction}</p>
-                  <p className="text-xs text-gray-500">
-                    Blind input is active: reveals after all submissions.
-                  </p>
+                  <p className="text-xs text-gray-500">Blind input is active: reveals after all submissions.</p>
                 </>
               ) : (
                 <>
@@ -406,6 +571,13 @@ export default function QuestPlayPage() {
 
         {storyState.phase === 'roll_reveal' && (
           <div className="space-y-4">
+            {currentMeta && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Scene</p>
+                <p className="text-sm font-bold text-gray-900">{currentMeta.title}</p>
+                <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{currentMeta.description}</p>
+              </div>
+            )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
               <h1 className="text-lg font-bold text-gray-900 mb-2">Revealed actions</h1>
               <div className="space-y-2">
@@ -419,13 +591,9 @@ export default function QuestPlayPage() {
             </div>
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
               <p className="text-sm text-gray-600 mb-3">Roll to resolve your move.</p>
-              <div className="w-24 h-24 mx-auto rounded-2xl bg-primary-50 border border-primary-100 flex items-center justify-center mb-3">
-                <span className="text-3xl font-extrabold text-primary-700">{rollDisplayValue ?? '-'}</span>
-              </div>
+              <D20Die value={rollDisplayValue} rolling={rolling && !myRoll} />
               {myRoll && !rolling && (
-                <p className="text-sm font-semibold text-primary-700 mb-3">
-                  {bandLabel(myRoll.band)}
-                </p>
+                <p className="text-sm font-semibold text-primary-700 mb-3">{bandLabel(myRoll.band)}</p>
               )}
               <button
                 type="button"
@@ -441,20 +609,35 @@ export default function QuestPlayPage() {
         )}
 
         {storyState.phase === 'beat_consequence' && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-            <h1 className="text-lg font-bold text-gray-900 mb-2">Outcome in progress</h1>
+          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+            <h1 className="text-lg font-bold text-gray-900">What happened</h1>
             {currentBeat.consequence ? (
               <>
-                <p className="text-xs text-primary-700 font-semibold uppercase tracking-wide mb-2">
-                  {currentBeat.consequence.mode}
+                <p className="text-xs text-gray-500">
+                  {currentBeat.consequence.mode === 'ai'
+                    ? 'Narrative synthesis'
+                    : currentBeat.consequence.mode === 'deterministic_fallback'
+                      ? 'Offline narrative (add API key for richer AI)'
+                      : currentBeat.consequence.mode.replace(/_/g, ' ')}
                 </p>
-                <p className="text-sm text-gray-700">{currentBeat.consequence.text}</p>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">{currentBeat.consequence.text}</p>
+                <p className="text-sm font-medium text-primary-800">
+                  Ready to continue: {continueReady} / {continueTotal}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Everyone taps Continue when ready. The story moves on only after all players have continued.
+                </p>
                 <button
                   type="button"
                   onClick={handleAdvanceFromConsequence}
-                  className="btn btn-primary w-full mt-4"
+                  disabled={myContinueAck || advanceSubmitting}
+                  className="btn btn-primary w-full"
                 >
-                  Continue
+                  {myContinueAck
+                    ? 'You are ready — waiting for others'
+                    : advanceSubmitting
+                      ? 'Saving...'
+                      : 'Continue'}
                 </button>
               </>
             ) : (
@@ -470,7 +653,9 @@ export default function QuestPlayPage() {
               {players.map((player) => (
                 <div key={player.id} className="flex items-center justify-between text-sm">
                   <span className="text-gray-700">{player.name}</span>
-                  <span className="font-semibold text-gray-900">{storyState.scoreboard.playerTotals[player.id] ?? 0} / 60</span>
+                  <span className="font-semibold text-gray-900">
+                    {storyState.scoreboard.playerTotals[player.id] ?? 0} / 60
+                  </span>
                 </div>
               ))}
             </div>
@@ -479,14 +664,27 @@ export default function QuestPlayPage() {
                 Team average: {storyState.scoreboard.teamAverage} / 60
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleCompleteStory}
-              disabled={completeSubmitting}
-              className="btn btn-primary w-full mt-4"
-            >
-              {completeSubmitting ? 'Finalizing...' : 'Finish story'}
-            </button>
+            {myFinalTapped ? (
+              <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-700">
+                {allFinalTapped ? (
+                  <p>Everyone has finished. Handing off to the artifact…</p>
+                ) : (
+                  <p>
+                    You have finished. Waiting for other players to tap <span className="font-semibold">Finish story</span>
+                    …
+                  </p>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCompleteStory}
+                disabled={completeSubmitting}
+                className="btn btn-primary w-full mt-4"
+              >
+                {completeSubmitting ? 'Finalizing...' : 'Finish story'}
+              </button>
+            )}
           </div>
         )}
 
