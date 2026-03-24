@@ -6,6 +6,9 @@ export async function DELETE() {
   try {
     const user = await requireAuth();
 
+    await prisma.questResponse.deleteMany({ where: { userId: user.id } });
+    await prisma.analyticsEvent.deleteMany({ where: { userId: user.id } });
+
     // Delete user and all related data (cascading deletes handle relationships)
     await prisma.user.delete({
       where: { id: user.id },

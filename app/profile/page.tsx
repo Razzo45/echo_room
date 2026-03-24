@@ -24,6 +24,10 @@ export default function ProfilePage() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [levelLabel, setLevelLabel] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [accountError, setAccountError] = useState('');
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -81,6 +85,49 @@ export default function ProfilePage() {
     const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
     if (saveSuccess) setSaveSuccess(false);
+  };
+
+  const handleLogout = async () => {
+    setAccountError('');
+    setLogoutLoading(true);
+    try {
+      const res = await fetch('/api/auth/logout', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAccountError((data as { error?: string }).error || 'Could not log out.');
+        setLogoutLoading(false);
+        return;
+      }
+      router.push('/');
+      router.refresh();
+    } catch {
+      setAccountError('Could not log out. Try again.');
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    setAccountError('');
+    setDeleteLoading(true);
+    try {
+      const res = await fetch('/api/data/delete', { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAccountError((data as { error?: string }).error || 'Could not delete your data.');
+        setDeleteLoading(false);
+        setShowDeleteConfirm(false);
+        return;
+      }
+      setShowDeleteConfirm(false);
+      router.push('/');
+      router.refresh();
+    } catch {
+      setAccountError('Could not delete your data. Try again.');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -200,7 +247,79 @@ export default function ProfilePage() {
             )}
           </p>
         </form>
+
+        <div className="mt-6 bg-white rounded-3xl shadow border border-gray-100 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-900">Account</h2>
+          {accountError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-800">{accountError}</div>
+          )}
+          <p className="text-xs text-gray-500">
+            Log out ends your session on this device. Deleting your data permanently removes your profile and related activity for this event (rooms, votes, badges, and sessions), then logs you out.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={logoutLoading || deleteLoading}
+              className="btn border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 w-full sm:flex-1 disabled:opacity-50"
+            >
+              {logoutLoading ? 'Logging out…' : 'Log out'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAccountError('');
+                setShowDeleteConfirm(true);
+              }}
+              disabled={logoutLoading || deleteLoading}
+              className="btn border border-red-200 bg-red-50 text-red-800 hover:bg-red-100 w-full sm:flex-1 disabled:opacity-50"
+            >
+              Delete all my data
+            </button>
+          </div>
+        </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => !deleteLoading && setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Delete all your data?</h2>
+            </div>
+            <div className="px-6 py-4 text-sm text-gray-700 space-y-3">
+              <p className="font-medium text-gray-900">Are you sure?</p>
+              <p>
+                This will permanently delete your profile, session, room memberships, votes, badges, and other activity
+                linked to your account for this event. You will be logged out. This cannot be undone.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+              <button
+                type="button"
+                className="btn border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 w-full sm:w-auto"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn bg-red-600 text-white hover:bg-red-700 w-full sm:w-auto disabled:opacity-50"
+                onClick={handleDeleteAllData}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Deleting…' : 'Yes, delete everything'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showTerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowTerms(false)}>
@@ -215,7 +334,7 @@ export default function ProfilePage() {
               <p>Echo Room is an event-based decision experience. When you create a profile, we collect the information you provide (name, organisation, role, country, one skill, one curiosity) to run the experience, form teams, and generate anonymised insights.</p>
               <p>Your profile is linked to your participation in rooms, votes, and decision artifacts. This is used to operate the session, support facilitator and organiser insights, and improve the experience.</p>
               <p>We do not sell your personal data. Data may be processed by our technical providers only as necessary to provide this service. Where possible, analytics and reporting are aggregated or anonymised.</p>
-              <p>We store your profile and participation data for the event and a limited period afterwards. You can delete your data at any time via the participant settings page.</p>
+              <p>We store your profile and participation data for the event and a limited period afterwards. You can delete your data at any time from your profile page (Delete all my data).</p>
               <p>If you have questions or wish to exercise GDPR rights (access, correction, deletion), contact the event organiser or the admin contact provided with your invitation.</p>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 shrink-0">
