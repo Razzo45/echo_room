@@ -452,7 +452,13 @@ export default function EventDetailPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || 'Failed to save content');
+        const detailText =
+          typeof data.details === 'string'
+            ? data.details
+            : Array.isArray(data.details)
+            ? data.details.map((d: any) => (typeof d?.message === 'string' ? d.message : JSON.stringify(d))).join('; ')
+            : '';
+        alert(detailText ? `${data.error || 'Failed to save content'}\n\n${detailText}` : data.error || 'Failed to save content');
         setGenerating(false);
         return;
       }

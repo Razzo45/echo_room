@@ -317,7 +317,7 @@ export default function QuestReviewModal({
                               {/* Options */}
                               <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                  Options (A, B, C)
+                                  Path options (A, B, C)
                                 </label>
                                 <div className="space-y-4">
                                   {decision.options.map((option, optionIdx) => (
@@ -327,14 +327,14 @@ export default function QuestReviewModal({
                                     >
                                       <div className="flex items-center justify-between mb-3">
                                         <span className="font-semibold text-indigo-900">
-                                          Option {option.optionKey}
+                                          Path {option.optionKey}
                                         </span>
                                       </div>
 
                                       <div className="space-y-3">
                                         <div>
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Title
+                                            Path title
                                           </label>
                                           <input
                                             type="text"
@@ -354,7 +354,7 @@ export default function QuestReviewModal({
 
                                         <div>
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Description
+                                            Player-facing prompt text
                                           </label>
                                           <textarea
                                             value={option.description}
@@ -374,7 +374,7 @@ export default function QuestReviewModal({
 
                                         <div>
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Impact / Outcomes
+                                            Expected narrative consequence
                                           </label>
                                           <textarea
                                             value={option.impact}
@@ -394,7 +394,7 @@ export default function QuestReviewModal({
 
                                         <div>
                                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                                            Tradeoffs
+                                            Complication / cost
                                           </label>
                                           <textarea
                                             value={option.tradeoff}

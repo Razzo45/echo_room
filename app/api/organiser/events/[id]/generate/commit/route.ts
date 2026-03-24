@@ -31,7 +31,28 @@ export async function POST(
       );
     }
 
-    const generated = validation.data;
+    const normalizeDraft = (raw: typeof validation.data) => {
+      const optionKeys: Array<'A' | 'B' | 'C'> = ['A', 'B', 'C'];
+      return {
+        ...raw,
+        regions: raw.regions.map((region) => ({
+          ...region,
+          quests: region.quests.map((quest) => ({
+            ...quest,
+            decisions: quest.decisions.slice(0, 3).map((decision, decisionIdx) => ({
+              ...decision,
+              decisionNumber: (decisionIdx + 1) as 1 | 2 | 3,
+              options: decision.options.slice(0, 3).map((option, optionIdx) => ({
+                ...option,
+                optionKey: optionKeys[optionIdx],
+              })),
+            })),
+          })),
+        })),
+      };
+    };
+
+    const generated = normalizeDraft(validation.data);
 
     // Enforce a minimum amount of AI-generated quests for this event
     // to avoid committing a trivial single-quest configuration.
@@ -251,7 +272,7 @@ export async function POST(
 
       console.log('Commit transaction completed successfully');
     }, {
-      timeout: 30000,
+      timeout: 120000,
     });
 
     console.log('Commit successful');
@@ -270,7 +291,7 @@ export async function POST(
     return NextResponse.json(
       {
         error: 'Failed to commit content',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+        details: errorMessage,
       },
       { status: 500 }
     );
