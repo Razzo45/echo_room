@@ -84,9 +84,9 @@ export default function QuestReviewModal({
         {/* Header */}
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Review AI-Generated Content</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Review generated scenario</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Review and edit the generated quests, decisions, and options before saving
+              Review and edit the generated scenario, beats, and path options before committing
             </p>
           </div>
           <button
@@ -183,12 +183,12 @@ export default function QuestReviewModal({
 
                 {/* Quest Info */}
                 <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quest: {currentQuest.name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Scenario: {currentQuest.name}</h3>
 
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Quest Name
+                        Scenario Name
                       </label>
                       <input
                         type="text"
@@ -200,7 +200,7 @@ export default function QuestReviewModal({
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Quest Description
+                        Scenario Description
                       </label>
                       <textarea
                         value={currentQuest.description}
@@ -232,7 +232,7 @@ export default function QuestReviewModal({
 
                 {/* Decisions */}
                 <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Decisions</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Beats</h3>
                   <div className="space-y-4">
                     {currentQuest.decisions.map((decision, decisionIdx) => (
                       <div
@@ -253,7 +253,7 @@ export default function QuestReviewModal({
                         >
                           <div>
                             <h4 className="font-semibold text-gray-900">
-                              Decision {decision.decisionNumber}: {decision.title}
+                              Beat {decision.decisionNumber}: {decision.title}
                             </h4>
                             <p className="text-sm text-gray-600 mt-1">{decision.context}</p>
                           </div>
@@ -284,7 +284,7 @@ export default function QuestReviewModal({
                             <div className="mt-4 space-y-4 pt-4 border-t border-gray-200">
                               <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Decision Title
+                                  Beat Title
                                 </label>
                                 <input
                                   type="text"
@@ -300,7 +300,7 @@ export default function QuestReviewModal({
 
                               <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                  Context / Background
+                                  Beat Context / Setup
                                 </label>
                                 <textarea
                                   value={decision.context}
