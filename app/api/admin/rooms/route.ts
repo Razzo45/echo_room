@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       rooms: rooms.map((room) => ({
+        storyState: room.storyState,
         id: room.id,
         roomCode: room.roomCode,
         status: room.status,
@@ -81,6 +82,95 @@ export async function POST(request: NextRequest) {
           },
         });
         return NextResponse.json({ success: true, message: 'Room force started' });
+
+      case 'reset_ready_check': {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: { members: { select: { userId: true } } },
+        });
+        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        const playerIds = room.members.map((m) => m.userId);
+        const readyByPlayerId = Object.fromEntries(playerIds.map((id) => [id, false]));
+        const now = new Date();
+        const current = (room.storyState as any) || {};
+        const storyState = {
+          ...current,
+          phase: 'ready_check',
+          readyCheck: {
+            startedAt: now.toISOString(),
+            deadlineAt: new Date(now.getTime() + 60_000).toISOString(),
+            readyByPlayerId,
+          },
+        };
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { storyState, lastActivityAt: now },
+        });
+        return NextResponse.json({ success: true, message: 'Ready-check reset' });
+      }
+
+      case 'reopen_beat': {
+        const room = await prisma.room.findUnique({ where: { id: roomId } });
+        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        const current = (room.storyState as any) || {};
+        const beat = String(current.currentBeat || 1);
+        const beats = current.beats || {};
+        if (beats[beat]) {
+          beats[beat].consequence = null;
+          beats[beat].resolved = false;
+        }
+        const storyState = { ...current, phase: 'beat_input', beats };
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { storyState, lastActivityAt: new Date() },
+        });
+        return NextResponse.json({ success: true, message: 'Beat reopened' });
+      }
+
+      case 'skip_beat': {
+        const room = await prisma.room.findUnique({ where: { id: roomId } });
+        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        const current = (room.storyState as any) || {};
+        const beat = Number(current.currentBeat || 1);
+        const storyState = {
+          ...current,
+          phase: beat < 3 ? 'beat_input' : 'final_panel',
+          currentBeat: beat < 3 ? beat + 1 : beat,
+        };
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { storyState, lastActivityAt: new Date() },
+        });
+        return NextResponse.json({ success: true, message: 'Beat skipped' });
+      }
+
+      case 'force_consequence_generation': {
+        const room = await prisma.room.findUnique({ where: { id: roomId } });
+        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        const current = (room.storyState as any) || {};
+        const storyState = { ...current, phase: 'beat_consequence' };
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { storyState, lastActivityAt: new Date() },
+        });
+        return NextResponse.json({ success: true, message: 'Consequence generation forced' });
+      }
+
+      case 'regenerate_final_synthesis': {
+        const room = await prisma.room.findUnique({ where: { id: roomId } });
+        if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        const current = (room.storyState as any) || {};
+        const storyState = {
+          ...current,
+          phase: 'final_panel',
+          finalSynthesis: { status: 'pending', text: '', mode: 'admin_regen' },
+        };
+        await prisma.room.update({
+          where: { id: roomId },
+          data: { storyState, lastActivityAt: new Date() },
+        });
+        return NextResponse.json({ success: true, message: 'Final synthesis regeneration requested' });
+      }
 
       case 'mark_completed':
         await prisma.room.update({
