@@ -195,7 +195,7 @@ export default function RoomLobbyPage() {
 
             <div className="mt-4 p-4 rounded-2xl bg-primary-50 border border-primary-100">
               <p className="text-sm text-primary-800">
-                Quest starts when {room.minPlayersToStart}+ have joined. Then everyone answers 3 decisions at their own pace. Decision map appears when all are done.
+                Quest starts when {room.minPlayersToStart}+ have joined, then runs ready check, three blind-input beats, roll reveals, and a final score panel.
               </p>
             </div>
           {pushSupported && (

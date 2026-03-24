@@ -1,498 +1,454 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 
-type Vote = {
-  userId: string;
-  userName: string;
-  decisionNumber: number;
-  optionKey: string;
-  justification: string;
-};
+type RoomPhase =
+  | 'waiting'
+  | 'room_full'
+  | 'ready_check'
+  | 'preamble'
+  | 'beat_input'
+  | 'roll_reveal'
+  | 'beat_consequence'
+  | 'final_panel'
+  | 'completed';
 
-type Commit = {
-  decisionNumber: number;
-  committedOption: string;
-};
+type RollBand = 'critical_fail' | 'fail' | 'mixed' | 'success' | 'critical_success';
 
-type DecisionOption = {
-  label: string;
-  tradeoffs: string;
-  risks: string[];
-  outcomes: string[];
-};
-
-type Decision = {
-  number: number;
-  title: string;
-  description: string;
-  options: {
-    A: DecisionOption;
-    B: DecisionOption;
-    C: DecisionOption;
+type StoryState = {
+  phase: RoomPhase;
+  currentBeat: 1 | 2 | 3;
+  readyCheck: {
+    startedAt: string | null;
+    deadlineAt: string | null;
+    readyByPlayerId: Record<string, boolean>;
+  };
+  beats: Record<
+    '1' | '2' | '3',
+    {
+      submissions: Record<string, string>;
+      revealed: boolean;
+      rolls: Record<string, { value: number; band: RollBand; rolledAt: string }>;
+      consequence: { text: string; mode: string; generatedAt: string } | null;
+      resolved: boolean;
+    }
+  >;
+  scoreboard: {
+    playerTotals: Record<string, number>;
+    teamAverage: number;
+    teamBand: string;
   };
 };
 
-type RoomData = {
-  id: string;
-  status: string;
-  currentDecision: number;
-  memberCount?: number;
-  maxPlayers?: number;
-  members: Array<{ id: string; name: string }>;
-  votes: Vote[];
-  commits: Commit[];
-  decisionsData?: { decisions: Decision[] } | null;
-  artifactId?: string;
+type RoomResponse = {
+  room: {
+    id: string;
+    status: string;
+    questName: string;
+    memberCount: number;
+    maxPlayers: number;
+    members: Array<{ id: string; name: string }>;
+    storyState: StoryState;
+    hasArtifact: boolean;
+    artifactId?: string;
+  };
 };
+
+const POLL_MS = 2500;
+const ROLL_ANIMATION_MS = 2200;
+const ACTION_MAX_CHARS = 120;
+
+function isSingleSentence(input: string): boolean {
+  const compact = input.replace(/\s+/g, ' ').trim();
+  if (!compact) return false;
+  if (compact.includes('\n')) return false;
+  const sentenceParts = compact.split(/[.!?]+/).filter((part) => part.trim().length > 0);
+  return sentenceParts.length <= 1;
+}
+
+function bandLabel(band: RollBand): string {
+  if (band === 'critical_success') return 'Critical success';
+  if (band === 'success') return 'Success';
+  if (band === 'mixed') return 'Mixed';
+  if (band === 'fail') return 'Fail';
+  return 'Critical fail';
+}
 
 export default function QuestPlayPage() {
   const router = useRouter();
   const params = useParams();
   const roomId = params.id as string;
 
-  const [room, setRoom] = useState<RoomData | null>(null);
+  const [room, setRoom] = useState<RoomResponse['room'] | null>(null);
+  const [myUserId, setMyUserId] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [selectedOption, setSelectedOption] = useState<'A' | 'B' | 'C' | null>(null);
-  const [justification, setJustification] = useState('');
-  const [justificationPrompt, setJustificationPrompt] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [userId, setUserId] = useState('');
-  const [roomError, setRoomError] = useState<string | null>(null);
-  const [voteRecognition, setVoteRecognition] = useState<string | null>(null);
-  const [badgeHint, setBadgeHint] = useState<{ name: string; hint: string } | null>(null);
-
-  useEffect(() => {
-    fetch('/api/badges/progress')
-      .then((r) => r.json())
-      .then((data) => {
-        const storyteller = data.hints?.find((h: { badgeType: string }) => h.badgeType === 'STORYTELLER');
-        if (storyteller) {
-          setBadgeHint({ name: storyteller.name, hint: storyteller.hint });
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    // Get current user ID
-    fetch('/api/auth/me')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.user) {
-          setUserId(data.user.id);
-        }
-      });
-
-    loadRoom();
-    const interval = setInterval(loadRoom, 3000);
-    return () => clearInterval(interval);
-  }, [roomId]);
+  const [error, setError] = useState<string | null>(null);
+  const [readySubmitting, setReadySubmitting] = useState(false);
+  const [actionText, setActionText] = useState('');
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [rolling, setRolling] = useState(false);
+  const [rollDisplayValue, setRollDisplayValue] = useState<number | null>(null);
+  const [rollSubmitting, setRollSubmitting] = useState(false);
 
   const loadRoom = async () => {
     try {
-      const res = await fetch(`/api/room/${roomId}`);
-      const data = await res.json();
-
+      const res = await fetch(`/api/room/${roomId}`, { cache: 'no-store' });
+      const data: RoomResponse | { error: string } = await res.json();
       if (!res.ok) {
-        // Handle unauthorized / not-a-member more gracefully
         if (res.status === 401) {
           router.push('/');
           return;
         }
         if (res.status === 403) {
-          setRoomError(
-            'You are no longer a member of this room. Please return to the City District and rejoin the quest.'
-          );
-          setRoom(null);
+          setError('You are no longer a member of this room.');
           setLoading(false);
           return;
         }
-
-        setRoomError(data.error || 'Failed to load room. Please try again from the City District.');
-        setRoom(null);
+        setError((data as { error: string }).error || 'Failed to load room state.');
         setLoading(false);
         return;
       }
-
-      setRoom(data.room);
+      setRoom((data as RoomResponse).room);
       setLoading(false);
-      
-      // Note: Redirect logic is handled in the render function above
-      // to ensure it happens immediately when status changes to COMPLETED
-    } catch (err) {
-      console.error('Failed to load room:', err);
+      setError(null);
+    } catch {
+      setError('Could not refresh the room right now.');
+      setLoading(false);
     }
   };
 
-  const handleVote = async () => {
-    if (!selectedOption || !justification.trim() || !myCurrentDecision) {
-      alert('Please select an option and provide justification');
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user?.id) setMyUserId(data.user.id);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadRoom();
+    const interval = setInterval(loadRoom, POLL_MS);
+    return () => clearInterval(interval);
+  }, [roomId]);
+
+  useEffect(() => {
+    if (room?.status === 'COMPLETED' && room.hasArtifact && room.artifactId) {
+      router.push(`/artifact/${room.artifactId}`);
+    }
+  }, [room, router]);
+
+  const storyState = room?.storyState;
+  const currentBeatKey = String(storyState?.currentBeat ?? 1) as '1' | '2' | '3';
+  const currentBeat = storyState?.beats[currentBeatKey];
+  const players = room?.members ?? [];
+
+  const mySubmittedAction = useMemo(
+    () => (myUserId && currentBeat ? currentBeat.submissions[myUserId] : undefined),
+    [currentBeat, myUserId]
+  );
+  const myRoll = useMemo(
+    () => (myUserId && currentBeat ? currentBeat.rolls[myUserId] : undefined),
+    [currentBeat, myUserId]
+  );
+  const readyCount = useMemo(() => {
+    if (!storyState) return 0;
+    return Object.values(storyState.readyCheck.readyByPlayerId).filter(Boolean).length;
+  }, [storyState]);
+
+  useEffect(() => {
+    if (myRoll && !rolling) {
+      setRollDisplayValue(myRoll.value);
+    }
+  }, [myRoll, rolling]);
+
+  const handleReady = async () => {
+    setReadySubmitting(true);
+    try {
+      const res = await fetch(`/api/room/${roomId}/runtime/ready-check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ready: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Could not mark you as ready.');
+      }
+      await loadRoom();
+    } finally {
+      setReadySubmitting(false);
+    }
+  };
+
+  const handleSubmitAction = async () => {
+    const trimmed = actionText.trim();
+    if (!storyState) return;
+    if (!trimmed) {
+      alert('Write your action first.');
       return;
     }
-
-    setSubmitting(true);
+    if (!isSingleSentence(trimmed)) {
+      alert('Use one short sentence only.');
+      return;
+    }
+    setActionSubmitting(true);
     try {
-      const res = await fetch('/api/vote', {
+      const res = await fetch(`/api/room/${roomId}/runtime/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          roomId,
-          decisionNumber: myCurrentDecision,
-          optionKey: selectedOption,
-          justification: justification.trim(),
+          beat: storyState.currentBeat,
+          actionText: trimmed,
         }),
       });
-
-      if (res.ok) {
-        setSelectedOption(null);
-        setJustification('');
-        setJustificationPrompt(null);
-        const res2 = await fetch(`/api/room/${roomId}`);
-        const data2 = await res2.json();
-        const updatedRoom = data2.room;
-        if (updatedRoom && updatedRoom.votes) {
-          const votesForDec = updatedRoom.votes.filter(
-            (v: Vote) => v.decisionNumber === myCurrentDecision
-          );
-          const others = votesForDec.filter((v: Vote) => v.userId !== userId);
-          const counts: Record<string, number> = { A: 0, B: 0, C: 0 };
-          votesForDec.forEach((v: Vote) => {
-            counts[v.optionKey] = (counts[v.optionKey] || 0) + 1;
-          });
-          const majority = (['A', 'B', 'C'] as const).slice().sort(
-            (a, b) => (counts[b] || 0) - (counts[a] || 0)
-          )[0];
-          const myVote = votesForDec.find((v: Vote) => v.userId === userId);
-          if (others.length === 0) {
-            setVoteRecognition("You're the first to vote on this decision.");
-          } else if (myVote && myVote.optionKey === majority) {
-            setVoteRecognition('Your vote matches the majority so far.');
-          } else {
-            setVoteRecognition(
-              `${others.length} other${others.length !== 1 ? 's have' : ' has'} voted differently so far.`
-            );
-          }
-          setTimeout(() => setVoteRecognition(null), 4000);
-        }
-        await loadRoom();
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Could not send your action.');
       } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to vote');
+        setActionText('');
       }
-    } catch (err) {
-      alert('Failed to submit vote');
+      await loadRoom();
+    } finally {
+      setActionSubmitting(false);
     }
-    setSubmitting(false);
   };
 
-  const getDecisionPersonality = (): string => {
-    if (!room || !room.commits || room.commits.length === 0) return 'Strategic Optimist';
-    const myVotes = room.votes.filter((v) => v.userId === userId);
-    let matchCount = 0;
-    for (const c of room.commits) {
-      const myV = myVotes.find((v) => v.decisionNumber === c.decisionNumber);
-      if (myV && myV.optionKey === c.committedOption) matchCount++;
+  const handleRoll = async () => {
+    if (!storyState || rolling || myRoll) return;
+    const value = Math.floor(Math.random() * 20) + 1;
+    const band: RollBand =
+      value >= 19 ? 'critical_success' : value >= 15 ? 'success' : value >= 10 ? 'mixed' : value >= 4 ? 'fail' : 'critical_fail';
+
+    setRolling(true);
+    setRollSubmitting(true);
+    const animationStart = Date.now();
+    const ticker = window.setInterval(() => {
+      setRollDisplayValue(Math.floor(Math.random() * 20) + 1);
+    }, 80);
+
+    try {
+      const res = await fetch(`/api/room/${roomId}/runtime/roll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beat: storyState.currentBeat, value, band }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Could not save your roll.');
+      }
+      const elapsed = Date.now() - animationStart;
+      if (elapsed < ROLL_ANIMATION_MS) {
+        await new Promise((resolve) => setTimeout(resolve, ROLL_ANIMATION_MS - elapsed));
+      }
+      await loadRoom();
+    } finally {
+      window.clearInterval(ticker);
+      setRolling(false);
+      setRollSubmitting(false);
     }
-    if (matchCount === 3) return 'Consensus Seeker';
-    if (matchCount === 2) return 'Strategic Optimist';
-    if (matchCount === 1) return 'Risk-Averse Planner';
-    return 'Bold Innovator';
   };
 
-  if (room && room.status === 'COMPLETED') {
-    if (room.artifactId) {
-      return (
-        <div className="min-h-screen bg-gray-50 pb-24">
-          <main className="max-w-lg mx-auto px-4 py-6">
-            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-              <div className="bg-primary-600 px-4 py-8 text-center">
-                <span className="inline-flex w-16 h-16 rounded-2xl bg-white/20 items-center justify-center text-3xl mb-3">🎉</span>
-                <h1 className="text-xl font-bold text-white mb-1">Decision map ready</h1>
-                <p className="text-white/90 text-sm">Your team’s 3 tradeoffs, visualised.</p>
-              </div>
-              <div className="p-5">
-                <div className="mb-4 p-4 rounded-2xl bg-primary-50 border-2 border-primary-200">
-                  <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Your decision style</p>
-                  <p className="text-lg font-bold text-primary-900">{getDecisionPersonality()}</p>
-                </div>
-                <p className="text-gray-600 text-sm mb-3">How everyone voted:</p>
-              {[1, 2, 3].map((num) => {
-                const decision = room!.decisionsData?.decisions?.find((d: Decision) => d.number === num);
-                const votesForNum = (room!.votes || []).filter((v: Vote) => v.decisionNumber === num);
-                const counts: Record<'A' | 'B' | 'C', number> = { A: 0, B: 0, C: 0 };
-                votesForNum.forEach((v: Vote) => {
-                  const k = v.optionKey as 'A' | 'B' | 'C';
-                  if (k in counts) counts[k]++;
-                });
-                const majority = (['A', 'B', 'C'] as const).slice().sort((a, b) => counts[b] - counts[a])[0];
-                return (
-                  <div key={num} className="mb-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
-                    <h2 className="text-base font-semibold text-gray-900 mb-1">
-                      Decision {num}{decision ? `: ${decision.title}` : ''}
-                    </h2>
-                    <p className="text-xs text-gray-500 mb-2">Majority: Option {majority}</p>
-                    <ul className="space-y-1 text-sm text-gray-600">
-                      {votesForNum.map((v: Vote) => (
-                        <li key={`${v.userId}-${num}`}>
-                          <span className="font-medium text-gray-900">{v.userName}</span>: Option {v.optionKey}
-                          {v.justification ? ` — “${v.justification}”` : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-                <a href={`/artifact/${room.artifactId}`} className="btn btn-primary w-full mt-4">
-                  View decision map
-                </a>
-              </div>
-            </div>
-          </main>
-        </div>
-      );
-    }
+  if (loading || !room || !storyState || !currentBeat) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Preparing your decision map…</p>
+          <p className="text-gray-500 text-sm">{error ?? 'Loading room...'}</p>
         </div>
       </div>
     );
   }
 
-  if (loading || !room) {
-    if (roomError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-          <div className="text-center max-w-md">
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Disconnected from room</h1>
-            <p className="text-gray-600 text-sm mb-6">{roomError}</p>
-            <button onClick={() => router.push('/district')} className="btn btn-primary">Back to district</button>
-          </div>
-        </div>
-      );
-    }
+  if (room.status === 'COMPLETED' && room.hasArtifact && room.artifactId) return null;
+  if (room.status === 'COMPLETED' && !room.artifactId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading quest…</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-100 shadow p-5 text-center">
+          <p className="text-sm font-semibold text-gray-900 mb-1">Wrapping up story...</p>
+          <p className="text-xs text-gray-500">Please wait</p>
         </div>
       </div>
     );
   }
 
-  // Guard against quests that don't have decision data (e.g., FORM quests)
-  if (!room.decisionsData || !Array.isArray(room.decisionsData.decisions)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-        <div className="text-center max-w-md">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Quest not supported</h1>
-          <p className="text-gray-600 text-sm mb-6">This quest doesn’t use the collaborative decision flow. Return to the district and choose a decision room quest.</p>
-          <button onClick={() => router.push('/district')} className="btn btn-primary">Back to district</button>
-        </div>
-      </div>
-    );
-  }
+  const myReady = Boolean(storyState.readyCheck.readyByPlayerId[myUserId]);
+  const submissionCount = Object.keys(currentBeat.submissions).length;
+  const rollCount = Object.keys(currentBeat.rolls).length;
 
-  // Per-user progress: next decision I need to vote for (1, 2, 3) or 4 if I'm done
-  const myVotes = room.votes.filter((v) => v.userId === userId);
-  const myCurrentDecision = ([1, 2, 3] as const).find((n) => !myVotes.some((v) => v.decisionNumber === n)) ?? 4;
-  const completedCount = room.members.filter(
-    (m) => room.votes.filter((v) => v.userId === m.id).length === 3
-  ).length;
-
-  // I've finished all 3: show waiting for others
-  if (myCurrentDecision === 4) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
-        <div className="max-w-lg w-full bg-white rounded-3xl shadow-lg border border-gray-100 p-8 text-center">
-          <span className="inline-flex w-16 h-16 rounded-2xl bg-green-100 text-green-600 items-center justify-center text-3xl mb-4">✓</span>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">You’re done</h2>
-          <p className="text-gray-600 text-sm mb-4">
-            Results and the decision map will appear once everyone has finished.
-          </p>
-          <p className="text-sm font-semibold text-primary-600">
-            {completedCount} of {room.members.length} completed
-          </p>
-            {(() => {
-              const totalVotes = room.votes.length;
-              const avgLen = totalVotes > 0
-                ? Math.round(room.votes.reduce((a, v) => a + (v.justification?.length ?? 0), 0) / totalVotes)
-                : 0;
-              const perDec = [1, 2, 3].map((num) => {
-                const vs = room.votes.filter((v) => v.decisionNumber === num);
-                const c: Record<string, number> = { A: 0, B: 0, C: 0 };
-                vs.forEach((v) => { c[v.optionKey] = (c[v.optionKey] || 0) + 1; });
-                const leader = (['A', 'B', 'C'] as const).slice().sort((a, b) => (c[b] || 0) - (c[a] || 0))[0];
-                return { num, leader, count: c[leader] || 0 };
-              });
-              return (
-                <div className="mt-6 p-4 rounded-xl bg-gray-50 border border-gray-200 text-left max-w-sm mx-auto">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Live so far</p>
-                  {totalVotes > 0 && (
-                    <p className="text-sm text-gray-600 mb-2">Average justification length: {avgLen} characters</p>
-                  )}
-                  {perDec.map(({ num, leader, count }) => (
-                    <p key={num} className="text-sm text-gray-600">
-                      Decision {num}: most chosen — Option {leader}{count > 0 && ` (${count})`}
-                    </p>
-                  ))}
-                </div>
-              );
-            })()}
-          <p className="mt-4 text-xs text-gray-400">Updates every few seconds.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const currentDecisionData = room.decisionsData.decisions.find(
-    (d) => d.number === myCurrentDecision
-  );
-
-  if (!currentDecisionData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-        <div className="text-center max-w-md">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Decision not found</h1>
-          <p className="text-gray-600 text-sm mb-6">Decision {myCurrentDecision} is not available.</p>
-          <button onClick={() => router.push('/world')} className="btn btn-primary">Back to World</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentDecisionData.options?.A || !currentDecisionData.options?.B || !currentDecisionData.options?.C) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-        <div className="text-center max-w-md">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Options missing</h1>
-          <button onClick={() => window.location.reload()} className="btn btn-primary">Refresh</button>
-        </div>
-      </div>
-    );
-  }
+  const phaseTitle: Record<RoomPhase, string> = {
+    waiting: 'Waiting for more players',
+    room_full: 'Room is full',
+    ready_check: 'Ready check',
+    preamble: `Beat ${storyState.currentBeat}: briefing`,
+    beat_input: `Beat ${storyState.currentBeat}: your move`,
+    roll_reveal: `Beat ${storyState.currentBeat}: roll reveal`,
+    beat_consequence: `Beat ${storyState.currentBeat}: outcome`,
+    final_panel: 'Final panel',
+    completed: 'Complete',
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
+    <div className="min-h-screen bg-gray-50 pb-24">
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-bold text-gray-800">Decision {myCurrentDecision} of 3</span>
-          {room.memberCount != null && room.maxPlayers != null && (
-            <span className="text-xs text-gray-500">{room.memberCount}/{room.maxPlayers} in room</span>
-          )}
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(myVotes.length / 3) * 100}%` }}
-          />
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-800">{phaseTitle[storyState.phase]}</p>
+          <p className="text-xs text-gray-500">{room.memberCount}/{room.maxPlayers} players</p>
         </div>
       </div>
 
-      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
-        {voteRecognition && (
-          <div className="mb-4 p-4 rounded-2xl bg-primary-50 border-2 border-primary-200 text-sm text-primary-800 font-medium">
-            {voteRecognition}
+      <main className="max-w-lg mx-auto px-4 py-5 space-y-4">
+        {(storyState.phase === 'waiting' || storyState.phase === 'room_full') && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
+            <h1 className="text-lg font-bold text-gray-900 mb-2">Waiting to start</h1>
+            <p className="text-sm text-gray-600">
+              The room starts once everyone is in and the ready check opens.
+            </p>
           </div>
         )}
 
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 mb-4">
-          <h1 className="text-lg font-bold text-gray-900 mb-2">{currentDecisionData.title}</h1>
-          <p className="text-gray-600 text-sm leading-relaxed">{currentDecisionData.description}</p>
-        </div>
-
-        <p className="text-sm font-semibold text-gray-700 mb-2">Choose one</p>
-        <div className="space-y-3 mb-4">
-          {(['A', 'B', 'C'] as const).map((key) => (
+        {storyState.phase === 'ready_check' && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+            <h1 className="text-lg font-bold text-gray-900 mb-2">Ready check</h1>
+            <p className="text-sm text-gray-600 mb-4">Confirm when you are ready to begin the story.</p>
+            <p className="text-sm font-medium text-primary-700 mb-4">{readyCount} of {players.length} ready</p>
             <button
-              key={key}
               type="button"
-              onClick={() => setSelectedOption(key)}
-              className={`option-tile w-full ${
-                selectedOption === key
-                  ? 'border-primary-600 bg-primary-600 text-white shadow-lg'
-                  : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50'
-              }`}
+              onClick={handleReady}
+              disabled={myReady || readySubmitting}
+              className="btn btn-primary w-full"
             >
-              <span className={`shrink-0 w-10 h-10 rounded-xl font-bold text-sm flex items-center justify-center ${
-                selectedOption === key ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-              }`}>
-                {key}
-              </span>
-              <div className="min-w-0 flex-1 text-left">
-                <p className={`font-semibold ${selectedOption === key ? 'text-white' : 'text-gray-900'}`}>
-                  {currentDecisionData.options[key].label}
-                </p>
-                <p className={`text-sm mt-0.5 ${selectedOption === key ? 'text-white/90' : 'text-gray-600'}`}>
-                  {currentDecisionData.options[key].tradeoffs}
-                </p>
-              </div>
-              {selectedOption === key && (
-                <span className="shrink-0 w-6 h-6 rounded-full bg-white/30 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                </span>
-              )}
+              {myReady ? 'You are ready' : readySubmitting ? 'Saving...' : "I'm ready"}
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {selectedOption && (
-          <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 mb-4">
-            <label className="label">Why this option? (max 120 chars)</label>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {[
-                { key: 'risk', label: '⚖️ Risk?' },
-                { key: 'benefits', label: '🌍 Benefits?' },
-                { key: 'tradeoff', label: '💸 Tradeoff?' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setJustificationPrompt(key)}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    justificationPrompt === key
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+        {(storyState.phase === 'preamble' || storyState.phase === 'beat_input') && (
+          <div className="space-y-4">
+            {storyState.phase === 'preamble' && (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+                <h1 className="text-lg font-bold text-gray-900 mb-2">Beat {storyState.currentBeat}</h1>
+                <p className="text-sm text-gray-600">Type one short sentence describing your move.</p>
+              </div>
+            )}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+              {mySubmittedAction ? (
+                <>
+                  <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Locked in</p>
+                  <p className="text-sm text-gray-700 mb-4">{mySubmittedAction}</p>
+                  <p className="text-xs text-gray-500">
+                    Blind input is active: reveals after all submissions.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <label className="label">Your action (one sentence)</label>
+                  <textarea
+                    rows={3}
+                    maxLength={ACTION_MAX_CHARS}
+                    className="input min-h-[100px]"
+                    value={actionText}
+                    onChange={(e) => setActionText(e.target.value.slice(0, ACTION_MAX_CHARS))}
+                    placeholder="I redirect power to shields while we cross."
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{actionText.length}/{ACTION_MAX_CHARS}</p>
+                  <button
+                    type="button"
+                    onClick={handleSubmitAction}
+                    disabled={actionSubmitting || !actionText.trim()}
+                    className="btn btn-primary w-full mt-4"
+                  >
+                    {actionSubmitting ? 'Sending...' : 'Lock action'}
+                  </button>
+                </>
+              )}
             </div>
-            <textarea
-              value={justification}
-              onChange={(e) => setJustification(e.target.value.slice(0, 120))}
-              className="input min-h-[80px]"
-              rows={2}
-              maxLength={120}
-              placeholder="Share your reasoning…"
-            />
-            <p className="mt-1 text-xs text-gray-500">{justification.length}/120</p>
-            {badgeHint && (
-              <p className="mt-3 text-xs text-primary-800 bg-primary-50 rounded-xl px-3 py-2 border border-primary-200">
-                📖 Close to <strong>{badgeHint.name}</strong> — {badgeHint.hint}
-              </p>
+            <div className="bg-primary-50 border border-primary-100 rounded-2xl p-4">
+              <p className="text-sm text-primary-800">Submissions received: {submissionCount}/{players.length}</p>
+            </div>
+          </div>
+        )}
+
+        {storyState.phase === 'roll_reveal' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+              <h1 className="text-lg font-bold text-gray-900 mb-2">Revealed actions</h1>
+              <div className="space-y-2">
+                {players.map((player) => (
+                  <p key={player.id} className="text-sm text-gray-700">
+                    <span className="font-semibold text-gray-900">{player.name}:</span>{' '}
+                    {currentBeat.submissions[player.id] ?? '...'}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
+              <p className="text-sm text-gray-600 mb-3">Roll to resolve your move.</p>
+              <div className="w-24 h-24 mx-auto rounded-2xl bg-primary-50 border border-primary-100 flex items-center justify-center mb-3">
+                <span className="text-3xl font-extrabold text-primary-700">{rollDisplayValue ?? '-'}</span>
+              </div>
+              {myRoll && !rolling && (
+                <p className="text-sm font-semibold text-primary-700 mb-3">
+                  {bandLabel(myRoll.band)}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleRoll}
+                disabled={Boolean(myRoll) || rollSubmitting}
+                className="btn btn-primary w-full"
+              >
+                {myRoll ? 'Roll saved' : rollSubmitting ? 'Rolling...' : 'Roll d20'}
+              </button>
+              <p className="text-xs text-gray-500 mt-3">Rolls submitted: {rollCount}/{players.length}</p>
+            </div>
+          </div>
+        )}
+
+        {storyState.phase === 'beat_consequence' && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+            <h1 className="text-lg font-bold text-gray-900 mb-2">Outcome in progress</h1>
+            {currentBeat.consequence ? (
+              <>
+                <p className="text-xs text-primary-700 font-semibold uppercase tracking-wide mb-2">
+                  {currentBeat.consequence.mode}
+                </p>
+                <p className="text-sm text-gray-700">{currentBeat.consequence.text}</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-600">The story is resolving this beat now.</p>
             )}
           </div>
         )}
-      </main>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-bottom z-20">
-        <div className="max-w-lg mx-auto">
-          <button
-            onClick={handleVote}
-            disabled={!selectedOption || !justification.trim() || submitting}
-            className="btn btn-primary w-full text-base"
-          >
-            {submitting ? 'Submitting…' : 'Submit vote'}
-          </button>
-        </div>
-      </div>
+        {storyState.phase === 'final_panel' && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+            <h1 className="text-lg font-bold text-gray-900 mb-3">Final panel</h1>
+            <div className="space-y-2 mb-4">
+              {players.map((player) => (
+                <div key={player.id} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">{player.name}</span>
+                  <span className="font-semibold text-gray-900">{storyState.scoreboard.playerTotals[player.id] ?? 0} / 60</span>
+                </div>
+              ))}
+            </div>
+            <div className="p-3 rounded-xl bg-primary-50 border border-primary-100">
+              <p className="text-sm text-primary-800 font-semibold">
+                Team average: {storyState.scoreboard.teamAverage} / 60
+              </p>
+            </div>
+          </div>
+        )}
+
+        {storyState.phase === 'completed' && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
+            <h1 className="text-lg font-bold text-gray-900 mb-2">Wrapping up story</h1>
+            <p className="text-sm text-gray-600">
+              Finalizing your artifact and results. This page will update automatically.
+            </p>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
