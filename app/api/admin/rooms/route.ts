@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
+import { createInitialStoryState, normalizeStoryState } from '@/lib/story-runtime';
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,13 +75,35 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'force_start':
-        await prisma.room.update({
-          where: { id: roomId },
-          data: {
-            status: 'IN_PROGRESS',
-            startedAt: new Date(),
-          },
-        });
+        {
+          const room = await prisma.room.findUnique({
+            where: { id: roomId },
+            include: { members: { select: { userId: true } } },
+          });
+          if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+
+          const now = new Date();
+          const memberIds = room.members.map((m) => m.userId);
+          const storyState = room.storyState
+            ? normalizeStoryState(room.storyState, memberIds)
+            : createInitialStoryState(memberIds);
+
+          if (storyState.phase === 'waiting' || storyState.phase === 'room_full') {
+            storyState.phase = 'ready_check';
+            storyState.readyCheck.startedAt = now.toISOString();
+            storyState.readyCheck.deadlineAt = new Date(now.getTime() + 60_000).toISOString();
+          }
+
+          await prisma.room.update({
+            where: { id: roomId },
+            data: {
+              status: 'IN_PROGRESS',
+              startedAt: now,
+              storyState,
+              lastActivityAt: now,
+            },
+          });
+        }
         return NextResponse.json({ success: true, message: 'Room force started' });
 
       case 'reset_ready_check': {

@@ -3,7 +3,13 @@ import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { requireAdminAuth } from '@/lib/auth-organiser';
 import { runtimeConsequenceSchema } from '@/lib/validation';
-import { computeScoreboard, lockRoomForUpdate, normalizeStoryState, stripInternalStoryState } from '@/lib/story-runtime';
+import {
+  computeScoreboard,
+  isStoryStateColumnMissing,
+  lockRoomForUpdate,
+  normalizeStoryState,
+  stripInternalStoryState,
+} from '@/lib/story-runtime';
 
 export async function POST(
   request: NextRequest,
@@ -120,6 +126,12 @@ export async function POST(
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isStoryStateColumnMissing(error)) {
+      return NextResponse.json(
+        { error: 'Runtime state migration is pending. Please run database migrations and retry.' },
+        { status: 503 }
+      );
     }
     console.error('Runtime consequence error:', error);
     return NextResponse.json(

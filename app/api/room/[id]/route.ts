@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
-import { normalizeStoryState, stripInternalStoryState } from '@/lib/story-runtime';
+import { isStoryStateColumnMissing, normalizeStoryState, stripInternalStoryState } from '@/lib/story-runtime';
 
 export async function GET(
   _request: NextRequest,
@@ -127,6 +127,12 @@ export async function GET(
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isStoryStateColumnMissing(error)) {
+      return NextResponse.json(
+        { error: 'Runtime state migration is pending. Please run database migrations and retry.' },
+        { status: 503 }
+      );
     }
     console.error('Get room error:', error);
     return NextResponse.json(

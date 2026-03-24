@@ -181,4 +181,15 @@ export async function lockRoomForUpdate(
   await tx.$executeRaw`SELECT 1 FROM "Room" WHERE id = ${roomId} FOR UPDATE`;
 }
 
+export function isStoryStateColumnMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string };
+  const message = (e.message || '').toLowerCase();
+  return (
+    e.code === 'P2022' ||
+    message.includes('storystate') ||
+    (message.includes('column') && message.includes('does not exist'))
+  );
+}
+
 export type { StoryState, RoomPhase, RollBand };

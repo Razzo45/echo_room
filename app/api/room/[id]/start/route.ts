@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { requireAdminAuth } from '@/lib/auth-organiser';
-import { createInitialStoryState, lockRoomForUpdate, normalizeStoryState } from '@/lib/story-runtime';
+import {
+  createInitialStoryState,
+  isStoryStateColumnMissing,
+  lockRoomForUpdate,
+  normalizeStoryState,
+} from '@/lib/story-runtime';
 
 export async function POST(
   request: NextRequest,
@@ -45,7 +50,7 @@ export async function POST(
       }
 
       const isMember = room.members.some((m) => m.userId === user.id);
-      if (!isMember) {
+      if (!isMember && !isAdminOverride) {
         return { kind: 'error' as const, status: 403, error: 'Not a member of this room' };
       }
 
@@ -101,6 +106,12 @@ export async function POST(
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isStoryStateColumnMissing(error)) {
+      return NextResponse.json(
+        { error: 'Runtime state migration is pending. Please run database migrations and retry.' },
+        { status: 503 }
+      );
     }
     console.error('Start room error:', error);
     return NextResponse.json(
