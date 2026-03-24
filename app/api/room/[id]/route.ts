@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { normalizeStoryState, stripInternalStoryState } from '@/lib/story-runtime';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -22,11 +23,6 @@ export async function GET(
         votes: {
           include: {
             user: true,
-          },
-        },
-        commits: {
-          orderBy: {
-            decisionNumber: 'asc',
           },
         },
         artifact: true,
@@ -94,6 +90,9 @@ export async function GET(
       return NextResponse.json({ error: 'Not a member of this room' }, { status: 403 });
     }
 
+    const memberIds = room.members.map((m) => m.userId);
+    const storyState = normalizeStoryState(room.storyState, memberIds);
+
     return NextResponse.json({
       room: {
         id: room.id,
@@ -120,10 +119,7 @@ export async function GET(
           optionKey: v.optionKey,
           justification: v.justification,
         })),
-        commits: room.commits.map((c) => ({
-          decisionNumber: c.decisionNumber,
-          committedOption: c.committedOption,
-        })),
+        storyState: stripInternalStoryState(storyState),
         hasArtifact: !!room.artifact,
         artifactId: room.artifact?.id,
       },

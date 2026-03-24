@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { joinRoomSchema } from '@/lib/validation';
 import crypto from 'crypto';
 import { sendRoomReadyPush } from '@/lib/push';
+import { createInitialStoryState, normalizeStoryState } from '@/lib/story-runtime';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +68,11 @@ export async function POST(request: NextRequest) {
         status: { in: ['OPEN', 'IN_PROGRESS'] },
       },
       include: {
+        members: {
+          select: {
+            userId: true,
+          },
+        },
         _count: {
           select: { members: true },
         },
@@ -100,6 +106,14 @@ export async function POST(request: NextRequest) {
         data: {
           status: shouldAutoStart ? 'IN_PROGRESS' : memberCount >= quest.teamSize ? 'FULL' : 'OPEN',
           ...(shouldAutoStart && { startedAt: now }),
+          storyState: (() => {
+            const memberIds = [...new Set([...room.members.map((m) => m.userId), user.id])];
+            const state = normalizeStoryState(room.storyState, memberIds);
+            if (state.phase === 'waiting' && memberCount >= quest.teamSize) {
+              state.phase = 'room_full';
+            }
+            return state;
+          })(),
           lastActivityAt: now,
         },
       });
@@ -121,6 +135,7 @@ export async function POST(request: NextRequest) {
           questId,
           roomCode,
           status: 'OPEN',
+          storyState: createInitialStoryState([user.id]),
           lastActivityAt: now,
           members: {
             create: {
