@@ -4,6 +4,8 @@ import { requireOrganiserAuth } from '@/lib/auth-organiser';
 import { requireOrganiserEventAccess } from '@/lib/event-access';
 import { EventGenerationOutputSchema } from '@/lib/ai/schemas';
 
+export const maxDuration = 60;
+
 /**
  * POST /api/organiser/events/[id]/generate/commit
  * Commit reviewed/edited AI-generated content to database
@@ -91,7 +93,11 @@ export async function POST(
     await prisma.$transaction(async (tx) => {
       console.log('Inside commit transaction...');
 
-      // Delete existing AI-generated quests for this event (if any)
+      // NOTE: Keep commit lightweight for serverless reliability.
+      // We no longer hard-delete historical generations/quests in-line because
+      // that can exceed function limits on Vercel and fail user commits.
+      // Existing historical data remains for audit/history and can be cleaned
+      // up by a dedicated maintenance path later.
       const existingGenerations = await tx.eventGeneration.findMany({
         where: {
           eventId,
@@ -99,57 +105,7 @@ export async function POST(
         },
         select: { id: true },
       });
-
-      if (existingGenerations.length > 0) {
-        const oldGenerationIds = existingGenerations.map(g => g.id);
-        // Preserve user badges: null out roomId so badge rows are not cascade-deleted when rooms are removed.
-        const roomsToRemove = await tx.room.findMany({
-          where: { quest: { eventGenerationId: { in: oldGenerationIds } } },
-          select: { id: true },
-        });
-        const roomIdsToRemove = roomsToRemove.map((r) => r.id);
-        if (roomIdsToRemove.length > 0) {
-          await tx.userBadge.updateMany({
-            where: { roomId: { in: roomIdsToRemove } },
-            data: { roomId: null },
-          });
-        }
-        // Archive artifacts from rooms that will be deleted so organisers never lose them (insights panel).
-        const roomsWithArtifacts = await tx.room.findMany({
-          where: {
-            quest: { eventGenerationId: { in: oldGenerationIds } },
-            artifact: { isNot: null },
-          },
-          include: {
-            quest: { select: { name: true } },
-            artifact: { select: { htmlContent: true } },
-          },
-        });
-        for (const room of roomsWithArtifacts) {
-          const artifact = room.artifact;
-          if (artifact) {
-            await tx.eventArtifactArchive.create({
-              data: {
-                eventId,
-                roomCode: room.roomCode,
-                questName: room.quest?.name ?? 'Unknown',
-                htmlContent: artifact.htmlContent,
-              },
-            });
-          }
-        }
-        await tx.quest.deleteMany({
-          where: {
-            eventGenerationId: { in: oldGenerationIds },
-          },
-        });
-
-        await tx.eventGeneration.deleteMany({
-          where: {
-            id: { in: oldGenerationIds },
-          },
-        });
-      }
+      const hasHistoricalGenerations = existingGenerations.length > 0;
 
       // Create regions and quests
       console.log('Fetching existing regions...');
@@ -281,6 +237,7 @@ export async function POST(
       success: true,
       message: 'Content committed successfully',
       generationId: generation.id,
+      note: 'Historical generated content was preserved for reliability and audit history.',
     });
   } catch (error: any) {
     if (error?.status === 404) {
