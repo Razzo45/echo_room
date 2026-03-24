@@ -110,7 +110,61 @@ export async function generateArtifact(roomId: string) {
     throw new Error('Failed to build decision data');
   }
 
-  // Build artifact data
+  const storyState = room.storyState as any;
+
+  // Story-runtime artifact path (new storytelling flow)
+  if (storyState?.beats) {
+    const teamMembers = room.members.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      organisation: m.user.organisation,
+      role: m.user.role,
+    }));
+    const beatKeys = ['1', '2', '3'] as const;
+    const beats = beatKeys
+      .map((key) => {
+        const beat = storyState.beats?.[key];
+        if (!beat) return null;
+        return {
+          number: Number(key),
+          submissions: beat.submissions || {},
+          rolls: beat.rolls || {},
+          consequence: beat.consequence || null,
+        };
+      })
+      .filter(Boolean) as Array<{
+      number: number;
+      submissions: Record<string, string>;
+      rolls: Record<string, { value: number; band: string }>;
+      consequence: { text: string; mode: string } | null;
+    }>;
+
+    const teamAverage = Number(storyState?.scoreboard?.teamAverage ?? 0);
+    const teamBand = String(storyState?.scoreboard?.teamBand ?? 'mixed');
+    const finalText = String(storyState?.finalSynthesis?.text || '').trim();
+    const finalSummary =
+      finalText ||
+      `The team closes with a ${teamBand.replace('_', ' ')} ending and a team score of ${teamAverage}/60.`;
+
+    const narrativeHtml = generateStoryHTML(
+      room.quest.name,
+      teamMembers,
+      beats,
+      teamAverage,
+      teamBand,
+      finalSummary,
+      room.completedAt || new Date()
+    );
+
+    return prisma.artifact.create({
+      data: {
+        roomId,
+        htmlContent: narrativeHtml,
+      },
+    });
+  }
+
+  // Legacy decision-map artifact path
   const teamMembers = room.members.map((m) => ({
     name: m.user.name,
     organisation: m.user.organisation,
@@ -162,6 +216,86 @@ export async function generateArtifact(roomId: string) {
   });
 
   return artifact;
+}
+
+function generateStoryHTML(
+  scenarioName: string,
+  teamMembers: Array<{ id: string; name: string; organisation: string; role: string }>,
+  beats: Array<{
+    number: number;
+    submissions: Record<string, string>;
+    rolls: Record<string, { value: number; band: string }>;
+    consequence: { text: string; mode: string } | null;
+  }>,
+  teamAverage: number,
+  teamBand: string,
+  finalSummary: string,
+  completedAt: Date
+) {
+  const playerHighlights = teamMembers
+    .map((member) => {
+      const rollValues = beats
+        .map((b) => b.rolls[member.id]?.value)
+        .filter((v): v is number => typeof v === 'number');
+      const best = rollValues.length ? Math.max(...rollValues) : 0;
+      return `<li><strong>${member.name}</strong> kept momentum with a best roll of <strong>${best}</strong>.</li>`;
+    })
+    .join('');
+
+  const beatBlocks = beats
+    .map((beat) => {
+      const submissions = teamMembers
+        .map((m) => {
+          const action = beat.submissions[m.id] || 'No action recorded.';
+          const roll = beat.rolls[m.id];
+          return `<li><strong>${m.name}:</strong> ${action}${roll ? ` (Roll ${roll.value}, ${String(roll.band).replace('_', ' ')})` : ''}</li>`;
+        })
+        .join('');
+      return `
+        <section class="beat">
+          <h3>Beat ${beat.number}</h3>
+          <ul>${submissions}</ul>
+          <p class="consequence"><strong>Consequence:</strong> ${beat.consequence?.text || 'No consequence text recorded.'}</p>
+        </section>
+      `;
+    })
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collaborative Story Artifact</title>
+  <style>
+    body { font-family: system-ui, sans-serif; color: #1f2937; background: #f8fafc; padding: 2rem; }
+    .container { max-width: 980px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 2rem; }
+    h1 { margin: 0 0 0.25rem; font-size: 2rem; }
+    h2 { margin-top: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+    .meta { color: #6b7280; margin-bottom: 1.25rem; }
+    .score { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1rem; }
+    .beat { background: #f9fafb; border-left: 4px solid #2563eb; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    .consequence { margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Collaborative Story Artifact</h1>
+    <p class="meta">${scenarioName} · Completed ${completedAt.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })}</p>
+    <div class="score">
+      <p><strong>Team average:</strong> ${teamAverage}/60</p>
+      <p><strong>Team ending band:</strong> ${teamBand.replace('_', ' ')}</p>
+      <p>${finalSummary}</p>
+    </div>
+    <h2>Player Highlights</h2>
+    <ul>${playerHighlights}</ul>
+    <h2>Story Beats</h2>
+    ${beatBlocks}
+  </div>
+</body>
+</html>
+  `.trim();
 }
 
 function calculateVoteSummary(votes: Array<{ optionKey: string }>) {
