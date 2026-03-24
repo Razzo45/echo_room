@@ -111,11 +111,11 @@ export default function NewEventPage() {
             <textarea
               value={formData.aiBrief}
               onChange={(e) => setFormData({ ...formData, aiBrief: e.target.value })}
-              placeholder="Describe your event theme, goals, and the types of decisions you want. You can generate rooms with AI after creating the event."
+              placeholder="Describe your event theme, goals, and story beats you have in mind. You can generate rooms with AI after creating the event."
               rows={4}
               className="input"
             />
-            <p className="text-xs text-gray-500 mt-1.5">You can add or edit this later. AI uses it to generate quests and options.</p>
+            <p className="text-xs text-gray-500 mt-1.5">You can add or edit this later. AI uses it to generate scenario scripts (three beats per quest, paths A/B/C).</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

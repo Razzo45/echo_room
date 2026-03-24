@@ -142,7 +142,7 @@ export default function QuestEditPage() {
     if (!quest) return;
     if (
       !confirm(
-        'Revert this quest to the original AI-generated script? This will discard your manual edits for this quest.'
+        'Revert this scenario to the last AI-generated baseline? This will discard your manual edits for this quest.'
       )
     ) {
       return;
@@ -179,7 +179,7 @@ export default function QuestEditPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading quest...</p>
+          <p className="text-gray-600">Loading scenario...</p>
         </div>
       </div>
     );
@@ -189,7 +189,7 @@ export default function QuestEditPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Quest editor</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Scenario editor</h1>
           <p className="text-gray-600 mb-4">
             {error || 'Quest not found or could not be loaded.'}
           </p>
@@ -217,10 +217,10 @@ export default function QuestEditPage() {
               ← Back
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Edit Quest Script</h1>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Edit scenario script</h1>
               <p className="text-sm text-gray-600">
                 {quest.region?.displayName ? `${quest.region.displayName} · ` : ''}
-                Quest ID: {quest.id}
+                Scenario ID: {quest.id}
               </p>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function QuestEditPage() {
               type="button"
               className="btn btn-secondary"
             >
-              {reverting ? 'Reverting…' : 'Revert to AI baseline'}
+              {reverting ? 'Reverting…' : 'Revert to generated baseline'}
             </button>
             <button
               onClick={handleSave}
@@ -239,17 +239,17 @@ export default function QuestEditPage() {
               type="button"
               className="btn btn-primary"
             >
-              {saving ? 'Saving…' : 'Save script'}
+              {saving ? 'Saving…' : 'Save scenario'}
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
-        {/* Quest-level fields */}
+        {/* Scenario (quest) overview */}
         <div className="card-elevated space-y-4">
           <div>
-            <label className="label">Quest name</label>
+            <label className="label">Scenario title</label>
             <input
               type="text"
               value={quest.name}
@@ -260,7 +260,7 @@ export default function QuestEditPage() {
             />
           </div>
           <div>
-            <label className="label">Quest description</label>
+            <label className="label">Scenario briefing</label>
             <textarea
               value={quest.description}
               onChange={(e) =>
@@ -310,7 +310,16 @@ export default function QuestEditPage() {
           </div>
         </div>
 
-        {/* Decisions and options */}
+        <div className="rounded-2xl border border-primary-100 bg-primary-50/80 px-4 py-3 text-sm text-primary-900">
+          <p className="font-medium text-primary-950">How this maps to live play</p>
+          <p className="mt-1 text-primary-900/90">
+            Participants run through <strong>three story beats</strong>. Each beat is blind one-line actions, then a{' '}
+            <strong>d20 roll</strong> that resolves the moment. The fields below set the beat prompt and three{' '}
+            <strong>paths</strong> (A/B/C) the narrative can lean on—think tone and framing, not a branching vote UI.
+          </p>
+        </div>
+
+        {/* Story beats (stored as decisions + options in the API) */}
         {quest.decisions.map((d) => (
           <div
             key={d.id}
@@ -318,13 +327,13 @@ export default function QuestEditPage() {
           >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                Decision {d.decisionNumber}
+                Beat {d.decisionNumber}
               </h2>
-              <span className="text-xs text-gray-500">ID: {d.id}</span>
+              <span className="text-xs text-gray-500 font-mono">Beat ID: {d.id}</span>
             </div>
 
             <div>
-              <label className="label">Decision title</label>
+              <label className="label">Beat title</label>
               <input
                 type="text"
                 value={d.title}
@@ -340,7 +349,10 @@ export default function QuestEditPage() {
             </div>
 
             <div>
-              <label className="label">Context / background</label>
+              <label className="label">Scene &amp; stakes</label>
+              <p className="text-xs text-gray-500 -mt-1 mb-1">
+                What is happening this round? This text informs facilitation and prompts before the dice resolve the beat.
+              </p>
               <textarea
                 value={d.context}
                 onChange={(e) =>
@@ -361,15 +373,18 @@ export default function QuestEditPage() {
                   key={o.id}
                   className="border-2 border-gray-200 rounded-2xl p-4 space-y-3 bg-gray-50/50"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-800 text-sm font-semibold">
-                      {o.optionKey}
-                    </span>
-                    <span className="text-xs text-gray-500">ID: {o.id}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary-100 text-primary-800 text-sm font-semibold">
+                        {o.optionKey}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-800 truncate">Path {o.optionKey}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono shrink-0">ID: {o.id}</span>
                   </div>
 
                   <div>
-                    <label className="label text-xs">Option title</label>
+                    <label className="label text-xs">Path label</label>
                     <input
                       type="text"
                       value={o.title}
@@ -385,7 +400,7 @@ export default function QuestEditPage() {
                   </div>
 
                   <div>
-                    <label className="label text-xs">Description</label>
+                    <label className="label text-xs">Path summary</label>
                     <textarea
                       value={o.description}
                       onChange={(e) =>
@@ -401,7 +416,10 @@ export default function QuestEditPage() {
                   </div>
 
                   <div>
-                    <label className="label text-xs">Impact / outcomes</label>
+                    <label className="label text-xs">Outcome &amp; risk (for narrative)</label>
+                    <p className="text-xs text-gray-500 -mt-1 mb-1">
+                      Two short sentences: what goes well, then what could bite. Feeds prompts and artifact copy.
+                    </p>
                     <textarea
                       value={o.impact}
                       onChange={(e) =>
@@ -417,7 +435,7 @@ export default function QuestEditPage() {
                   </div>
 
                   <div>
-                    <label className="label text-xs">Tradeoffs</label>
+                    <label className="label text-xs">Tradeoff (what the team accepts)</label>
                     <textarea
                       value={o.tradeoff}
                       onChange={(e) =>

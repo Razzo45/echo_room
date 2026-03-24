@@ -610,7 +610,7 @@ export default function EventDetailPage() {
               <textarea
                 value={aiBrief}
                 onChange={(e) => setAiBrief(e.target.value)}
-                placeholder="Describe your event theme, goals, and the types of decisions you want participants to make. The AI will generate quests, decisions, and options based on this brief."
+                placeholder="Describe your event theme, goals, and the story tension you want (e.g. tradeoffs, stakes). The AI will generate scenario scripts with three story beats and paths (A/B/C) for each beat—live play is blind actions plus d20 resolution."
                 rows={4}
                 className="input resize-y"
                 disabled={generating || savingBrief}
