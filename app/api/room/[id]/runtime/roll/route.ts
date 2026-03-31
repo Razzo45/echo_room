@@ -211,8 +211,14 @@ export async function POST(
       );
     }
     console.error('Runtime roll error:', error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : 'Unknown error';
     return NextResponse.json(
-      { error: 'An error occurred while submitting roll' },
+      { error: `ROLL_RUNTIME_ERROR: ${message}` },
       { status: 500 }
     );
   }
