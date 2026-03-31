@@ -233,39 +233,48 @@ function generateStoryHTML(
   finalSummary: string,
   completedAt: Date
 ) {
-  const framingByBand: Record<string, string> = {
-    critical_success: 'shaped a breakthrough turning point',
-    success: 'built strong momentum for the team',
-    mixed: 'kept the team resilient through uncertainty',
-    fail: 'helped stabilize the story under pressure',
-    critical_fail: 'kept the team grounded and moving forward',
-  };
-  const baseFraming = framingByBand[teamBand] ?? framingByBand.mixed;
+  function rollNarrative(name: string, action: string, roll: { value: number; band: string } | undefined): string {
+    if (!roll) return `<strong>${name}</strong> chose: ${action}.`;
+    const v = roll.value;
+    const bandText = String(roll.band).replace(/_/g, ' ');
+    if (v >= 19) return `<strong>${name}</strong> chose <em>${action}</em> and rolled a stunning <strong>${v}</strong> — a ${bandText} that turned the tide.`;
+    if (v >= 15) return `<strong>${name}</strong> went with <em>${action}</em>, rolling a solid <strong>${v}</strong> (${bandText}) that pushed things forward.`;
+    if (v >= 10) return `<strong>${name}</strong> tried <em>${action}</em> — a <strong>${v}</strong> (${bandText}). It worked, but complications followed.`;
+    if (v >= 4) return `<strong>${name}</strong> attempted <em>${action}</em> and rolled a <strong>${v}</strong> (${bandText}). The dice were unkind, but they stayed in the fight.`;
+    return `<strong>${name}</strong> reached for <em>${action}</em> but rolled a devastating <strong>${v}</strong> — a ${bandText} that forced the team to regroup.`;
+  }
 
   const playerHighlights = teamMembers
     .map((member) => {
       const rollValues = beats
         .map((b) => b.rolls[member.id]?.value)
         .filter((v): v is number => typeof v === 'number');
+      const total = rollValues.reduce((a, b) => a + b, 0);
       const best = rollValues.length ? Math.max(...rollValues) : 0;
-      return `<li><strong>${member.name}</strong> ${baseFraming} with a best roll of <strong>${best}</strong>.</li>`;
+      const worst = rollValues.length ? Math.min(...rollValues) : 0;
+      let flavour: string;
+      if (total >= 45) flavour = `was the driving force across every beat, with a peak roll of <strong>${best}</strong>`;
+      else if (total >= 30) flavour = `contributed solidly throughout, peaking at <strong>${best}</strong>`;
+      else if (total >= 15) flavour = `faced tough dice (low of ${worst}) but stayed in the fight`;
+      else flavour = `weathered difficult rolls — their persistence kept the group grounded`;
+      return `<li><strong>${member.name}</strong> ${flavour}. Total: <strong>${total}/60</strong>.</li>`;
     })
     .join('');
 
   const beatBlocks = beats
     .map((beat) => {
-      const submissions = teamMembers
+      const playerLines = teamMembers
         .map((m) => {
           const action = beat.submissions[m.id] || 'No action recorded.';
           const roll = beat.rolls[m.id];
-          return `<li><strong>${m.name}:</strong> ${action}${roll ? ` (Roll ${roll.value}, ${String(roll.band).replace('_', ' ')})` : ''}</li>`;
+          return `<li>${rollNarrative(m.name, action, roll)}</li>`;
         })
         .join('');
       return `
         <section class="beat">
           <h3>Beat ${beat.number}</h3>
-          <ul>${submissions}</ul>
-          <p class="consequence"><strong>Consequence:</strong> ${beat.consequence?.text || 'No consequence text recorded.'}</p>
+          <ul>${playerLines}</ul>
+          <div class="consequence">${beat.consequence?.text || 'The story moves forward.'}</div>
         </section>
       `;
     })
@@ -286,7 +295,9 @@ function generateStoryHTML(
     .meta { color: #6b7280; margin-bottom: 1.25rem; }
     .score { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1rem; }
     .beat { background: #f9fafb; border-left: 4px solid #2563eb; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
-    .consequence { margin-top: 0.75rem; }
+    .beat ul { margin: 0.75rem 0; padding-left: 1.25rem; }
+    .beat li { margin-bottom: 0.5rem; line-height: 1.5; }
+    .consequence { margin-top: 1rem; padding: 0.75rem 1rem; background: #eff6ff; border-radius: 6px; font-style: italic; line-height: 1.6; color: #1e40af; }
   </style>
 </head>
 <body>

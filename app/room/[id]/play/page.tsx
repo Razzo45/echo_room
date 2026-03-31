@@ -85,6 +85,7 @@ type RoomResponse = {
 
 const POLL_MS = 2500;
 const ROLL_ANIMATION_MS = 2200;
+const ROLL_HOLD_MS = 2000;
 const ACTION_MAX_CHARS = 120;
 
 function isSingleSentence(input: string): boolean {
@@ -326,6 +327,8 @@ export default function QuestPlayPage() {
         await new Promise((resolve) => setTimeout(resolve, ROLL_ANIMATION_MS - elapsed));
       }
       setRollDisplayValue(value);
+      // Hold the result on screen so the last roller can see their die before phase changes.
+      await new Promise((resolve) => setTimeout(resolve, ROLL_HOLD_MS));
       await loadRoom();
     } finally {
       setRolling(false);
