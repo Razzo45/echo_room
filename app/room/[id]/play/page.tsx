@@ -158,6 +158,8 @@ export default function QuestPlayPage() {
   const [completeSubmitting, setCompleteSubmitting] = useState(false);
   const advanceInFlightRef = useRef(false);
   const [advanceSubmitting, setAdvanceSubmitting] = useState(false);
+  const [consequenceEnteredAt, setConsequenceEnteredAt] = useState<number | null>(null);
+  const [aiGracePeriodDone, setAiGracePeriodDone] = useState(false);
 
   const loadRoom = async () => {
     try {
@@ -227,11 +229,51 @@ export default function QuestPlayPage() {
     return Object.values(storyState.readyCheck.readyByPlayerId).filter(Boolean).length;
   }, [storyState]);
 
+  const prevBeatRef = useRef<number | null>(null);
+  useEffect(() => {
+    const beat = storyState?.currentBeat ?? null;
+    if (prevBeatRef.current !== null && beat !== prevBeatRef.current) {
+      setRollDisplayValue(null);
+      setRolling(false);
+      setRollSubmitting(false);
+    }
+    prevBeatRef.current = beat;
+  }, [storyState?.currentBeat]);
+
   useEffect(() => {
     if (myRoll && !rolling) {
       setRollDisplayValue(myRoll.value);
     }
   }, [myRoll, rolling]);
+
+  const AI_GRACE_MS = 10_000;
+  useEffect(() => {
+    if (storyState?.phase === 'beat_consequence') {
+      const isAi = currentBeat?.consequence?.mode === 'ai';
+      if (isAi) {
+        setAiGracePeriodDone(true);
+        return;
+      }
+      if (consequenceEnteredAt === null) {
+        setConsequenceEnteredAt(Date.now());
+        setAiGracePeriodDone(false);
+      }
+    } else {
+      setConsequenceEnteredAt(null);
+      setAiGracePeriodDone(false);
+    }
+  }, [storyState?.phase, currentBeat?.consequence?.mode]);
+
+  useEffect(() => {
+    if (storyState?.phase !== 'beat_consequence' || aiGracePeriodDone || consequenceEnteredAt === null) return;
+    const remaining = AI_GRACE_MS - (Date.now() - consequenceEnteredAt);
+    if (remaining <= 0) {
+      setAiGracePeriodDone(true);
+      return;
+    }
+    const timer = setTimeout(() => setAiGracePeriodDone(true), remaining);
+    return () => clearTimeout(timer);
+  }, [storyState?.phase, consequenceEnteredAt, aiGracePeriodDone]);
 
   const handleAdvance = async () => {
     if (!storyState) return;
@@ -596,88 +638,107 @@ export default function QuestPlayPage() {
             )}
 
             {allRolled && (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-                <h2 className="text-sm font-semibold text-gray-900 mb-2">All rolls are in</h2>
-                <div className="space-y-2">
-                  {players.map((player) => {
-                    const r = currentBeat.rolls[player.id];
-                    if (!r) return null;
-                    const bandLabel =
-                      r.band === 'critical_success' ? 'Crit!' : r.band === 'critical_fail' ? 'Fumble' :
-                      r.band === 'success' ? 'Success' : r.band === 'fail' ? 'Fail' : 'Mixed';
-                    const bandColor =
-                      r.band === 'critical_success' || r.band === 'success' ? 'text-emerald-600' :
-                      r.band === 'critical_fail' || r.band === 'fail' ? 'text-red-600' : 'text-amber-600';
-                    return (
-                      <div key={player.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700">{player.name}</span>
-                        <span className={`font-bold ${bandColor}`}>
-                          d20 → {r.value} <span className="font-normal text-xs">({bandLabel})</span>
-                        </span>
-                      </div>
-                    );
-                  })}
+              <>
+                <D20Die
+                  value={rollDisplayValue}
+                  rolling={false}
+                  band={myRoll ? myRoll.band : null}
+                />
+                <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-2">All rolls are in</h2>
+                  <div className="space-y-2">
+                    {players.map((player) => {
+                      const r = currentBeat.rolls[player.id];
+                      if (!r) return null;
+                      const bandLabel =
+                        r.band === 'critical_success' ? 'Crit!' : r.band === 'critical_fail' ? 'Fumble' :
+                        r.band === 'success' ? 'Success' : r.band === 'fail' ? 'Fail' : 'Mixed';
+                      const bandColor =
+                        r.band === 'critical_success' || r.band === 'success' ? 'text-emerald-600' :
+                        r.band === 'critical_fail' || r.band === 'fail' ? 'text-red-600' : 'text-amber-600';
+                      return (
+                        <div key={player.id} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700">{player.name}</span>
+                          <span className={`font-bold ${bandColor}`}>
+                            d20 → {r.value} <span className="font-normal text-xs">({bandLabel})</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-sm font-medium text-primary-800">
+                    Ready to continue: {rollContinueReady} / {players.length}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Tap Continue once you have reviewed the rolls. The story advances when everyone is ready.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAdvance}
+                    disabled={myRollContinueAck || advanceSubmitting}
+                    className="btn btn-primary w-full"
+                  >
+                    {myRollContinueAck
+                      ? 'You are ready — waiting for others'
+                      : advanceSubmitting
+                        ? 'Saving...'
+                        : 'Continue'}
+                  </button>
                 </div>
-                <p className="text-sm font-medium text-primary-800">
-                  Ready to continue: {rollContinueReady} / {players.length}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Tap Continue once you have reviewed the rolls. The story advances when everyone is ready.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleAdvance}
-                  disabled={myRollContinueAck || advanceSubmitting}
-                  className="btn btn-primary w-full"
-                >
-                  {myRollContinueAck
-                    ? 'You are ready — waiting for others'
-                    : advanceSubmitting
-                      ? 'Saving...'
-                      : 'Continue'}
-                </button>
-              </div>
+              </>
             )}
           </div>
         )}
 
-        {storyState.phase === 'beat_consequence' && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-            <h1 className="text-lg font-bold text-gray-900">What happened</h1>
-            {currentBeat.consequence ? (
-              <>
-                <p className="text-xs text-gray-500">
-                  {currentBeat.consequence.mode === 'ai'
-                    ? 'Narrative synthesis'
-                    : currentBeat.consequence.mode === 'deterministic_fallback'
-                      ? 'Offline narrative (add API key for richer AI)'
-                      : currentBeat.consequence.mode.replace(/_/g, ' ')}
-                </p>
-                <p className="text-sm text-gray-800 whitespace-pre-wrap">{currentBeat.consequence.text}</p>
-                <p className="text-sm font-medium text-primary-800">
-                  Ready to continue: {continueReady} / {continueTotal}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Everyone taps Continue when ready. The story moves on only after all players have continued.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleAdvance}
-                  disabled={myContinueAck || advanceSubmitting}
-                  className="btn btn-primary w-full"
-                >
-                  {myContinueAck
-                    ? 'You are ready — waiting for others'
-                    : advanceSubmitting
-                      ? 'Saving...'
-                      : 'Continue'}
-                </button>
-              </>
-            ) : (
-              <p className="text-sm text-gray-600">The story is resolving this beat now.</p>
-            )}
-          </div>
-        )}
+        {storyState.phase === 'beat_consequence' && (() => {
+          const hasConsequence = Boolean(currentBeat.consequence);
+          const isAi = currentBeat.consequence?.mode === 'ai';
+          const showWaiting = hasConsequence && !isAi && !aiGracePeriodDone;
+
+          if (!hasConsequence) {
+            return (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+                <h1 className="text-lg font-bold text-gray-900">What happened</h1>
+                <p className="text-sm text-gray-600">The story is resolving this beat now.</p>
+              </div>
+            );
+          }
+
+          if (showWaiting) {
+            return (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-200 border-t-primary-600 mx-auto" />
+                <p className="text-sm font-semibold text-gray-900">Waiting for effects...</p>
+                <p className="text-xs text-gray-500">The narrator is weaving the consequences of your actions.</p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+              <h1 className="text-lg font-bold text-gray-900">What happened</h1>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{currentBeat.consequence!.text}</p>
+              <p className="text-sm font-medium text-primary-800">
+                Ready to continue: {continueReady} / {continueTotal}
+              </p>
+              <p className="text-xs text-gray-500">
+                Everyone taps Continue when ready. The story moves on only after all players have continued.
+              </p>
+              <button
+                type="button"
+                onClick={handleAdvance}
+                disabled={myContinueAck || advanceSubmitting}
+                className="btn btn-primary w-full"
+              >
+                {myContinueAck
+                  ? 'You are ready — waiting for others'
+                  : advanceSubmitting
+                    ? 'Saving...'
+                    : 'Continue'}
+              </button>
+            </div>
+          );
+        })()}
 
         {storyState.phase === 'final_panel' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">

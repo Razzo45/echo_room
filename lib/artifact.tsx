@@ -90,17 +90,18 @@ export async function generateArtifact(roomId: string) {
     const finalText = String(storyState?.finalSynthesis?.text || '').trim();
     const finalSummary =
       finalText ||
-      `The team closes with a ${teamBand.replace('_', ' ')} ending and a team score of ${teamAverage}/60.`;
+      `The team completed the scenario with a ${teamBand.replace('_', ' ')} outcome and a combined score of ${teamAverage}/60.`;
 
-    const narrativeHtml = generateStoryHTML(
-      room.quest.name,
+    const narrativeHtml = generateStoryHTML({
+      scenarioName: room.quest.name,
+      scenarioDescription: room.quest.description || '',
       teamMembers,
       beats,
       teamAverage,
       teamBand,
       finalSummary,
-      room.completedAt || new Date()
-    );
+      completedAt: room.completedAt || new Date(),
+    });
 
     return prisma.artifact.create({
       data: {
@@ -219,45 +220,35 @@ export async function generateArtifact(roomId: string) {
   return artifact;
 }
 
-function generateStoryHTML(
-  scenarioName: string,
-  teamMembers: Array<{ id: string; name: string; organisation: string; role: string }>,
+function generateStoryHTML(opts: {
+  scenarioName: string;
+  scenarioDescription: string;
+  teamMembers: Array<{ id: string; name: string; organisation: string; role: string }>;
   beats: Array<{
     number: number;
     submissions: Record<string, string>;
     rolls: Record<string, { value: number; band: string }>;
     consequence: { text: string; mode: string } | null;
-  }>,
-  teamAverage: number,
-  teamBand: string,
-  finalSummary: string,
-  completedAt: Date
-) {
-  function rollNarrative(name: string, action: string, roll: { value: number; band: string } | undefined): string {
-    if (!roll) return `<strong>${name}</strong> chose: ${action}.`;
-    const v = roll.value;
-    const bandText = String(roll.band).replace(/_/g, ' ');
-    if (v >= 19) return `<strong>${name}</strong> chose <em>${action}</em> and rolled a stunning <strong>${v}</strong> — a ${bandText} that turned the tide.`;
-    if (v >= 15) return `<strong>${name}</strong> went with <em>${action}</em>, rolling a solid <strong>${v}</strong> (${bandText}) that pushed things forward.`;
-    if (v >= 10) return `<strong>${name}</strong> tried <em>${action}</em> — a <strong>${v}</strong> (${bandText}). It worked, but complications followed.`;
-    if (v >= 4) return `<strong>${name}</strong> attempted <em>${action}</em> and rolled a <strong>${v}</strong> (${bandText}). The dice were unkind, but they stayed in the fight.`;
-    return `<strong>${name}</strong> reached for <em>${action}</em> but rolled a devastating <strong>${v}</strong> — a ${bandText} that forced the team to regroup.`;
+  }>;
+  teamAverage: number;
+  teamBand: string;
+  finalSummary: string;
+  completedAt: Date;
+}) {
+  const { scenarioName, scenarioDescription, teamMembers, beats, teamAverage, teamBand, finalSummary, completedAt } = opts;
+
+  function rollImpact(v: number): string {
+    if (v >= 19) return 'highly effective';
+    if (v >= 15) return 'effective';
+    if (v >= 10) return 'partial success';
+    if (v >= 4) return 'limited impact';
+    return 'critical setback';
   }
 
-  const playerHighlights = teamMembers
-    .map((member) => {
-      const rollValues = beats
-        .map((b) => b.rolls[member.id]?.value)
-        .filter((v): v is number => typeof v === 'number');
-      const total = rollValues.reduce((a, b) => a + b, 0);
-      const best = rollValues.length ? Math.max(...rollValues) : 0;
-      const worst = rollValues.length ? Math.min(...rollValues) : 0;
-      let flavour: string;
-      if (total >= 45) flavour = `was the driving force across every beat, with a peak roll of <strong>${best}</strong>`;
-      else if (total >= 30) flavour = `contributed solidly throughout, peaking at <strong>${best}</strong>`;
-      else if (total >= 15) flavour = `faced tough dice (low of ${worst}) but stayed in the fight`;
-      else flavour = `weathered difficult rolls — their persistence kept the group grounded`;
-      return `<li><strong>${member.name}</strong> ${flavour}. Total: <strong>${total}/60</strong>.</li>`;
+  const teamRosterHtml = teamMembers
+    .map((m) => {
+      const detail = [m.role, m.organisation].filter(Boolean).join(' · ');
+      return `<li><strong>${m.name}</strong>${detail ? ` — ${detail}` : ''}</li>`;
     })
     .join('');
 
@@ -267,16 +258,27 @@ function generateStoryHTML(
         .map((m) => {
           const action = beat.submissions[m.id] || 'No action recorded.';
           const roll = beat.rolls[m.id];
-          return `<li>${rollNarrative(m.name, action, roll)}</li>`;
+          if (!roll) return `<li><strong>${m.name}</strong>: ${action}</li>`;
+          return `<li><strong>${m.name}</strong>: "${action}" — roll ${roll.value}/20, ${rollImpact(roll.value)}</li>`;
         })
         .join('');
       return `
         <section class="beat">
           <h3>Beat ${beat.number}</h3>
           <ul>${playerLines}</ul>
-          <div class="consequence">${beat.consequence?.text || 'The story moves forward.'}</div>
+          <div class="consequence">${beat.consequence?.text || 'The team progressed to the next phase.'}</div>
         </section>
       `;
+    })
+    .join('');
+
+  const playerScoreRows = teamMembers
+    .map((m) => {
+      const rollValues = beats
+        .map((b) => b.rolls[m.id]?.value)
+        .filter((v): v is number => typeof v === 'number');
+      const total = rollValues.reduce((a, b) => a + b, 0);
+      return `<tr><td>${m.name}</td><td>${total}/60</td></tr>`;
     })
     .join('');
 
@@ -286,33 +288,50 @@ function generateStoryHTML(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Collaborative Story Artifact</title>
+  <title>${scenarioName} — Scenario Report</title>
   <style>
     body { font-family: system-ui, sans-serif; color: #1f2937; background: #f8fafc; padding: 2rem; }
-    .container { max-width: 980px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 2rem; }
-    h1 { margin: 0 0 0.25rem; font-size: 2rem; }
-    h2 { margin-top: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
-    .meta { color: #6b7280; margin-bottom: 1.25rem; }
-    .score { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 1rem; }
+    .container { max-width: 980px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 2.5rem; }
+    h1 { margin: 0 0 0.25rem; font-size: 1.75rem; }
+    h2 { margin-top: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; color: #374151; }
+    .meta { color: #6b7280; margin-bottom: 1.5rem; font-size: 0.875rem; }
+    .scenario-brief { background: #f9fafb; border-left: 4px solid #6366f1; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; line-height: 1.6; }
+    .team-roster { list-style: none; padding: 0; }
+    .team-roster li { padding: 0.4rem 0; border-bottom: 1px solid #f3f4f6; }
+    .team-roster li:last-child { border-bottom: none; }
     .beat { background: #f9fafb; border-left: 4px solid #2563eb; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
     .beat ul { margin: 0.75rem 0; padding-left: 1.25rem; }
     .beat li { margin-bottom: 0.5rem; line-height: 1.5; }
-    .consequence { margin-top: 1rem; padding: 0.75rem 1rem; background: #eff6ff; border-radius: 6px; font-style: italic; line-height: 1.6; color: #1e40af; }
+    .consequence { margin-top: 1rem; padding: 0.75rem 1rem; background: #eff6ff; border-radius: 6px; line-height: 1.6; color: #1e40af; }
+    .synthesis { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.25rem; margin-top: 1rem; line-height: 1.7; }
+    .results-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+    .results-table th, .results-table td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
+    .results-table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+    .band-badge { display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.25rem 0.75rem; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Collaborative Story Artifact</h1>
-    <p class="meta">${scenarioName} · Completed ${completedAt.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })}</p>
-    <div class="score">
-      <p><strong>Team average:</strong> ${teamAverage}/60</p>
-      <p><strong>Team ending band:</strong> ${teamBand.replace('_', ' ')}</p>
-      <p>${finalSummary}</p>
-    </div>
-    <h2>Player Highlights</h2>
-    <ul>${playerHighlights}</ul>
+    <h1>${scenarioName}</h1>
+    <p class="meta">Scenario Report · Completed ${completedAt.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })}</p>
+
+    ${scenarioDescription ? `<div class="scenario-brief">${scenarioDescription}</div>` : ''}
+
+    <h2>Team</h2>
+    <ul class="team-roster">${teamRosterHtml}</ul>
+
     <h2>Story Beats</h2>
     ${beatBlocks}
+
+    <h2>Summary</h2>
+    <div class="synthesis">${finalSummary}</div>
+
+    <h2>Results</h2>
+    <p><span class="band-badge">${teamBand.replace(/_/g, ' ')}</span> · Team average: ${teamAverage}/60</p>
+    <table class="results-table">
+      <thead><tr><th>Player</th><th>Score</th></tr></thead>
+      <tbody>${playerScoreRows}</tbody>
+    </table>
   </div>
 </body>
 </html>

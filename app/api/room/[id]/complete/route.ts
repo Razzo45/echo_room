@@ -89,6 +89,8 @@ export async function POST(
       const roomFresh = await prisma.room.findUnique({
         where: { id: roomId },
         include: {
+          event: true,
+          quest: true,
           members: { include: { user: true } },
           artifact: true,
         },
@@ -106,7 +108,11 @@ export async function POST(
             roomFresh.members.map((member) => ({
               id: member.userId,
               name: member.user.name,
-            }))
+            })),
+            {
+              name: roomFresh.quest.name || 'Collaborative Scenario',
+              description: roomFresh.quest.description || roomFresh.event?.aiBrief || '',
+            }
           );
           currentState.finalSynthesis = {
             status: 'done',

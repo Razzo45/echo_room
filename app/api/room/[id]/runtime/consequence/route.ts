@@ -41,7 +41,7 @@ export async function POST(
       await lockRoomForUpdate(tx, roomId);
       const room = await tx.room.findUnique({
         where: { id: roomId },
-        include: { members: { include: { user: true } } },
+        include: { event: true, quest: true, members: { include: { user: true } } },
       });
 
       if (!room) {
@@ -99,7 +99,11 @@ export async function POST(
       if (beat === (state.totalBeats ?? 3)) {
         const synthesis = await generateFinalSynthesisWithFallback(
           state,
-          room.members.map((member) => ({ id: member.userId, name: member.user.name }))
+          room.members.map((member) => ({ id: member.userId, name: member.user.name })),
+          {
+            name: room.quest.name || 'Collaborative Scenario',
+            description: room.quest.description || room.event?.aiBrief || '',
+          }
         );
         state.finalSynthesis = {
           status: 'done',

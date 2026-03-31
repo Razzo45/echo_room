@@ -27,6 +27,7 @@ export async function POST(
       const room = await tx.room.findUnique({
         where: { id: roomId },
         include: {
+          event: true,
           members: { include: { user: true } },
           quest: {
             include: {
@@ -140,6 +141,7 @@ export async function POST(
           continueAck: { ready: playerIds.length, total: playerIds.length },
           storyState: stripInternalStoryState(state),
           quest: room.quest,
+          event: room.event,
           members: room.members,
         };
       }
@@ -216,7 +218,9 @@ export async function POST(
 
     // Best-effort AI upgrade for beat consequence (runs after transaction).
     if ('phase' in result && result.phase === 'beat_consequence' && 'quest' in result && 'beat' in result) {
-      const { quest, members, beat: advancedBeat } = result as any;
+      const { quest, event: txEvent, members, beat: advancedBeat } = result as any;
+      const scenarioName = quest.name || 'Collaborative Scenario';
+      const scenarioDescription = quest.description || txEvent?.aiBrief || '';
       void (async () => {
         try {
           const room = await prisma.room.findUnique({
@@ -233,6 +237,8 @@ export async function POST(
             beat: advancedBeat,
             beatTitle: decision?.title || `Beat ${advancedBeat}`,
             beatScene: decision?.context || '',
+            scenarioName,
+            scenarioDescription,
             paths: (decision?.options || []).map((o: any) => ({
               key: o.optionKey,
               label: o.title,
@@ -263,7 +269,8 @@ export async function POST(
           if (advancedBeat === (state.totalBeats ?? 3)) {
             const synthesis = await generateFinalSynthesisWithFallback(
               state,
-              room.members.map((m) => ({ id: m.userId, name: m.user.name }))
+              room.members.map((m) => ({ id: m.userId, name: m.user.name })),
+              { name: scenarioName, description: scenarioDescription }
             );
             state.finalSynthesis = { status: 'done', text: synthesis.text, mode: synthesis.mode };
           }

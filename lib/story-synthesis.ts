@@ -1,45 +1,30 @@
 import type { StoryState } from '@/lib/story-runtime';
 import OpenAI from 'openai';
 
-function titleCaseBand(band: string): string {
-  return band.replace(/_/g, ' ');
-}
-
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
 
-export function buildDeterministicFinalSynthesis(state: StoryState, players: Array<{ id: string; name: string }>): string {
-  const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
-  const totalBeats = state.totalBeats ?? 3;
-  const beatCount = (['1', '2', '3'] as const)
-    .filter((k) => Number(k) <= totalBeats)
-    .filter((k) => state.beats[k]?.resolved).length;
+// ── Shared tone preamble ───────────────────────────────────────────────────
 
-  const playerLines = players.map((p) => {
-    const total = Number(state.scoreboard.playerTotals?.[p.id] ?? 0);
-    const best = (['1', '2', '3'] as const)
-      .filter((k) => Number(k) <= totalBeats)
-      .map((k) => state.beats[k].rolls[p.id]?.value ?? 0)
-      .reduce((a, b) => Math.max(a, b), 0);
-    if (total >= 45) return `${p.name} was the driving force across every beat, ending with ${total} points and a peak roll of ${best}.`;
-    if (total >= 30) return `${p.name} contributed solidly throughout, earning ${total} points with a best roll of ${best}.`;
-    if (total >= 15) return `${p.name} faced tough dice but stayed in the fight, finishing with ${total} points.`;
-    return `${p.name} weathered difficult rolls (${total} points) — their persistence kept the group grounded.`;
-  });
+function tonePreamble(scenarioName: string, scenarioDescription: string): string {
+  return [
+    `You are a professional facilitator summarising a collaborative scenario exercise.`,
+    `The scenario is: "${scenarioName}" — ${scenarioDescription || '(no additional context)'}`,
+    `Match your tone to this topic. If it is a policy or business exercise, write analytically.`,
+    `If it is a creative scenario, you may be more narrative — but never default to fantasy/RPG language.`,
+    `Do not use words like "heroes", "quest", "adventure", "dice gods", or "dungeon master".`,
+  ].join('\n');
+}
 
-  let teamSentence: string;
-  if (teamAverage >= 45) {
-    teamSentence = `Over ${beatCount} beats the team rolled with extraordinary fortune, closing out the story with commanding authority.`;
-  } else if (teamAverage >= 30) {
-    teamSentence = `Across ${beatCount} beats the team built steady momentum, navigating complications and earning a strong finish.`;
-  } else if (teamAverage >= 15) {
-    teamSentence = `The ${beatCount} beats tested the team at every turn. They adapted, improvised, and emerged changed by the experience.`;
-  } else {
-    teamSentence = `The dice were unforgiving across all ${beatCount} beats — but the team never stopped pushing forward, and that resilience is the real story.`;
-  }
+// ── Deterministic beat consequence ─────────────────────────────────────────
 
-  return `${teamSentence} ${playerLines.join(' ')}`;
+function rollImpactPhrase(value: number): string {
+  if (value >= 19) return 'landed with exceptional effectiveness';
+  if (value >= 15) return 'executed well and advanced the position';
+  if (value >= 10) return 'had partial effect with complications';
+  if (value >= 4) return 'fell short of the intended outcome';
+  return 'backfired, creating new obstacles';
 }
 
 export function buildDeterministicBeatConsequence(input: {
@@ -48,54 +33,73 @@ export function buildDeterministicBeatConsequence(input: {
   rolls?: Array<{ name: string; value: number; band: string }>;
   averageRoll: number;
 }): { mode: string; text: string } {
-  const { beat, submissions, rolls, averageRoll } = input;
+  const { submissions, rolls, averageRoll } = input;
 
-  const playerNarratives = submissions.map((sub) => {
+  const playerLines = submissions.map((sub) => {
     const roll = rolls?.find((r) => r.name === sub.name);
-    if (!roll) return `${sub.name} attempts to ${sub.text.toLowerCase().replace(/^i /, '')}.`;
-
-    const v = roll.value;
-    const name = sub.name;
-    const action = sub.text;
-
-    if (v >= 19) {
-      return `${name} chooses to ${action.toLowerCase().replace(/^i /, '')} — and the d20 lands on ${v}. The execution is flawless; the outcome exceeds anything the team could have hoped for.`;
-    }
-    if (v >= 15) {
-      return `${name} moves to ${action.toLowerCase().replace(/^i /, '')} and rolls a strong ${v}. The plan works cleanly, creating momentum the rest of the team can build on.`;
-    }
-    if (v >= 10) {
-      return `${name} goes for ${action.toLowerCase().replace(/^i /, '')} — a ${v} on the die. It works, but not without a cost; a complication emerges that the team will have to factor into what comes next.`;
-    }
-    if (v >= 4) {
-      return `${name} tries to ${action.toLowerCase().replace(/^i /, '')} but the dice aren't kind — a ${v}. The intent is there, but the result falls short, forcing the group to compensate.`;
-    }
-    return `${name} reaches for ${action.toLowerCase().replace(/^i /, '')} and rolls a devastating ${v}. The attempt backfires — things get harder from here, and the team must regroup quickly.`;
+    if (!roll) return `${sub.name} proposed: ${sub.text}.`;
+    return `${sub.name} pursued "${sub.text}" (roll ${roll.value}/20) — this ${rollImpactPhrase(roll.value)}.`;
   });
-
-  const joined = playerNarratives.join(' ');
 
   let closing: string;
   if (averageRoll >= 15) {
-    closing = 'The team emerges from this beat with real advantage — the dice rewarded bold action.';
+    closing = 'The team is in a strong position heading into the next phase.';
   } else if (averageRoll >= 10) {
-    closing = 'Progress is real, but the path ahead carries new weight. Every choice has left its mark.';
+    closing = 'Progress was made, but unresolved complications will carry forward.';
   } else {
-    closing = 'The dice demanded a price. The team presses forward, shaped by what just happened.';
+    closing = 'Significant challenges remain; the team will need to adjust their approach.';
   }
 
   const mode = averageRoll >= 15 ? 'high_momentum' : averageRoll >= 10 ? 'mixed_result' : 'hard_choice';
 
   return {
     mode,
-    text: `${joined} ${closing}`,
+    text: `${playerLines.join(' ')} ${closing}`,
   };
 }
+
+// ── Deterministic final synthesis ──────────────────────────────────────────
+
+export function buildDeterministicFinalSynthesis(
+  state: StoryState,
+  players: Array<{ id: string; name: string }>,
+  scenarioName?: string
+): string {
+  const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
+  const totalBeats = state.totalBeats ?? 3;
+  const beatKeys = (['1', '2', '3'] as const).filter((k) => Number(k) <= totalBeats);
+  const beatCount = beatKeys.filter((k) => state.beats[k]?.resolved).length;
+
+  const playerLines = players.map((p) => {
+    const total = Number(state.scoreboard.playerTotals?.[p.id] ?? 0);
+    const bestBeat = beatKeys
+      .map((k) => ({ beat: k, value: state.beats[k].rolls[p.id]?.value ?? 0, action: state.beats[k].submissions[p.id] || '' }))
+      .reduce((a, b) => (b.value > a.value ? b : a), { beat: '1' as const, value: 0, action: '' });
+    const actionClip = bestBeat.action.length > 60 ? bestBeat.action.slice(0, 57) + '...' : bestBeat.action;
+    if (total >= 45) return `${p.name} was highly effective throughout, with a standout contribution of "${actionClip}" (roll ${bestBeat.value}) in beat ${bestBeat.beat}. Total score: ${total}/60.`;
+    if (total >= 30) return `${p.name} contributed consistently, most notably with "${actionClip}" (roll ${bestBeat.value}). Total score: ${total}/60.`;
+    if (total >= 15) return `${p.name} faced difficult outcomes but stayed engaged, scoring ${total}/60 across ${beatCount} beats.`;
+    return `${p.name} encountered significant resistance (${total}/60) but their participation kept the group moving.`;
+  });
+
+  const scenario = scenarioName ? `"${scenarioName}"` : 'the scenario';
+  let teamLine: string;
+  if (teamAverage >= 45) teamLine = `The team tackled ${scenario} across ${beatCount} beats with strong overall execution (team average ${teamAverage}/60).`;
+  else if (teamAverage >= 30) teamLine = `Across ${beatCount} beats of ${scenario}, the team achieved a solid result (team average ${teamAverage}/60) despite some setbacks.`;
+  else if (teamAverage >= 15) teamLine = `The team worked through ${beatCount} beats of ${scenario} with mixed results (team average ${teamAverage}/60), requiring adaptation at multiple points.`;
+  else teamLine = `${scenario} proved highly challenging across ${beatCount} beats (team average ${teamAverage}/60), with the team needing to regroup repeatedly.`;
+
+  return `${teamLine} ${playerLines.join(' ')}`;
+}
+
+// ── AI beat consequence ────────────────────────────────────────────────────
 
 export async function generateBeatConsequenceWithFallback(input: {
   beat: number;
   beatTitle: string;
   beatScene: string;
+  scenarioName: string;
+  scenarioDescription: string;
   paths: Array<{ key: string; label: string; summary: string }>;
   submissions: Array<{ name: string; text: string }>;
   rolls: Array<{ name: string; value: number; band: string }>;
@@ -115,40 +119,35 @@ export async function generateBeatConsequenceWithFallback(input: {
   const pathLines = input.paths
     .map((p) => `Path ${p.key}: ${p.label} — ${p.summary}`)
     .join('\n');
-  const actionLines = input.submissions.map((s) => `${s.name}: ${s.text}`).join(' | ');
-  const rollLines = input.rolls
-    .map((r) => `${r.name}: d20=${r.value} (${titleCaseBand(r.band)})`)
-    .join(' | ');
 
   try {
     const prompt = [
-      `You are the Dungeon Master narrating one beat of a collaborative tabletop-style story.`,
+      tonePreamble(input.scenarioName, input.scenarioDescription),
       ``,
-      `Beat title: ${input.beatTitle}`,
-      `Scene / stakes: ${input.beatScene || '(not specified)'}`,
-      `Possible narrative paths (for context only — players wrote free-form actions, not votes):\n${pathLines || '(none)'}`,
+      `Beat ${input.beat}: "${input.beatTitle}"`,
+      `Context: ${input.beatScene || '(not specified)'}`,
+      pathLines ? `Reference paths:\n${pathLines}` : '',
       ``,
-      `Player actions and dice rolls:`,
+      `Player actions and outcomes:`,
       ...input.rolls.map((r) => {
         const sub = input.submissions.find((s) => s.name === r.name);
-        return `- ${r.name} chose: "${sub?.text || '(none)'}". Rolled d20 = ${r.value} (${titleCaseBand(r.band)}).`;
+        return `- ${r.name}: "${sub?.text || '(none)'}". Roll: ${r.value}/20.`;
       }),
-      `Team average: ${input.averageRoll.toFixed(1)}.`,
+      `Team average roll: ${input.averageRoll.toFixed(1)}/20.`,
       ``,
-      `Write ONE vivid paragraph (80–140 words) narrating this beat like a D&D session recap:`,
-      `- Describe each player's action attempt and HOW their individual die roll affected the outcome.`,
-      `  A high roller should feel heroic; a low roller should feel the sting of bad luck even if their idea was good.`,
-      `- The tone should feel like a skilled DM telling a story, not a sports announcer reading stats.`,
-      `- Do not repeat the die values or band labels literally — weave the luck into the narrative.`,
-      `- End with a sentence about what this means for the team going forward.`,
-      `Plain text only, present tense or immediate past, no bullet points or headers.`,
-    ].join('\n');
+      `Write ONE concise paragraph (60–100 words):`,
+      `- One sentence per player: what they did and how the roll shaped the outcome (concrete, specific to the scenario topic).`,
+      `- One closing sentence on the team's position going forward.`,
+      `- Be specific to the scenario subject matter. No generic filler.`,
+      `- Do not repeat roll numbers literally — describe the impact instead.`,
+      `Plain text only, no bullet points or headers.`,
+    ].filter(Boolean).join('\n');
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.65,
-      max_tokens: 280,
+      temperature: 0.4,
+      max_tokens: 200,
     });
     const text = completion.choices[0]?.message?.content?.trim();
     if (!text) {
@@ -160,49 +159,61 @@ export async function generateBeatConsequenceWithFallback(input: {
   }
 }
 
+// ── AI final synthesis ─────────────────────────────────────────────────────
+
 export async function generateFinalSynthesisWithFallback(
   state: StoryState,
-  players: Array<{ id: string; name: string }>
+  players: Array<{ id: string; name: string }>,
+  scenarioContext?: { name: string; description: string }
 ): Promise<{ text: string; mode: string }> {
-  const fallback = buildDeterministicFinalSynthesis(state, players);
+  const fallback = buildDeterministicFinalSynthesis(state, players, scenarioContext?.name);
   if (!openai) {
     return { text: fallback, mode: 'deterministic_fallback' };
   }
   try {
     const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
-    const teamBand = titleCaseBand(String(state.scoreboard.teamBand ?? 'mixed'));
     const totalBeats = state.totalBeats ?? 3;
     const beatSummaries = (['1', '2', '3'] as const)
       .filter((key) => Number(key) <= totalBeats)
       .map((key) => {
-      const beat = state.beats[key];
-      const actions = players
-        .map((player) => `${player.name}: ${beat.submissions[player.id] || 'no action recorded'}`)
-        .join(' | ');
-      return `Beat ${key}: ${actions}. Consequence: ${beat.consequence?.text || 'none'}`;
+        const beat = state.beats[key];
+        const actions = players
+          .map((player) => {
+            const action = beat.submissions[player.id] || 'no action recorded';
+            const roll = beat.rolls[player.id]?.value ?? 0;
+            return `${player.name}: "${action}" (roll ${roll})`;
+          })
+          .join('; ');
+        return `Beat ${key}: ${actions}. Outcome: ${beat.consequence?.text || 'none'}`;
       });
     const playerScores = players.map((p) => {
       const total = Number(state.scoreboard.playerTotals?.[p.id] ?? 0);
       return `${p.name}: ${total}/60`;
     }).join(', ');
+
+    const scenarioLine = scenarioContext
+      ? `Scenario: "${scenarioContext.name}" — ${scenarioContext.description}`
+      : 'Scenario context not available.';
+
     const prompt = [
-      `You are the Dungeon Master delivering the closing narration for a collaborative tabletop story.`,
+      tonePreamble(scenarioContext?.name || 'Collaborative Scenario', scenarioContext?.description || ''),
       ``,
-      `Team average: ${teamAverage}/60. Ending tone: ${teamBand}. Player scores: ${playerScores}.`,
+      scenarioLine,
+      `Team average: ${teamAverage}/60. Player scores: ${playerScores}.`,
       ...beatSummaries,
       ``,
-      `Write the final wrap-up (100–160 words, one or two paragraphs, plain text):`,
-      `- Narrate what the team accomplished together across the beats — tell a story, don't list stats.`,
-      `- Give each player a personal moment: reference their best or most dramatic action/roll.`,
-      `- High scorers should feel heroic; low scorers should be honoured for persistence or a clutch moment.`,
-      `- End on a note that feels like the closing scene of a great session — satisfying, memorable, forward-looking.`,
-      `- Tone: warm, cinematic, like an excellent DM wrapping the session. Not corporate, not a report card.`,
+      `Write the closing summary (120–180 words, one or two paragraphs, plain text):`,
+      `- Opening: one sentence stating the scenario challenge and the team's overall approach.`,
+      `- Middle: for each player, one sentence about their most impactful action and how outcomes shaped the result. Be concrete and specific to the scenario topic.`,
+      `- Closing: one sentence on whether the team's approach addressed the core challenge and what the key takeaway is.`,
+      `- Write as a professional facilitator summarising a workshop outcome. Factual, specific, no filler.`,
     ].join('\n');
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.6,
-      max_tokens: 220,
+      temperature: 0.35,
+      max_tokens: 300,
     });
     const text = completion.choices[0]?.message?.content?.trim();
     if (!text) return { text: fallback, mode: 'deterministic_fallback' };
