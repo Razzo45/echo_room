@@ -92,6 +92,14 @@ export async function GET(
 
     const memberIds = room.members.map((m) => m.userId);
     const storyState = normalizeStoryState(room.storyState, memberIds);
+    const generatedBeatCount = Math.max(
+      1,
+      Math.min(3, Array.isArray(decisionsData?.decisions) ? decisionsData.decisions.length : 3)
+    ) as 1 | 2 | 3;
+    storyState.totalBeats = generatedBeatCount;
+    if (storyState.currentBeat > generatedBeatCount) {
+      storyState.currentBeat = generatedBeatCount;
+    }
     const visibleStoryState = (() => {
       const state = stripInternalStoryState(storyState) as any;
       if (!['preamble', 'beat_input'].includes(state.phase)) {

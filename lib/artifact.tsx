@@ -65,7 +65,8 @@ export async function generateArtifact(roomId: string) {
       organisation: m.user.organisation,
       role: m.user.role,
     }));
-    const beatKeys = ['1', '2', '3'] as const;
+    const totalBeats = Number(storyState?.totalBeats ?? 3);
+    const beatKeys = (['1', '2', '3'] as const).filter((key) => Number(key) <= totalBeats);
     const beats = beatKeys
       .map((key) => {
         const beat = storyState.beats?.[key];

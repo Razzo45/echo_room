@@ -80,7 +80,8 @@ export async function POST(
 
       state.consequenceContinue = null;
 
-      if (beat < 3) {
+      const totalBeats = state.totalBeats ?? 3;
+      if (beat < totalBeats) {
         state.currentBeat = (beat + 1) as 1 | 2 | 3;
         state.phase = 'beat_input';
       } else {

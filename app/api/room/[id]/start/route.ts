@@ -40,6 +40,9 @@ export async function POST(
           quest: {
             select: {
               minTeamSize: true,
+              _count: {
+                select: { decisions: true },
+              },
             },
           },
         },
@@ -63,6 +66,7 @@ export async function POST(
       }
 
       const minTeamSize = room.quest.minTeamSize ?? 2;
+      const totalBeats = Math.max(1, Math.min(3, room.quest._count?.decisions || 3)) as 1 | 2 | 3;
       if (!isAdminOverride && room._count.members < minTeamSize) {
         return {
           kind: 'error' as const,
@@ -75,7 +79,8 @@ export async function POST(
       const memberIds = room.members.map((m) => m.userId);
       const storyState = room.storyState
         ? normalizeStoryState(room.storyState, memberIds)
-        : createInitialStoryState(memberIds);
+        : createInitialStoryState(memberIds, totalBeats);
+      storyState.totalBeats = totalBeats;
       if (storyState.phase === 'waiting' || storyState.phase === 'room_full') {
         storyState.phase = 'ready_check';
         storyState.readyCheck.startedAt = now.toISOString();

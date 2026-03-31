@@ -12,7 +12,10 @@ const openai = process.env.OPENAI_API_KEY
 export function buildDeterministicFinalSynthesis(state: StoryState, playerIds: string[]): string {
   const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
   const teamBand = titleCaseBand(String(state.scoreboard.teamBand ?? 'mixed'));
-  const beatCount = (['1', '2', '3'] as const).filter((k) => state.beats[k]?.resolved).length;
+  const totalBeats = state.totalBeats ?? 3;
+  const beatCount = (['1', '2', '3'] as const)
+    .filter((k) => Number(k) <= totalBeats)
+    .filter((k) => state.beats[k]?.resolved).length;
   const playerSummary = playerIds
     .map((playerId) => {
       const total = Number(state.scoreboard.playerTotals?.[playerId] ?? 0);
@@ -127,13 +130,16 @@ export async function generateFinalSynthesisWithFallback(
   try {
     const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
     const teamBand = titleCaseBand(String(state.scoreboard.teamBand ?? 'mixed'));
-    const beatSummaries = (['1', '2', '3'] as const).map((key) => {
+    const totalBeats = state.totalBeats ?? 3;
+    const beatSummaries = (['1', '2', '3'] as const)
+      .filter((key) => Number(key) <= totalBeats)
+      .map((key) => {
       const beat = state.beats[key];
       const actions = players
         .map((player) => `${player.name}: ${beat.submissions[player.id] || 'no action recorded'}`)
         .join(' | ');
       return `Beat ${key}: ${actions}. Consequence: ${beat.consequence?.text || 'none'}`;
-    });
+      });
     const prompt = [
       `Create a concise final narrative synthesis for a collaborative story room.`,
       `Team average: ${teamAverage}/60. Team band: ${teamBand}.`,

@@ -24,6 +24,7 @@ type BeatState = {
 type StoryState = {
   phase: RoomPhase;
   currentBeat: 1 | 2 | 3;
+  totalBeats: 1 | 2 | 3;
   readyCheck: {
     startedAt: string | null;
     deadlineAt: string | null;
@@ -69,7 +70,7 @@ function inferTeamBand(teamAverage: number): string {
   return 'critical_fail';
 }
 
-export function createInitialStoryState(playerIds: string[]): StoryState {
+export function createInitialStoryState(playerIds: string[], totalBeats: 1 | 2 | 3 = 3): StoryState {
   const uniquePlayerIds = [...new Set(playerIds)];
   const readyByPlayerId: Record<string, boolean> = {};
   const playerTotals: Record<string, number> = {};
@@ -82,6 +83,7 @@ export function createInitialStoryState(playerIds: string[]): StoryState {
   return {
     phase: 'waiting',
     currentBeat: 1,
+    totalBeats,
     readyCheck: {
       startedAt: null,
       deadlineAt: null,
@@ -146,6 +148,12 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
     internal: parsed.internal ?? fallback.internal,
   };
 
+  const parsedTotal = Number(state.totalBeats ?? 3);
+  state.totalBeats = (parsedTotal >= 3 ? 3 : parsedTotal <= 1 ? 1 : 2) as 1 | 2 | 3;
+  if (state.currentBeat > state.totalBeats) {
+    state.currentBeat = state.totalBeats;
+  }
+
   for (const playerId of playerIds) {
     if (!(playerId in state.readyCheck.readyByPlayerId)) {
       state.readyCheck.readyByPlayerId[playerId] = false;
@@ -175,6 +183,7 @@ export function computeScoreboard(state: StoryState, playerIds: string[]): void 
   for (const playerId of playerIds) {
     let total = 0;
     for (const beatKey of ['1', '2', '3'] as const) {
+      if (Number(beatKey) > state.totalBeats) continue;
       total += state.beats[beatKey].rolls[playerId]?.value ?? 0;
     }
     state.scoreboard.playerTotals[playerId] = Math.max(0, Math.min(60, total));

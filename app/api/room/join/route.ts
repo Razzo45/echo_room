@@ -36,7 +36,13 @@ export async function POST(request: NextRequest) {
     // First get quest to know team size and min to start
     const quest = await prisma.quest.findUnique({
       where: { id: questId },
-      select: { teamSize: true, minTeamSize: true },
+      select: {
+        teamSize: true,
+        minTeamSize: true,
+        _count: {
+          select: { decisions: true },
+        },
+      },
     });
 
     if (!quest) {
@@ -93,6 +99,7 @@ export async function POST(request: NextRequest) {
     });
 
     const minTeamSize = quest.minTeamSize ?? 2;
+    const totalBeats = Math.max(1, Math.min(3, quest._count?.decisions || 3)) as 1 | 2 | 3;
     let room;
 
     if (openRoom && openRoom._count.members < quest.teamSize) {
@@ -121,6 +128,7 @@ export async function POST(request: NextRequest) {
             storyState: (() => {
               const memberIds = [...new Set([...room.members.map((m) => m.userId), user.id])];
               const state = normalizeStoryState(room.storyState, memberIds);
+              state.totalBeats = totalBeats;
               if (shouldAutoStart && (state.phase === 'waiting' || state.phase === 'room_full')) {
                 state.phase = 'ready_check';
                 state.readyCheck.startedAt = now.toISOString();
@@ -171,7 +179,7 @@ export async function POST(request: NextRequest) {
             questId,
             roomCode,
             status: 'OPEN',
-            storyState: createInitialStoryState([user.id]),
+            storyState: createInitialStoryState([user.id], totalBeats),
             lastActivityAt: now,
             members: {
               create: {

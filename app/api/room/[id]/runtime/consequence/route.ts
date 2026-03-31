@@ -96,7 +96,7 @@ export async function POST(
         beat,
         byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
       };
-      if (beat === 3) {
+      if (beat === (state.totalBeats ?? 3)) {
         const synthesis = await generateFinalSynthesisWithFallback(
           state,
           room.members.map((member) => ({ id: member.userId, name: member.user.name }))

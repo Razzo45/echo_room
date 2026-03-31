@@ -189,8 +189,9 @@ export async function POST(request: NextRequest) {
           const playerIds = room.members.map((m) => m.userId);
           const storyState = normalizeStoryState(room.storyState, playerIds);
           const beat = storyState.currentBeat;
-          storyState.phase = beat < 3 ? 'beat_input' : 'final_panel';
-          storyState.currentBeat = beat < 3 ? ((beat + 1) as 1 | 2 | 3) : beat;
+          const totalBeats = storyState.totalBeats ?? 3;
+          storyState.phase = beat < totalBeats ? 'beat_input' : 'final_panel';
+          storyState.currentBeat = beat < totalBeats ? ((beat + 1) as 1 | 2 | 3) : beat;
           await tx.room.update({
             where: { id: roomId },
             data: { storyState, lastActivityAt: new Date() },

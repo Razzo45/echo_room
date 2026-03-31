@@ -117,7 +117,7 @@ export async function POST(
         };
         computeScoreboard(state, playerIds);
 
-        if (beat === 3) {
+        if (beat === (state.totalBeats ?? 3)) {
           // Never run external synthesis while holding a DB transaction lock.
           // This avoids request timeouts / transaction aborts under load.
           state.finalSynthesis = {
@@ -149,7 +149,7 @@ export async function POST(
     }
 
     // Best-effort final synthesis after beat 3, outside transaction.
-    if (beat === 3 && result.storyState.phase === 'beat_consequence') {
+    if (beat === (result.storyState.totalBeats ?? 3) && result.storyState.phase === 'beat_consequence') {
       void (async () => {
         try {
           const room = await prisma.room.findUnique({
