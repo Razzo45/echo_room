@@ -1,4 +1,4 @@
-import webPush, { type PushSubscription } from 'web-push';
+import webPush from 'web-push';
 import { prisma } from '@/lib/db';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -31,8 +31,8 @@ export async function savePushSubscription(userId: string, subscription: RawPush
   }
 
   const { endpoint, keys } = subscription;
-  const p256dh = keys.p256dh;
-  const auth = keys.auth;
+  const p256dh = keys.p256dh ?? '';
+  const auth = keys.auth ?? '';
 
   await prisma.pushSubscription.upsert({
     where: { endpoint },
@@ -93,7 +93,7 @@ export async function sendRoomReadyPush(roomId: string) {
   await Promise.all(
     subscriptions.map(async (sub) => {
       try {
-        const pushSub: PushSubscription = {
+        const pushSub = {
           endpoint: sub.endpoint,
           keys: {
             p256dh: sub.p256dh,
