@@ -369,9 +369,6 @@ export default function QuestPlayPage() {
   const isBriefingReadyPhase =
     storyState.phase === 'room_full' || storyState.phase === 'ready_check';
 
-  const showStoryContent =
-    storyState.phase !== 'waiting' && !isBriefingReadyPhase;
-
   const cc = storyState.consequenceContinue;
   const myContinueAck =
     cc && cc.beat === storyState.currentBeat ? Boolean(cc.byPlayerId[myUserId]) : false;
@@ -388,10 +385,10 @@ export default function QuestPlayPage() {
     waiting: 'Waiting for more players',
     room_full: 'Before we start',
     ready_check: 'Before we start',
-    preamble: `Beat ${storyState.currentBeat}: briefing`,
-    beat_input: `Beat ${storyState.currentBeat}: your move`,
-    roll_reveal: `Beat ${storyState.currentBeat}: roll reveal`,
-    beat_consequence: `Beat ${storyState.currentBeat}: outcome`,
+    preamble: 'The scene',
+    beat_input: 'Your line',
+    roll_reveal: 'Reveal & roll',
+    beat_consequence: 'What happens next',
     final_panel: 'Final panel',
     completed: 'Complete',
   };
@@ -456,50 +453,17 @@ export default function QuestPlayPage() {
           </div>
         )}
 
-        {showStoryContent && (
-          <>
-            {decisionsData?.decisions?.length ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">All beats</p>
-                <div className="space-y-2">
-                  {decisionsData.decisions
-                    .slice()
-                    .sort((a, b) => a.number - b.number)
-                    .map((d) => (
-                      <div
-                        key={d.number}
-                        className={`rounded-xl border p-3 text-sm ${
-                          d.number === storyState.currentBeat
-                            ? 'border-primary-300 bg-primary-50/60'
-                            : 'border-gray-100 bg-gray-50/40'
-                        }`}
-                      >
-                        <p className="font-semibold text-gray-900">
-                          Beat {d.number}
-                          {d.number === storyState.currentBeat ? ' · now' : ''}
-                        </p>
-                        <p className="text-gray-800 font-medium mt-0.5">{d.title}</p>
-                        <p className="text-gray-600 mt-1 whitespace-pre-wrap">{d.description}</p>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
-
         {(storyState.phase === 'preamble' || storyState.phase === 'beat_input') && (
           <div className="space-y-4">
             {storyState.phase === 'preamble' && (
               <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-                <h1 className="text-lg font-bold text-gray-900">Beat {storyState.currentBeat}</h1>
                 {currentMeta ? (
                   <>
-                    <p className="text-sm font-semibold text-gray-800">{currentMeta.title}</p>
+                    <h1 className="text-lg font-bold text-gray-900 leading-snug">{currentMeta.title}</h1>
                     <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-600">Your facilitator will set the tone for this beat.</p>
+                  <p className="text-sm text-gray-600">The table is finding its footing.</p>
                 )}
                 <p className="text-sm text-gray-600">Write one short sentence describing your move.</p>
               </div>
@@ -526,10 +490,9 @@ export default function QuestPlayPage() {
               </div>
             )}
             {storyState.phase === 'beat_input' && currentMeta && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">This beat</p>
-                <p className="text-sm font-bold text-gray-900">{currentMeta.title}</p>
-                <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{currentMeta.description}</p>
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+                <h2 className="text-base font-bold text-gray-900 leading-snug">{currentMeta.title}</h2>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
               </div>
             )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
@@ -571,10 +534,9 @@ export default function QuestPlayPage() {
         {storyState.phase === 'roll_reveal' && (
           <div className="space-y-4">
             {currentMeta && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Scene</p>
-                <p className="text-sm font-bold text-gray-900">{currentMeta.title}</p>
-                <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{currentMeta.description}</p>
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
+                <h2 className="text-base font-bold text-gray-900 leading-snug">{currentMeta.title}</h2>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
               </div>
             )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">

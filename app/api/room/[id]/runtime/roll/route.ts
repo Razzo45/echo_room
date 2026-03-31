@@ -82,6 +82,8 @@ export async function POST(
       if (rollCount === playerIds.length) {
         state.beats[beatKey].revealed = true;
         state.phase = 'beat_consequence';
+
+        // Build safe inputs for consequence / synthesis so we never 500 on bad quest data.
         const submissionList = room.members.map((member) => ({
           name: member.user.name,
           text: state.beats[beatKey].submissions[member.userId] || 'support the team plan',
@@ -98,45 +100,77 @@ export async function POST(
             band: r?.band ?? 'mixed',
           };
         });
-        const decision = room.quest.decisions.find((d) => d.decisionNumber === beat);
+
+        // Quest decisions are optional; for short scripts we may not have three.
+        const decision =
+          room.quest.decisions.find((d) => d.decisionNumber === beat) ??
+          room.quest.decisions.find((d) => d.decisionNumber === 1) ??
+          null;
         const beatTitle = decision?.title ?? `Beat ${beat}`;
-        const beatScene = decision?.context ?? '';
+        const beatScene =
+          decision?.context ??
+          (beat === 3 ? room.quest.description ?? '' : '') ??
+          '';
         const paths =
           decision?.options.map((o) => ({
             key: o.optionKey,
             label: o.title,
             summary: [o.description, o.impact, o.tradeoff].filter(Boolean).join(' — ') || o.title,
           })) ?? [];
-        const generated = await generateBeatConsequenceWithFallback({
-          beat,
-          beatTitle,
-          beatScene,
-          paths,
-          submissions: submissionList,
-          rolls: rollList,
-          averageRoll,
-        });
-        state.beats[beatKey].consequence = {
-          text: generated.text,
-          mode: generated.mode,
-          generatedAt: now.toISOString(),
-        };
+
+        try {
+          const generated = await generateBeatConsequenceWithFallback({
+            beat,
+            beatTitle,
+            beatScene,
+            paths,
+            submissions: submissionList,
+            rolls: rollList,
+            averageRoll,
+          });
+          state.beats[beatKey].consequence = {
+            text: generated.text,
+            mode: generated.mode,
+            generatedAt: now.toISOString(),
+          };
+        } catch (consequenceError) {
+          console.error('Runtime roll consequence generation failed, using deterministic fallback:', consequenceError);
+          // Fall back to a simple heuristic paragraph rather than erroring.
+          const fallback = {
+            text: `The team pushes through this beat together. Their rolls average ${averageRoll.toFixed(
+              1
+            )} on the d20, and the story moves forward based on the actions you chose.`,
+            mode: 'deterministic_fallback',
+          };
+          state.beats[beatKey].consequence = {
+            text: fallback.text,
+            mode: fallback.mode,
+            generatedAt: now.toISOString(),
+          };
+        }
+
         state.beats[beatKey].resolved = true;
         state.consequenceContinue = {
           beat,
           byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
         };
         computeScoreboard(state, playerIds);
+
         if (beat === 3) {
-          const synthesis = await generateFinalSynthesisWithFallback(
-            state,
-            room.members.map((m) => ({ id: m.userId, name: m.user.name }))
-          );
-          state.finalSynthesis = {
-            status: 'done',
-            text: synthesis.text,
-            mode: synthesis.mode,
-          };
+          try {
+            const synthesis = await generateFinalSynthesisWithFallback(
+              state,
+              room.members.map((m) => ({ id: m.userId, name: m.user.name }))
+            );
+            state.finalSynthesis = {
+              status: 'done',
+              text: synthesis.text,
+              mode: synthesis.mode,
+            };
+          } catch (synthesisError) {
+            console.error('Runtime roll final synthesis failed, leaving deterministic scoreboard only:', synthesisError);
+            // Keep scoreboard; finalSynthesis will be filled in on /complete as a fallback.
+          }
         }
       }
 
