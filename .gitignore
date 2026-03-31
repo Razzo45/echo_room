@@ -8,3 +8,5 @@ artifacts
 public/sw.js
 public/workbox-*.js
 video-library/.concat-list.txt
+video-library/**
+asd.txt
