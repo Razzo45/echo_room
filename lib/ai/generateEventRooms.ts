@@ -187,8 +187,6 @@ INSTRUCTIONS:
 Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid JSON.`;
 
   try {
-    console.log('Calling OpenAI API with model: gpt-4o (high-quality content generation)');
-    
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o', // Using gpt-4o for higher quality, sophisticated content generation
       messages: [
@@ -204,8 +202,6 @@ Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid
     if (!content) {
       throw new Error('OpenAI returned empty response');
     }
-
-    console.log('OpenAI response received, length:', content.length);
 
     // Preprocess: strip markdown, extract object, fix trailing commas
     let jsonContent = content.trim();
@@ -242,12 +238,9 @@ Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid
  * Generate event rooms (regions, quests, decisions) from an AI brief.
  * Uses fetchEventRoomsRaw + parse/repair/truncation recovery + Zod validation.
  */
-const GENERATE_PIPELINE_VERSION = 'v2-jsonrepair-first-truncation-recovery';
-
 export async function generateEventRooms(
   input: GenerateEventRoomsInput
 ): Promise<EventGenerationOutput> {
-  console.log('[generateEventRooms] pipeline', GENERATE_PIPELINE_VERSION);
   const jsonContent = await fetchEventRoomsRaw(input);
 
   // Parse: jsonrepair → parse → truncation recovery if needed → Zod
@@ -262,7 +255,6 @@ export async function generateEventRooms(
   let parseError: unknown;
   try {
     parsed = JSON.parse(toParse);
-    if (toParse !== jsonContent) console.log('Parsed successfully after jsonrepair');
   } catch (e) {
     parseError = e;
   }
@@ -277,20 +269,17 @@ export async function generateEventRooms(
       try {
         const repaired = await tryJsonRepair(truncated);
         parsed = JSON.parse(repaired);
-        console.log('Parsed successfully after jsonrepair of truncated response');
       } catch {
         const closed = closeTruncatedJson(truncated);
         if (closed) {
           try {
             parsed = JSON.parse(closed);
-            console.log('Parsed successfully after truncation recovery (bracket close)');
           } catch {
             const earlier = toParse.substring(0, Math.max(0, errPos - 200));
             const closedEarlier = closeTruncatedJson(earlier);
             if (closedEarlier) {
               try {
                 parsed = JSON.parse(closedEarlier);
-                console.log('Parsed successfully after truncation recovery (earlier cut)');
               } catch {
                 // fall through
               }
@@ -312,7 +301,6 @@ export async function generateEventRooms(
 
   try {
     const validated = EventGenerationOutputSchema.parse(parsed);
-    console.log('Validation passed, regions:', validated.regions.length);
     return validated;
   } catch (validationError) {
     if (validationError instanceof z.ZodError) {

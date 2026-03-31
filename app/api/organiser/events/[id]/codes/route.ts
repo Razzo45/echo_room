@@ -104,8 +104,12 @@ export async function POST(
     }
 
     return NextResponse.json({ codes });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     console.error('Generate codes error:', error);
@@ -131,8 +135,12 @@ export async function GET(
     });
 
     return NextResponse.json({ codes });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     console.error('Get codes error:', error);
@@ -184,8 +192,12 @@ export async function PATCH(
     });
 
     return NextResponse.json({ code: updated });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     console.error('Update code state error:', error);
@@ -243,8 +255,12 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     console.error('Delete event code error:', error);

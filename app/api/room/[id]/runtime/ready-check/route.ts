@@ -44,7 +44,7 @@ export async function POST(
       const now = new Date();
       const state = normalizeStoryState(room.storyState, playerIds);
 
-      if (state.phase === 'waiting' || state.phase === 'room_full') {
+      if (state.phase === 'waiting') {
         state.phase = 'ready_check';
       }
 

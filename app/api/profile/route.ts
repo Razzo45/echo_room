@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { profileSchema } from '@/lib/validation';
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: updatePayload as any,
+      data: updatePayload as Prisma.UserUpdateInput,
     });
 
     return NextResponse.json({

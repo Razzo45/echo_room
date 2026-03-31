@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
 import { requireOrganiserEventAccess } from '@/lib/event-access';
@@ -88,11 +89,7 @@ export async function POST(
     }
 
     // Now persist to database in a transaction
-    console.log('Committing reviewed content to database...');
-
     await prisma.$transaction(async (tx) => {
-      console.log('Inside commit transaction...');
-
       // NOTE: Keep commit lightweight for serverless reliability.
       // We no longer hard-delete historical generations/quests in-line because
       // that can exceed function limits on Vercel and fail user commits.
@@ -108,19 +105,15 @@ export async function POST(
       const hasHistoricalGenerations = existingGenerations.length > 0;
 
       // Create regions and quests
-      console.log('Fetching existing regions...');
       const existingRegions = await tx.region.findMany({
         where: { eventId },
         select: { id: true, name: true },
       });
 
-      console.log('Found existing regions:', existingRegions.length);
       const existingRegionMap = new Map(existingRegions.map(r => [r.name, r.id]));
       let sortOrder = 0;
-      let totalQuestsCreated = 0;
 
       for (const regionData of generated.regions) {
-        console.log(`Processing region: ${regionData.name} with ${regionData.quests.length} quests`);
         let regionId = existingRegionMap.get(regionData.name);
 
         if (!regionId) {
@@ -148,7 +141,6 @@ export async function POST(
 
         for (const questData of regionData.quests) {
           try {
-            console.log(`  Creating quest: ${questData.name}`);
             const quest = await tx.quest.create({
               data: {
                 regionId,
@@ -162,8 +154,6 @@ export async function POST(
                 eventGenerationId: generation.id,
               },
             });
-            totalQuestsCreated++;
-            console.log(`    Quest created with ID: ${quest.id}`);
 
             for (const decisionData of questData.decisions) {
               try {
@@ -176,7 +166,6 @@ export async function POST(
                     sortOrder: decisionData.decisionNumber,
                   },
                 });
-                console.log(`      Decision ${decisionData.decisionNumber} created`);
 
                 for (const optionData of decisionData.options) {
                   await tx.questOption.create({
@@ -190,7 +179,6 @@ export async function POST(
                     },
                   });
                 }
-                console.log(`      Created 3 options for decision ${decisionData.decisionNumber}`);
               } catch (decisionError) {
                 console.error(`      Error creating decision ${decisionData.decisionNumber}:`, decisionError);
                 throw decisionError;
@@ -203,20 +191,16 @@ export async function POST(
         }
       }
 
-      console.log(`Created ${totalQuestsCreated} quests total`);
-
       // Update EventGeneration status to READY and store final output
-      console.log('Updating EventGeneration status to READY...');
       await tx.eventGeneration.update({
         where: { id: generation.id },
         data: {
           status: 'READY',
-          output: generated as any,
+          output: generated as unknown as Prisma.InputJsonValue,
         },
       });
 
       // Update Event status to READY
-      console.log('Updating Event status to READY...');
       await tx.event.update({
         where: { id: eventId },
         data: {
@@ -225,13 +209,9 @@ export async function POST(
           aiGenerationVersion: 'v1',
         },
       });
-
-      console.log('Commit transaction completed successfully');
     }, {
       timeout: 120000,
     });
-
-    console.log('Commit successful');
 
     return NextResponse.json({
       success: true,
@@ -239,8 +219,12 @@ export async function POST(
       generationId: generation.id,
       note: 'Historical generated content was preserved for reliability and audit history.',
     });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     console.error('Commit error:', error);

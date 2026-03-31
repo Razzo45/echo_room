@@ -33,8 +33,9 @@ export async function GET() {
       events,
       currentUser: { role: organiser.role },
     });
-  } catch (error: any) {
-    if (error.message === 'Admin authentication required' || error.message === 'Organiser authentication required') {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg === 'Admin authentication required' || msg === 'Organiser authentication required') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     console.error('Admin get events error:', error);

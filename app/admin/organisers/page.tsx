@@ -225,7 +225,12 @@ export default function AdminOrganisersPage() {
                 <label className="label text-gray-300">Role</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      role: e.target.value as Organiser['role'],
+                    })
+                  }
                   className="input bg-gray-700 border-gray-600 text-white"
                 >
                   <option value="ORGANISER">Organiser</option>

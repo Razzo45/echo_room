@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Event, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import type { BeatKey, BeatNumber } from '@/lib/story-runtime';
@@ -13,6 +14,23 @@ import {
   generateBeatConsequenceWithFallback,
   generateFinalSynthesisWithFallback,
 } from '@/lib/story-synthesis';
+
+/** Transaction branch that advanced to beat_consequence with full room context for post-tx AI. */
+type AdvanceBeatConsequenceOk = {
+  kind: 'ok';
+  advanced: true;
+  phase: 'beat_consequence';
+  beat: BeatNumber;
+  continueAck: { ready: number; total: number };
+  storyState: ReturnType<typeof stripInternalStoryState>;
+  quest: Prisma.QuestGetPayload<{
+    include: {
+      decisions: { include: { options: true } };
+    };
+  }>;
+  event: Event | null;
+  members: Prisma.RoomMemberGetPayload<{ include: { user: true } }>[];
+};
 
 export async function POST(
   _request: NextRequest,
@@ -216,7 +234,7 @@ export async function POST(
 
     // Best-effort AI upgrade for beat consequence (runs after transaction).
     if ('phase' in result && result.phase === 'beat_consequence' && 'quest' in result && 'beat' in result) {
-      const { quest, event: txEvent, members, beat: advancedBeat } = result as any;
+      const { quest, event: txEvent, members, beat: advancedBeat } = result as AdvanceBeatConsequenceOk;
       const scenarioName = quest.name || 'Collaborative Scenario';
       const scenarioDescription = quest.description || txEvent?.aiBrief || '';
       void (async () => {

@@ -78,7 +78,11 @@ export async function GET(request: NextRequest) {
       const existing = questStatus.get(rm.room.questId);
       // Prefer COMPLETED, then IN_PROGRESS, then any
       if (!existing || rm.room.status === 'COMPLETED' || (rm.room.status === 'IN_PROGRESS' && existing.status !== 'COMPLETED')) {
-        const ss = rm.room.storyState as any;
+        const ss = rm.room.storyState as {
+          currentBeat?: number;
+          totalBeats?: number;
+          [key: string]: unknown;
+        } | null;
         questStatus.set(rm.room.questId, {
           roomId: rm.room.id,
           status: rm.room.status,

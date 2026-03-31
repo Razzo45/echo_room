@@ -26,11 +26,12 @@ export async function GET() {
         },
       },
     });
-  } catch (error: any) {
-    if (error.message === 'Super admin access required') {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg === 'Super admin access required') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
-    if (error.message === 'Admin authentication required' || error.message === 'Organiser authentication required') {
+    if (msg === 'Admin authentication required' || msg === 'Organiser authentication required') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     console.error('Admin get config error:', error);
@@ -51,11 +52,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       message: 'Configuration update not yet implemented',
     });
-  } catch (error: any) {
-    if (error.message === 'Super admin access required') {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : '';
+    if (msg === 'Super admin access required') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
-    if (error.message === 'Admin authentication required' || error.message === 'Organiser authentication required') {
+    if (msg === 'Admin authentication required' || msg === 'Organiser authentication required') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     console.error('Admin update config error:', error);

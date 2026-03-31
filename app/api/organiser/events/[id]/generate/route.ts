@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { requireOrganiserAuth } from '@/lib/auth-organiser';
 import { requireOrganiserEventAccess } from '@/lib/event-access';
@@ -50,7 +51,6 @@ async function parseGeneratedJson(raw: string): Promise<EventGenerationOutput> {
   let parseError: unknown;
   try {
     parsed = JSON.parse(toParse);
-    console.log('[generate route] Parsed successfully after jsonrepair');
   } catch (e) {
     parseError = e;
   }
@@ -66,18 +66,15 @@ async function parseGeneratedJson(raw: string): Promise<EventGenerationOutput> {
         const { jsonrepair } = await import('jsonrepair');
         const repaired = jsonrepair(truncated);
         parsed = JSON.parse(repaired);
-        console.log('[generate route] Parsed after jsonrepair of truncated response');
       } catch {
         const closed = closeTruncatedJson(truncated);
         try {
           parsed = JSON.parse(closed);
-          console.log('[generate route] Parsed after truncation recovery (bracket close)');
         } catch {
           const earlier = toParse.substring(0, Math.max(0, errPos - 200));
           const closedEarlier = closeTruncatedJson(earlier);
           try {
             parsed = JSON.parse(closedEarlier);
-            console.log('[generate route] Parsed after truncation recovery (earlier cut)');
           } catch {
             // fall through
           }
@@ -165,9 +162,6 @@ export async function POST(
     });
 
     try {
-      console.log('Starting generation for event:', eventId, event.debugMode ? '(debug mock)' : '(AI)');
-      if (!event.debugMode) console.log('[generate route] pipeline: fetchEventRoomsRaw + inline parse/repair/truncation');
-
       let generated: EventGenerationOutput;
       if (event.debugMode) {
         generated = getMockEventRooms();
@@ -180,15 +174,13 @@ export async function POST(
         generated = await parseGeneratedJson(raw);
       }
 
-      console.log('Generation completed, regions:', generated.regions.length);
-
       // Store draft in EventGeneration.output and set status to DRAFT (not READY)
       // This allows organiser to review/edit before committing to database
       await prisma.eventGeneration.update({
         where: { id: generation.id },
         data: {
           status: 'DRAFT',
-          output: generated as any,
+          output: generated as unknown as Prisma.InputJsonValue,
         },
       });
 
@@ -197,8 +189,6 @@ export async function POST(
         where: { id: eventId },
         data: { aiGenerationStatus: 'DRAFT' },
       });
-
-      console.log('Draft saved, awaiting organiser review');
 
       // Return the generated content for review
       return NextResponse.json({
@@ -266,8 +256,12 @@ export async function POST(
         { status: 500 }
       );
     }
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     console.error('Generate event rooms outer error:', error);

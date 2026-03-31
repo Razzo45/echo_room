@@ -83,30 +83,3 @@ export async function deleteSession() {
   cookies().delete(SESSION_COOKIE_NAME);
 }
 
-// Admin session (simple password check)
-const ADMIN_SESSION_COOKIE = 'mmo_admin_session';
-
-export async function createAdminSession() {
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + 2); // 2 hour admin session
-
-  cookies().set(ADMIN_SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    expires: expiresAt,
-    path: '/',
-  });
-
-  return token;
-}
-
-export async function isAdminAuthenticated() {
-  const token = cookies().get(ADMIN_SESSION_COOKIE)?.value;
-  return !!token;
-}
-
-export async function deleteAdminSession() {
-  cookies().delete(ADMIN_SESSION_COOKIE);
-}

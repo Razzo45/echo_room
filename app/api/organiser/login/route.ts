@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { verifyOrganiserCredentials, createOrganiserSession } from '@/lib/auth-organiser';
+import {
+  verifyOrganiserCredentials,
+  createOrganiserSession,
+  type OrganiserRole,
+} from '@/lib/auth-organiser';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
           });
         }
 
-        await createOrganiserSession(organiser.id, organiser.role as any);
+        await createOrganiserSession(organiser.id, organiser.role as OrganiserRole);
         return NextResponse.json({ success: true });
       }
 
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await createOrganiserSession(result.organiser.id, result.organiser.role as any);
+    await createOrganiserSession(result.organiser.id, result.organiser.role as OrganiserRole);
 
     return NextResponse.json({ success: true });
   } catch (error) {

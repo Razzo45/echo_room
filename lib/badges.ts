@@ -151,18 +151,27 @@ export async function checkRoomCompletionBadges(roomId: string): Promise<void> {
   const totalBeats = state.totalBeats ?? 5;
   const beatKeys = ALL_BEAT_KEYS.filter((k) => Number(k) <= totalBeats);
 
-  for (const member of room.members) {
-    const uid = member.userId;
+  // Batch per-player DB queries in parallel, then evaluate badge criteria
+  const memberStats = await Promise.all(
+    room.members.map(async (member) => {
+      const uid = member.userId;
+      const [completedCount, artifactCount, teammates] = await Promise.all([
+        prisma.roomMember.count({ where: { userId: uid, room: { status: 'COMPLETED' } } }),
+        prisma.artifact.count({ where: { room: { members: { some: { userId: uid } }, status: 'COMPLETED' } } }),
+        prisma.roomMember.findMany({
+          where: { room: { status: { in: ['COMPLETED', 'IN_PROGRESS'] }, members: { some: { userId: uid } } } },
+          select: { userId: true },
+        }),
+      ]);
+      return { uid, completedCount, artifactCount, teammates };
+    })
+  );
 
-    // ─ FIRST_CHAPTER: first completed room ─
-    const completedCount = await prisma.roomMember.count({
-      where: { userId: uid, room: { status: 'COMPLETED' } },
-    });
+  for (const { uid, completedCount, artifactCount, teammates } of memberStats) {
     if (completedCount === 1) {
       await awardBadge(uid, 'FIRST_CHAPTER', { roomId });
     }
 
-    // ─ NATURAL_TWENTY / FUMBLE: check all rolls this player made in this room ─
     for (const bk of beatKeys) {
       const roll = state.beats[bk]?.rolls?.[uid];
       if (!roll) continue;
@@ -174,46 +183,28 @@ export async function checkRoomCompletionBadges(roomId: string): Promise<void> {
       }
     }
 
-    // ─ HOT_STREAK: every roll in this room ≥ 15 ─
     const playerRolls = beatKeys.map((bk) => state.beats[bk]?.rolls?.[uid]?.value ?? 0);
     const allPlayed = playerRolls.every((v) => v > 0);
     if (allPlayed && playerRolls.every((v) => v >= 15)) {
       await awardBadge(uid, 'HOT_STREAK', { roomId, metadata: { rolls: playerRolls } });
     }
 
-    // ─ RISING_PHOENIX: rolled ≤ 3 on any beat, then ≥ 15 on a later beat ─
     const rollsByBeat = beatKeys.map((bk) => state.beats[bk]?.rolls?.[uid]?.value ?? 0);
     const lowestBeatIdx = rollsByBeat.findIndex((v) => v >= 1 && v <= 3);
-    const recoveredLater = lowestBeatIdx >= 0 && rollsByBeat.slice(lowestBeatIdx + 1).some((v) => v >= 15);
-    if (recoveredLater) {
+    if (lowestBeatIdx >= 0 && rollsByBeat.slice(lowestBeatIdx + 1).some((v) => v >= 15)) {
       await awardBadge(uid, 'RISING_PHOENIX', { roomId, metadata: { recovered: true } });
     }
 
-    // ─ SEASONED_ADVENTURER: 5 completed rooms ─
     if (completedCount >= 5) {
       await awardBadge(uid, 'SEASONED_ADVENTURER', { metadata: { count: completedCount } });
     }
-
-    // ─ LEGENDARY_CAMPAIGN: 20 completed rooms ─
     if (completedCount >= 20) {
       await awardBadge(uid, 'LEGENDARY_CAMPAIGN', { metadata: { count: completedCount } });
     }
-
-    // ─ ARTIFACT_COLLECTOR: 3 artifacts across all rooms ─
-    const artifactCount = await prisma.artifact.count({
-      where: { room: { members: { some: { userId: uid } }, status: 'COMPLETED' } },
-    });
     if (artifactCount >= 3) {
       await awardBadge(uid, 'ARTIFACT_COLLECTOR', { metadata: { count: artifactCount } });
     }
 
-    // ─ SOCIAL_BUTTERFLY: 10 unique teammates ─
-    const teammates = await prisma.roomMember.findMany({
-      where: {
-        room: { status: { in: ['COMPLETED', 'IN_PROGRESS'] }, members: { some: { userId: uid } } },
-      },
-      select: { userId: true },
-    });
     const uniqueMates = new Set(teammates.map((t) => t.userId).filter((id) => id !== uid));
     if (uniqueMates.size >= 10) {
       await awardBadge(uid, 'SOCIAL_BUTTERFLY', { metadata: { count: uniqueMates.size } });

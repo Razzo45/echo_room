@@ -170,8 +170,12 @@ export async function PUT(
     });
 
     return NextResponse.json({ quest });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Quest not found' }, { status: 404 });
     }
     if (error instanceof Error && error.message === 'Organiser authentication required') {
@@ -199,8 +203,12 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    if (error?.status === 404) {
+  } catch (error: unknown) {
+    const httpStatus =
+      error && typeof error === 'object' && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+    if (httpStatus === 404) {
       return NextResponse.json({ error: 'Quest not found' }, { status: 404 });
     }
     if (error instanceof Error && error.message === 'Organiser authentication required') {

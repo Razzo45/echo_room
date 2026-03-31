@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
               ? normalizeStoryState(room.storyState, memberIds)
               : createInitialStoryState(memberIds);
 
-            if (storyState.phase === 'waiting' || storyState.phase === 'room_full') {
+            if (storyState.phase === 'waiting') {
               storyState.phase = 'ready_check';
               storyState.readyCheck.startedAt = now.toISOString();
               storyState.readyCheck.deadlineAt = new Date(now.getTime() + 60_000).toISOString();

@@ -55,7 +55,21 @@ export async function generateArtifact(roomId: string) {
     throw new Error('Room not found');
   }
 
-  const storyState = room.storyState as any;
+  /** Prisma Json — only fields used for the story-runtime artifact path are typed. */
+  type ArtifactStoryStateJson = {
+    beats?: Record<
+      string,
+      {
+        submissions?: Record<string, string>;
+        rolls?: Record<string, { value: number; band: string }>;
+        consequence?: { text: string; mode: string } | null;
+      }
+    >;
+    totalBeats?: number;
+    finalSynthesis?: { text?: string };
+  } | null;
+
+  const storyState = room.storyState as ArtifactStoryStateJson;
 
   // Story-runtime artifact path (new storytelling flow)
   if (storyState?.beats) {

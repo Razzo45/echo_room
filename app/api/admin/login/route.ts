@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyOrganiserCredentials, createOrganiserSession } from '@/lib/auth-organiser';
+import {
+  verifyOrganiserCredentials,
+  createOrganiserSession,
+  type OrganiserRole,
+} from '@/lib/auth-organiser';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 
@@ -59,10 +63,9 @@ export async function POST(request: NextRequest) {
                 role: 'SUPER_ADMIN',
               },
             });
-            console.log('Created default admin account:', admin.email);
           }
 
-          await createOrganiserSession(admin.id, admin.role as any);
+          await createOrganiserSession(admin.id, admin.role as OrganiserRole);
           return NextResponse.json({
             success: true,
             message: 'Admin authenticated',
@@ -73,19 +76,22 @@ export async function POST(request: NextRequest) {
               role: admin.role,
             },
           });
-        } catch (dbError: any) {
+        } catch (dbError: unknown) {
           console.error('Database error during admin login:', dbError);
-          
-          // Check if it's a table doesn't exist error
-          if (dbError.message?.includes('does not exist') || dbError.code === 'P2021') {
+          const dbMsg = dbError instanceof Error ? dbError.message : '';
+          const dbCode =
+            dbError && typeof dbError === 'object' && 'code' in dbError
+              ? (dbError as { code?: string }).code
+              : undefined;
+          if (dbMsg.includes('does not exist') || dbCode === 'P2021') {
             return NextResponse.json(
               { error: 'Database tables not found. Please run: npx prisma migrate deploy or npx prisma db push' },
               { status: 500 }
             );
           }
-          
+
           return NextResponse.json(
-            { error: `Database error: ${dbError.message || 'Unknown error'}` },
+            { error: `Database error: ${dbMsg || 'Unknown error'}` },
             { status: 500 }
           );
         }
@@ -117,7 +123,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await createOrganiserSession(organiser.id, organiser.role as any);
+    await createOrganiserSession(organiser.id, organiser.role as OrganiserRole);
 
     return NextResponse.json({
       success: true,
@@ -129,10 +135,11 @@ export async function POST(request: NextRequest) {
         role: organiser.role,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin login error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `An error occurred during login: ${error.message || 'Unknown error'}` },
+      { error: `An error occurred during login: ${errorMessage}` },
       { status: 500 }
     );
   }

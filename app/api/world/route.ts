@@ -49,7 +49,11 @@ export async function GET() {
         completedQuestIds.add(rm.room.questId);
       }
       if (rm.room.status === 'IN_PROGRESS' && !activeRoom) {
-        const ss = rm.room.storyState as any;
+        const ss = rm.room.storyState as {
+          currentBeat?: number;
+          totalBeats?: number;
+          [key: string]: unknown;
+        } | null;
         activeRoom = {
           roomId: rm.room.id,
           questName: rm.room.quest.name,

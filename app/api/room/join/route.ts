@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
     if (openRoom && openRoom._count.members < quest.teamSize) {
       // Join existing open room
       const memberCount = openRoom._count.members + 1;
-      console.log(`Joining existing room ${openRoom.id} with ${memberCount} members (max: ${quest.teamSize}, minToStart: ${minTeamSize})`);
       room = openRoom;
 
       await prisma.roomMember.create({
@@ -130,7 +129,7 @@ export async function POST(request: NextRequest) {
               const memberIds = [...new Set([...room.members.map((m) => m.userId), user.id])];
               const state = normalizeStoryState(room.storyState, memberIds);
               state.totalBeats = totalBeats;
-              if (shouldAutoStart && (state.phase === 'waiting' || state.phase === 'room_full')) {
+              if (shouldAutoStart && state.phase === 'waiting') {
                 state.phase = 'ready_check';
                 state.readyCheck.startedAt = now.toISOString();
                 state.readyCheck.deadlineAt = readyDeadline;
@@ -169,7 +168,6 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Create new room
-      console.log(`Creating new room for quest ${questId} (no open rooms with space)`);
       const roomCode = `ROOM-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
       
       const now = new Date();
