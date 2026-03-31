@@ -76,6 +76,37 @@
     border-color: var(--quest-gold);
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
   }
+  /* Dark surface input readability (organiser/admin) */
+  .bg-org-bg .input,
+  .bg-org-surface .input {
+    background: #12121c;
+    color: var(--org-text);
+    border-color: var(--org-border);
+  }
+  .bg-org-bg .input::placeholder,
+  .bg-org-surface .input::placeholder {
+    color: #9b97ad;
+  }
+  .bg-org-bg .input:focus,
+  .bg-org-surface .input:focus {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.22);
+  }
+  .bg-admin-bg .input,
+  .bg-admin-surface .input {
+    background: #111116;
+    color: var(--admin-text);
+    border-color: var(--admin-border);
+  }
+  .bg-admin-bg .input::placeholder,
+  .bg-admin-surface .input::placeholder {
+    color: #a1a1aa;
+  }
+  .bg-admin-bg .input:focus,
+  .bg-admin-surface .input:focus {
+    border-color: #22d3ee;
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.22);
+  }
 
   .card {
     @apply rounded-3xl p-6;
@@ -94,6 +125,14 @@
   .label {
     @apply block text-sm font-semibold mb-2;
     color: #57534e;
+  }
+  .bg-org-bg .label,
+  .bg-org-surface .label {
+    color: #c7c2dc;
+  }
+  .bg-admin-bg .label,
+  .bg-admin-surface .label {
+    color: #c4c4cf;
   }
 
   .page-container {
