@@ -7,6 +7,7 @@ import Link from 'next/link';
 type Artifact = {
   id: string;
   htmlContent: string;
+  questId: string;
   questName: string;
   createdAt: string;
 };
@@ -20,6 +21,7 @@ export default function ArtifactPage() {
 
   const [artifact, setArtifact] = useState<Artifact | null>(null);
   const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     fetch(`/api/artifact/${artifactId}`)
@@ -38,6 +40,29 @@ export default function ArtifactPage() {
   const handlePrint = () => {
     if (typeof window !== 'undefined') {
       window.print();
+    }
+  };
+
+  const handlePlayAgain = async () => {
+    if (!artifact?.questId) return;
+    setJoining(true);
+    try {
+      const res = await fetch('/api/room/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questId: artifact.questId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to join quest.');
+        setJoining(false);
+        return;
+      }
+      if (data.roomId) router.push(`/room/${data.roomId}`);
+      else alert(data.message || 'Failed to join quest.');
+    } catch {
+      alert('Failed to join quest. Please try again.');
+      setJoining(false);
     }
   };
 
@@ -78,6 +103,21 @@ export default function ArtifactPage() {
           className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden [&_*]:max-w-full"
           dangerouslySetInnerHTML={{ __html: artifact.htmlContent }}
         />
+
+        <div className="mt-4 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-800">Try a different path?</p>
+            <p className="text-xs text-gray-500 mt-0.5">Replay this quest with a new team and see how the story unfolds differently.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handlePlayAgain}
+            disabled={joining}
+            className="shrink-0 text-xs font-semibold text-amber-700 hover:text-amber-800 px-4 py-2 rounded-xl bg-amber-50 disabled:opacity-50"
+          >
+            {joining ? 'Joining...' : 'Play again'}
+          </button>
+        </div>
       </div>
     </div>
   );

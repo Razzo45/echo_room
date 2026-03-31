@@ -10,6 +10,8 @@ type QuestUserStatus = {
   currentBeat?: number;
   totalBeats?: number;
   artifactId?: string;
+  hasCompleted?: boolean;
+  latestArtifactId?: string | null;
 } | null;
 
 type Quest = {
@@ -147,6 +149,7 @@ export default function DistrictPage() {
           <div className="space-y-4">
             {availableQuests.map((quest, idx) => {
               const isActive = quest.userStatus?.status === 'IN_PROGRESS';
+              const isReplaying = isActive && !!quest.userStatus?.hasCompleted;
               const beat = quest.userStatus?.currentBeat ?? 1;
               const totalBeats = quest.userStatus?.totalBeats ?? 5;
 
@@ -162,9 +165,17 @@ export default function DistrictPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h2 className="text-base font-bold text-gray-900 truncate">{quest.name}</h2>
+                          {isReplaying && (
+                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Done
+                            </span>
+                          )}
                           {isActive && (
                             <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                              In progress
+                              {isReplaying ? 'Replaying' : 'In progress'}
                             </span>
                           )}
                         </div>
@@ -231,32 +242,44 @@ export default function DistrictPage() {
               <div className="h-px flex-1 bg-gray-200" />
             </div>
             <div className="space-y-3">
-              {completedQuests.map((quest) => (
-                <div key={quest.id} className="bg-white rounded-2xl border border-gray-100 p-4 opacity-80">
-                  <div className="flex items-center gap-3">
-                    <span className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-gray-700 truncate">{quest.name}</h3>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                        Completed
+              {completedQuests.map((quest) => {
+                const artifactLink = quest.userStatus?.artifactId || quest.userStatus?.latestArtifactId;
+                return (
+                  <div key={quest.id} className="bg-white rounded-2xl border border-gray-100 p-4 opacity-80">
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold text-gray-700 truncate">{quest.name}</h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                          Completed
+                        </span>
+                      </div>
                     </div>
-                    {quest.userStatus?.artifactId && (
-                      <Link
-                        href={`/artifact/${quest.userStatus.artifactId}`}
-                        className="shrink-0 text-xs font-medium text-primary-600 hover:text-primary-700 px-3 py-1.5 rounded-lg bg-primary-50"
-                        onClick={(e) => e.stopPropagation()}
+                    <div className="flex items-center gap-2 mt-3">
+                      {artifactLink && (
+                        <Link
+                          href={`/artifact/${artifactLink}`}
+                          className="flex-1 text-center text-xs font-medium text-primary-600 hover:text-primary-700 px-3 py-2 rounded-xl bg-primary-50"
+                        >
+                          View artifact
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleJoinQuest(quest.id)}
+                        disabled={joiningId !== null}
+                        className="flex-1 text-center text-xs font-medium text-amber-700 hover:text-amber-800 px-3 py-2 rounded-xl bg-amber-50"
                       >
-                        View artifact
-                      </Link>
-                    )}
+                        {joiningId === quest.id ? 'Joining...' : 'Play again'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

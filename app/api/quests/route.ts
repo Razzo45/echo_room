@@ -65,35 +65,61 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Build per-quest user status lookup (most recent room per quest wins)
+    // Build per-quest user status: prefer active rooms over past completions
     const questStatus = new Map<string, {
       roomId: string;
       status: string;
       currentBeat?: number;
       totalBeats?: number;
       artifactId?: string;
+      hasCompleted: boolean;
+      latestArtifactId: string | null;
     }>();
 
+    // First pass: collect completion data per quest
+    const questCompletions = new Map<string, { artifactId: string | null }>();
+    for (const rm of userRooms) {
+      if (rm.room.status === 'COMPLETED') {
+        questCompletions.set(rm.room.questId, { artifactId: rm.room.artifact?.id ?? null });
+      }
+    }
+
+    // Second pass: pick the best active room per quest (IN_PROGRESS > OPEN > COMPLETED)
+    const STATUS_PRIORITY: Record<string, number> = { IN_PROGRESS: 3, OPEN: 2, FULL: 2, COMPLETED: 1 };
     for (const rm of userRooms) {
       const existing = questStatus.get(rm.room.questId);
-      // Prefer COMPLETED, then IN_PROGRESS, then any
-      if (!existing || rm.room.status === 'COMPLETED' || (rm.room.status === 'IN_PROGRESS' && existing.status !== 'COMPLETED')) {
+      const incomingPriority = STATUS_PRIORITY[rm.room.status] ?? 0;
+      const existingPriority = existing ? (STATUS_PRIORITY[existing.status] ?? 0) : -1;
+
+      if (incomingPriority > existingPriority) {
         const ss = rm.room.storyState as {
           currentBeat?: number;
           totalBeats?: number;
           [key: string]: unknown;
         } | null;
+        const completion = questCompletions.get(rm.room.questId);
         questStatus.set(rm.room.questId, {
           roomId: rm.room.id,
           status: rm.room.status,
           currentBeat: ss?.currentBeat,
           totalBeats: ss?.totalBeats ?? 5,
           artifactId: rm.room.artifact?.id,
+          hasCompleted: !!completion,
+          latestArtifactId: completion?.artifactId ?? null,
         });
       }
     }
 
-    const completedCount = quests.filter((q) => questStatus.get(q.id)?.status === 'COMPLETED').length;
+    // Backfill hasCompleted/latestArtifactId for quests that only have COMPLETED rooms
+    for (const [questId, entry] of questStatus) {
+      const completion = questCompletions.get(questId);
+      if (completion && !entry.hasCompleted) {
+        entry.hasCompleted = true;
+        entry.latestArtifactId = completion.artifactId;
+      }
+    }
+
+    const completedCount = quests.filter((q) => questCompletions.has(q.id)).length;
 
     return NextResponse.json({
       region: region ? {

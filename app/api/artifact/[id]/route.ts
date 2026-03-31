@@ -50,6 +50,7 @@ export async function GET(
         id: artifact.id,
         htmlContent: artifact.htmlContent,
         pdfPath: artifact.pdfPath,
+        questId: artifact.room.quest.id,
         questName: artifact.room.quest.name,
         createdAt: artifact.createdAt,
       },
