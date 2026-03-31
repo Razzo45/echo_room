@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import DebugBanner from '@/components/DebugBanner';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata: Metadata = {
   title: 'Echo Room - AI Powered Decision Environment',
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body>
         <DebugBanner />
         <main className="min-h-screen">{children}</main>
+        <SpeedInsights />
       </body>
     </html>
   );
