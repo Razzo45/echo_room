@@ -1,4 +1,6 @@
 import type { StoryState } from '@/lib/story-runtime';
+import { ALL_BEAT_KEYS } from '@/lib/story-runtime';
+import type { BeatKey } from '@/lib/story-runtime';
 import OpenAI from 'openai';
 
 const openai = process.env.OPENAI_API_KEY
@@ -60,36 +62,37 @@ export function buildDeterministicBeatConsequence(input: {
 
 // ── Deterministic final synthesis ──────────────────────────────────────────
 
+function beatKeysForState(state: StoryState): BeatKey[] {
+  const total = state.totalBeats ?? 5;
+  return ALL_BEAT_KEYS.filter((k) => Number(k) <= total);
+}
+
 export function buildDeterministicFinalSynthesis(
   state: StoryState,
   players: Array<{ id: string; name: string }>,
   scenarioName?: string
 ): string {
-  const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
-  const totalBeats = state.totalBeats ?? 3;
-  const beatKeys = (['1', '2', '3'] as const).filter((k) => Number(k) <= totalBeats);
-  const beatCount = beatKeys.filter((k) => state.beats[k]?.resolved).length;
+  const beatKeys = beatKeysForState(state);
+  const resolvedBeats = beatKeys.filter((k) => state.beats[k]?.resolved);
+  const scenario = scenarioName ? `"${scenarioName}"` : 'the scenario';
 
-  const playerLines = players.map((p) => {
-    const total = Number(state.scoreboard.playerTotals?.[p.id] ?? 0);
-    const bestBeat = beatKeys
-      .map((k) => ({ beat: k, value: state.beats[k].rolls[p.id]?.value ?? 0, action: state.beats[k].submissions[p.id] || '' }))
-      .reduce((a, b) => (b.value > a.value ? b : a), { beat: '1' as const, value: 0, action: '' });
-    const actionClip = bestBeat.action.length > 60 ? bestBeat.action.slice(0, 57) + '...' : bestBeat.action;
-    if (total >= 45) return `${p.name} was highly effective throughout, with a standout contribution of "${actionClip}" (roll ${bestBeat.value}) in beat ${bestBeat.beat}. Total score: ${total}/60.`;
-    if (total >= 30) return `${p.name} contributed consistently, most notably with "${actionClip}" (roll ${bestBeat.value}). Total score: ${total}/60.`;
-    if (total >= 15) return `${p.name} faced difficult outcomes but stayed engaged, scoring ${total}/60 across ${beatCount} beats.`;
-    return `${p.name} encountered significant resistance (${total}/60) but their participation kept the group moving.`;
+  const beatNarratives = resolvedBeats.map((k) => {
+    const beat = state.beats[k];
+    const consequence = beat.consequence?.text || 'The team moved forward.';
+    return `In beat ${k}, ${consequence.charAt(0).toLowerCase()}${consequence.slice(1)}`;
   });
 
-  const scenario = scenarioName ? `"${scenarioName}"` : 'the scenario';
-  let teamLine: string;
-  if (teamAverage >= 45) teamLine = `The team tackled ${scenario} across ${beatCount} beats with strong overall execution (team average ${teamAverage}/60).`;
-  else if (teamAverage >= 30) teamLine = `Across ${beatCount} beats of ${scenario}, the team achieved a solid result (team average ${teamAverage}/60) despite some setbacks.`;
-  else if (teamAverage >= 15) teamLine = `The team worked through ${beatCount} beats of ${scenario} with mixed results (team average ${teamAverage}/60), requiring adaptation at multiple points.`;
-  else teamLine = `${scenario} proved highly challenging across ${beatCount} beats (team average ${teamAverage}/60), with the team needing to regroup repeatedly.`;
+  const playerHighlights = players.map((p) => {
+    const bestBeat = beatKeys
+      .map((k) => ({ beat: k, value: state.beats[k].rolls[p.id]?.value ?? 0, action: state.beats[k].submissions[p.id] || '' }))
+      .reduce((a, b) => (b.value > a.value ? b : a), { beat: '1' as BeatKey, value: 0, action: '' });
+    const actionClip = bestBeat.action.length > 50 ? bestBeat.action.slice(0, 47) + '...' : bestBeat.action;
+    if (bestBeat.value >= 15) return `${p.name} made a strong impact with "${actionClip}" in beat ${bestBeat.beat}.`;
+    if (bestBeat.value >= 10) return `${p.name} contributed with "${actionClip}" in beat ${bestBeat.beat}, with mixed results.`;
+    return `${p.name} faced challenging outcomes but stayed engaged throughout.`;
+  });
 
-  return `${teamLine} ${playerLines.join(' ')}`;
+  return `The team worked through ${resolvedBeats.length} beats of ${scenario}. ${beatNarratives.join(' ')} ${playerHighlights.join(' ')}`;
 }
 
 // ── AI beat consequence ────────────────────────────────────────────────────
@@ -171,10 +174,9 @@ export async function generateFinalSynthesisWithFallback(
     return { text: fallback, mode: 'deterministic_fallback' };
   }
   try {
-    const teamAverage = Number(state.scoreboard.teamAverage ?? 0);
-    const totalBeats = state.totalBeats ?? 3;
-    const beatSummaries = (['1', '2', '3'] as const)
-      .filter((key) => Number(key) <= totalBeats)
+    const beatKeys = beatKeysForState(state);
+    const beatSummaries = beatKeys
+      .filter((key) => state.beats[key]?.resolved)
       .map((key) => {
         const beat = state.beats[key];
         const actions = players
@@ -186,10 +188,6 @@ export async function generateFinalSynthesisWithFallback(
           .join('; ');
         return `Beat ${key}: ${actions}. Outcome: ${beat.consequence?.text || 'none'}`;
       });
-    const playerScores = players.map((p) => {
-      const total = Number(state.scoreboard.playerTotals?.[p.id] ?? 0);
-      return `${p.name}: ${total}/60`;
-    }).join(', ');
 
     const scenarioLine = scenarioContext
       ? `Scenario: "${scenarioContext.name}" — ${scenarioContext.description}`
@@ -199,7 +197,6 @@ export async function generateFinalSynthesisWithFallback(
       tonePreamble(scenarioContext?.name || 'Collaborative Scenario', scenarioContext?.description || ''),
       ``,
       scenarioLine,
-      `Team average: ${teamAverage}/60. Player scores: ${playerScores}.`,
       ...beatSummaries,
       ``,
       `Write the closing summary (120–180 words, one or two paragraphs, plain text):`,

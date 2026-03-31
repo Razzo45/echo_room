@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import type { BeatKey, BeatNumber } from '@/lib/story-runtime';
 import {
-  computeScoreboard,
   isStoryStateColumnMissing,
   lockRoomForUpdate,
   normalizeStoryState,
@@ -54,7 +54,7 @@ export async function POST(
       // --- Roll-reveal continue: everyone saw their rolls, now advance to beat_consequence ---
       if (state.phase === 'roll_reveal') {
         const beat = state.currentBeat;
-        const beatKey = String(beat) as '1' | '2' | '3';
+        const beatKey = String(beat) as BeatKey;
         const allRolled = Object.keys(state.beats[beatKey].rolls).length >= playerIds.length;
         if (!allRolled) {
           return { kind: 'error' as const, status: 409, error: 'Not all players have rolled yet' };
@@ -122,9 +122,7 @@ export async function POST(
           beat,
           byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
         };
-        computeScoreboard(state, playerIds);
-
-        if (beat === (state.totalBeats ?? 3)) {
+        if (beat === (state.totalBeats ?? 5)) {
           state.finalSynthesis = { status: 'pending', text: '', mode: 'queued_after_advance' };
         }
 
@@ -156,7 +154,7 @@ export async function POST(
       }
 
       const beat = state.currentBeat;
-      const beatKey = String(beat) as '1' | '2' | '3';
+      const beatKey = String(beat) as BeatKey;
       if (!state.beats[beatKey].consequence) {
         return { kind: 'error' as const, status: 409, error: 'Consequence is not ready yet' };
       }
@@ -191,9 +189,9 @@ export async function POST(
 
       state.consequenceContinue = null;
 
-      const totalBeats = state.totalBeats ?? 3;
+      const totalBeats = state.totalBeats ?? 5;
       if (beat < totalBeats) {
-        state.currentBeat = (beat + 1) as 1 | 2 | 3;
+        state.currentBeat = (beat + 1) as BeatNumber;
         state.phase = 'beat_input';
       } else {
         state.phase = 'final_panel';
@@ -230,7 +228,7 @@ export async function POST(
           if (!room) return;
           const playerIds = room.members.map((m) => m.userId);
           const state = normalizeStoryState(room.storyState, playerIds);
-          const bk = String(advancedBeat) as '1' | '2' | '3';
+          const bk = String(advancedBeat) as BeatKey;
           const decision = quest.decisions?.find((d: any) => d.decisionNumber === advancedBeat);
 
           const aiResult = await generateBeatConsequenceWithFallback({
@@ -266,7 +264,7 @@ export async function POST(
             };
           }
 
-          if (advancedBeat === (state.totalBeats ?? 3)) {
+          if (advancedBeat === (state.totalBeats ?? 5)) {
             const synthesis = await generateFinalSynthesisWithFallback(
               state,
               room.members.map((m) => ({ id: m.userId, name: m.user.name })),

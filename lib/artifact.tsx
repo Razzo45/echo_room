@@ -65,8 +65,8 @@ export async function generateArtifact(roomId: string) {
       organisation: m.user.organisation,
       role: m.user.role,
     }));
-    const totalBeats = Number(storyState?.totalBeats ?? 3);
-    const beatKeys = (['1', '2', '3'] as const).filter((key) => Number(key) <= totalBeats);
+    const totalBeats = Number(storyState?.totalBeats ?? 5);
+    const beatKeys = (['1', '2', '3', '4', '5'] as const).filter((key) => Number(key) <= totalBeats);
     const beats = beatKeys
       .map((key) => {
         const beat = storyState.beats?.[key];
@@ -85,20 +85,14 @@ export async function generateArtifact(roomId: string) {
       consequence: { text: string; mode: string } | null;
     }>;
 
-    const teamAverage = Number(storyState?.scoreboard?.teamAverage ?? 0);
-    const teamBand = String(storyState?.scoreboard?.teamBand ?? 'mixed');
     const finalText = String(storyState?.finalSynthesis?.text || '').trim();
-    const finalSummary =
-      finalText ||
-      `The team completed the scenario with a ${teamBand.replace('_', ' ')} outcome and a combined score of ${teamAverage}/60.`;
+    const finalSummary = finalText || 'The team completed the scenario.';
 
     const narrativeHtml = generateStoryHTML({
       scenarioName: room.quest.name,
       scenarioDescription: room.quest.description || '',
       teamMembers,
       beats,
-      teamAverage,
-      teamBand,
       finalSummary,
       completedAt: room.completedAt || new Date(),
     });
@@ -230,12 +224,10 @@ function generateStoryHTML(opts: {
     rolls: Record<string, { value: number; band: string }>;
     consequence: { text: string; mode: string } | null;
   }>;
-  teamAverage: number;
-  teamBand: string;
   finalSummary: string;
   completedAt: Date;
 }) {
-  const { scenarioName, scenarioDescription, teamMembers, beats, teamAverage, teamBand, finalSummary, completedAt } = opts;
+  const { scenarioName, scenarioDescription, teamMembers, beats, finalSummary, completedAt } = opts;
 
   function rollImpact(v: number): string {
     if (v >= 19) return 'highly effective';
@@ -265,20 +257,11 @@ function generateStoryHTML(opts: {
       return `
         <section class="beat">
           <h3>Beat ${beat.number}</h3>
-          <ul>${playerLines}</ul>
           <div class="consequence">${beat.consequence?.text || 'The team progressed to the next phase.'}</div>
+          <p class="responses-label">Player actions</p>
+          <ul>${playerLines}</ul>
         </section>
       `;
-    })
-    .join('');
-
-  const playerScoreRows = teamMembers
-    .map((m) => {
-      const rollValues = beats
-        .map((b) => b.rolls[m.id]?.value)
-        .filter((v): v is number => typeof v === 'number');
-      const total = rollValues.reduce((a, b) => a + b, 0);
-      return `<tr><td>${m.name}</td><td>${total}/60</td></tr>`;
     })
     .join('');
 
@@ -300,14 +283,11 @@ function generateStoryHTML(opts: {
     .team-roster li { padding: 0.4rem 0; border-bottom: 1px solid #f3f4f6; }
     .team-roster li:last-child { border-bottom: none; }
     .beat { background: #f9fafb; border-left: 4px solid #2563eb; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
-    .beat ul { margin: 0.75rem 0; padding-left: 1.25rem; }
+    .beat ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
     .beat li { margin-bottom: 0.5rem; line-height: 1.5; }
-    .consequence { margin-top: 1rem; padding: 0.75rem 1rem; background: #eff6ff; border-radius: 6px; line-height: 1.6; color: #1e40af; }
+    .consequence { padding: 0.75rem 1rem; background: #eff6ff; border-radius: 6px; line-height: 1.6; color: #1e40af; }
+    .responses-label { margin-top: 0.75rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 600; }
     .synthesis { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 1.25rem; margin-top: 1rem; line-height: 1.7; }
-    .results-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
-    .results-table th, .results-table td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
-    .results-table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
-    .band-badge { display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.25rem 0.75rem; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -325,13 +305,6 @@ function generateStoryHTML(opts: {
 
     <h2>Summary</h2>
     <div class="synthesis">${finalSummary}</div>
-
-    <h2>Results</h2>
-    <p><span class="band-badge">${teamBand.replace(/_/g, ' ')}</span> · Team average: ${teamAverage}/60</p>
-    <table class="results-table">
-      <thead><tr><th>Player</th><th>Score</th></tr></thead>
-      <tbody>${playerScoreRows}</tbody>
-    </table>
   </div>
 </body>
 </html>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { runtimeActionSchema } from '@/lib/validation';
+import type { BeatKey } from '@/lib/story-runtime';
 import {
   isStoryStateColumnMissing,
   lockRoomForUpdate,
@@ -54,7 +55,7 @@ export async function POST(
         state.phase = 'beat_input';
       }
 
-      const beatKey = String(beat) as '1' | '2' | '3';
+      const beatKey = String(beat) as BeatKey;
       const existing = state.beats[beatKey].submissions[user.id];
       const now = new Date();
       if (existing) {

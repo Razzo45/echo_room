@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { requireAdminAuth } from '@/lib/auth-organiser';
+import type { BeatNumber } from '@/lib/story-runtime';
 import {
   createInitialStoryState,
   isStoryStateColumnMissing,
@@ -66,7 +67,7 @@ export async function POST(
       }
 
       const minTeamSize = room.quest.minTeamSize ?? 2;
-      const totalBeats = Math.max(1, Math.min(3, room.quest._count?.decisions || 3)) as 1 | 2 | 3;
+      const totalBeats = Math.max(1, Math.min(5, room.quest._count?.decisions || 5)) as BeatNumber;
       if (!isAdminOverride && room._count.members < minTeamSize) {
         return {
           kind: 'error' as const,

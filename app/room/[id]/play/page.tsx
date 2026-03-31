@@ -17,16 +17,20 @@ type RoomPhase =
 
 type RollBand = 'critical_fail' | 'fail' | 'mixed' | 'success' | 'critical_success';
 
+type BeatNumber = 1 | 2 | 3 | 4 | 5;
+type BeatKey = '1' | '2' | '3' | '4' | '5';
+
 type StoryState = {
   phase: RoomPhase;
-  currentBeat: 1 | 2 | 3;
+  currentBeat: BeatNumber;
+  totalBeats?: BeatNumber;
   readyCheck: {
     startedAt: string | null;
     deadlineAt: string | null;
     readyByPlayerId: Record<string, boolean>;
   };
   beats: Record<
-    '1' | '2' | '3',
+    BeatKey,
     {
       submissions: Record<string, string>;
       revealed: boolean;
@@ -35,22 +39,17 @@ type StoryState = {
       resolved: boolean;
     }
   >;
-  scoreboard: {
-    playerTotals: Record<string, number>;
-    teamAverage: number;
-    teamBand: string;
-  };
   finalSynthesis?: {
     status: 'idle' | 'pending' | 'done';
     text: string;
     mode: string;
   };
   rollContinue?: {
-    beat: 1 | 2 | 3;
+    beat: BeatNumber;
     byPlayerId: Record<string, boolean>;
   } | null;
   consequenceContinue?: {
-    beat: 1 | 2 | 3;
+    beat: BeatNumber;
     byPlayerId: Record<string, boolean>;
   } | null;
 };
@@ -210,7 +209,7 @@ export default function QuestPlayPage() {
   }, [room, router]);
 
   const storyState = room?.storyState;
-  const currentBeatKey = String(storyState?.currentBeat ?? 1) as '1' | '2' | '3';
+  const currentBeatKey = String(storyState?.currentBeat ?? 1) as BeatKey;
   const currentBeat = storyState?.beats?.[currentBeatKey];
   const players = room?.members ?? [];
   const decisionsData = room?.decisionsData ?? null;
@@ -528,26 +527,24 @@ export default function QuestPlayPage() {
 
         {(storyState.phase === 'preamble' || storyState.phase === 'beat_input') && (
           <div className="space-y-4">
-            {storyState.phase === 'preamble' && (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-                {currentMeta ? (
-                  <>
-                    <h1 className="text-lg font-bold text-gray-900 leading-snug">{currentMeta.title}</h1>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-600">The table is finding its footing.</p>
-                )}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+              {currentMeta ? (
+                <>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Beat {storyState.currentBeat}{storyState.totalBeats ? ` of ${storyState.totalBeats}` : ''}</p>
+                  <h1 className="text-lg font-bold text-gray-900 leading-snug">{currentMeta.title}</h1>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
+                </>
+              ) : (
                 <p className="text-sm text-gray-600">Write one short sentence describing your move.</p>
-              </div>
-            )}
+              )}
+            </div>
             {pathKeys.length > 0 && (
               <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                   Paths (reference only)
                 </p>
                 <p className="text-xs text-gray-500 mb-3">
-                  These are not votes—use them as inspiration, then write your own line.
+                  These are not votes — use them as inspiration, then write your own line.
                 </p>
                 <div className="grid gap-2">
                   {pathKeys.map((key) => (
@@ -560,12 +557,6 @@ export default function QuestPlayPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-            {storyState.phase === 'beat_input' && currentMeta && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
-                <h2 className="text-base font-bold text-gray-900 leading-snug">{currentMeta.title}</h2>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
               </div>
             )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
@@ -742,22 +733,14 @@ export default function QuestPlayPage() {
 
         {storyState.phase === 'final_panel' && (
           <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-            <h1 className="text-lg font-bold text-gray-900 mb-3">Final panel</h1>
-            <div className="space-y-2 mb-4">
-              {players.map((player) => (
-                <div key={player.id} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700">{player.name}</span>
-                  <span className="font-semibold text-gray-900">
-                    {storyState.scoreboard.playerTotals[player.id] ?? 0} / 60
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="p-3 rounded-xl bg-primary-50 border border-primary-100">
-              <p className="text-sm text-primary-800 font-semibold">
-                Team average: {storyState.scoreboard.teamAverage} / 60
-              </p>
-            </div>
+            <h1 className="text-lg font-bold text-gray-900 mb-3">Story complete</h1>
+            {finalSynthesisReady && (
+              <div className="p-4 rounded-xl bg-primary-50 border border-primary-100 mb-4">
+                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                  {storyState.finalSynthesis?.text}
+                </p>
+              </div>
+            )}
             {!finalSynthesisReady && (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm font-semibold text-amber-900">Drafting final synthesis...</p>

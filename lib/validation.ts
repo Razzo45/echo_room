@@ -80,7 +80,7 @@ export const runtimeReadyCheckSchema = z.object({
 });
 
 export const runtimeActionSchema = z.object({
-  beat: z.number().int().min(1).max(3),
+  beat: z.number().int().min(1).max(5),
   actionText: z
     .string()
     .min(1, 'Action text is required')
@@ -89,13 +89,13 @@ export const runtimeActionSchema = z.object({
 });
 
 export const runtimeRollSchema = z.object({
-  beat: z.number().int().min(1).max(3),
+  beat: z.number().int().min(1).max(5),
   value: z.number().int().min(1).max(20),
   band: z.enum(['critical_fail', 'fail', 'mixed', 'success', 'critical_success']),
 });
 
 export const runtimeConsequenceSchema = z.object({
-  beat: z.number().int().min(1).max(3),
+  beat: z.number().int().min(1).max(5),
   text: z
     .string()
     .min(1, 'Consequence text is required')

@@ -115,7 +115,7 @@ export default function NewEventPage() {
               rows={4}
               className="input"
             />
-            <p className="text-xs text-gray-500 mt-1.5">You can add or edit this later. AI uses it to generate scenario scripts (three beats per quest, paths A/B/C).</p>
+            <p className="text-xs text-gray-500 mt-1.5">You can add or edit this later. AI uses it to generate scenario scripts (five beats per quest, paths A/B/C).</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

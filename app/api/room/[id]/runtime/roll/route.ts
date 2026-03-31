@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { runtimeRollSchema } from '@/lib/validation';
+import type { BeatKey } from '@/lib/story-runtime';
 import {
-  computeScoreboard,
   isStoryStateColumnMissing,
   lockRoomForUpdate,
   normalizeStoryState,
@@ -60,7 +60,7 @@ export async function POST(
         return { kind: 'error' as const, status: 409, error: `Cannot roll during ${state.phase}` };
       }
 
-      const beatKey = String(beat) as '1' | '2' | '3';
+      const beatKey = String(beat) as BeatKey;
       const existing = state.beats[beatKey].rolls[user.id];
       if (existing) {
         return {
@@ -83,7 +83,6 @@ export async function POST(
           beat,
           byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
         };
-        computeScoreboard(state, playerIds);
       }
 
       await tx.room.update({

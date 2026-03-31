@@ -13,7 +13,7 @@ export async function GET() {
 
     const needsProfile = user.name === 'Unnamed';
 
-    const [event, levelInfo] = await Promise.all([
+    const [event, levelInfo, badgeCount] = await Promise.all([
       user.eventId
         ? prisma.event.findUnique({
             where: { id: user.eventId },
@@ -21,6 +21,7 @@ export async function GET() {
           }).then((e) => (e ? { debugMode: e.debugMode } : undefined))
         : Promise.resolve(undefined),
       getLevelForUser(user.id),
+      prisma.userBadge.count({ where: { userId: user.id } }),
     ]);
 
     return NextResponse.json({
@@ -38,6 +39,7 @@ export async function GET() {
         profileUpdatedAt: user.updatedAt,
         level: levelInfo.level,
         levelLabel: levelInfo.label,
+        badgeCount,
       },
       needsProfile,
       event,

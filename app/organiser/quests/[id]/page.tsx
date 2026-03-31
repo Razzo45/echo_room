@@ -313,8 +313,8 @@ export default function QuestEditPage() {
         <div className="rounded-2xl border border-primary-100 bg-primary-50/80 px-4 py-3 text-sm text-primary-900">
           <p className="font-medium text-primary-950">How this maps to live play</p>
           <p className="mt-1 text-primary-900/90">
-            Participants run through <strong>three story beats</strong>. Each beat is blind one-line actions, then a{' '}
-            <strong>d20 roll</strong> that resolves the moment. The fields below set the beat prompt and three{' '}
+            Participants run through <strong>up to five story beats</strong>. Each beat is blind one-line actions, then a{' '}
+            <strong>d20 roll</strong> that resolves the moment. The fields below set the beat prompt and{' '}
             <strong>paths</strong> (A/B/C) the narrative can lean on—think tone and framing, not a branching vote UI.
           </p>
         </div>

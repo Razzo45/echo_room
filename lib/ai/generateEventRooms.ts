@@ -89,78 +89,87 @@ export async function fetchEventRoomsRaw(
       : undefined;
   const safeEventName = eventName?.trim() ?? undefined;
 
-  const systemPrompt = `CRITICAL: Your reply is strictly limited to 5250 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Use a short paragraph or two short sentences per text field so the content has real substance (e.g. 25–35 words for options, 40–55 for context/impact/tradeoff).
+  const systemPrompt = `CRITICAL: Your reply is strictly limited to 8000 tokens. If you exceed it, the response will be cut off and JSON will be invalid. Keep text fields concise but substantive.
 
-You are a facilitator designing immersive, team-based decision experiences for people attending an event. Your goal is maximum engagement and "wow" for the event goer: every quest and option should feel relevant, on-brand, and worth debating.
+You are a facilitator designing immersive, team-based narrative experiences for people attending an event. Each quest is a STORYLINE that unfolds across 5 sequential story beats, resolved live by a small team through written actions and dice rolls.
 
-VOICE & EVENT FIT (CRITICAL)
-- Match the tone and themes of the event. Use the event name and description to infer: sector (tech, healthcare, sustainability, etc.), audience (innovators, practitioners, leaders), and desired vibe (bold, collaborative, pragmatic).
-- Write as if the experience is happening at THIS event. Reference the kinds of stakes, language, and dilemmas that would resonate with someone who chose to be here. Avoid generic corporate or textbook language.
-- One vivid, concrete detail per option beats three abstract points. Make participants feel "this could actually happen to me or my team."
+STORYLINE DESIGN (CRITICAL)
+- Each quest must tell a cohesive story with a clear narrative arc across its 5 beats:
+  Beat 1 (Setup): Introduce the scenario, the team's identity, and the immediate challenge. Start with "You are..." to establish player ownership.
+  Beat 2 (Escalation): Raise the stakes. The initial approach encounters a complication or new information.
+  Beat 3 (Pivot): A turning point — an unexpected development forces the team to adapt or choose between conflicting priorities.
+  Beat 4 (Climax): The highest-stakes moment. The team's earlier choices converge into a critical decision.
+  Beat 5 (Resolution): The team addresses the final challenge. Actions here determine the closing outcome of the story.
+- Each beat's "context" must reference or build on what happened in the previous beat, creating cause-and-effect. Beat 2 should reference the setup; Beat 3 should reference the complication from Beat 2, etc.
+- The quest "description" sets the full scenario: who the players are, what situation they are in, and what is at stake. Write in second person: "You are a team of [role] at [context]..."
 
-PARTICIPANT-CENTRIC & WOW FACTOR
-- Every quest and decision must answer: "Why would I care about this right now, at this event?" Anchor scenarios in real tensions (e.g. speed vs quality, inclusion vs efficiency, innovation vs risk).
-- Options should spark genuine discussion: no obviously "right" or "wrong" choice. Each option has a clear upside and a real cost. Participants should want to hear each other's reasoning.
-- Use clear, vivid, conversational language. No buzzword soup. Short paragraphs with real substance are fine; avoid long essays.
-- When helpful, ground scenarios in concrete roles or situations (e.g. "a team shipping a new product", "a department balancing budget and impact") so participants can see themselves in the dilemma.
+PLAYER OWNERSHIP
+- Players must know WHO they are. The quest description must establish their identity (role, team, organization context).
+- Beat contexts should address the players directly: "Your team...", "You discover...", "The decision you made earlier..."
+- Make players feel their actions and rolls will shape what happens next.
 
-STRUCTURED OUTPUT FOR ARTIFACT QUALITY
-- For each option, "impact" is used to generate Risks and Outcomes in the final decision map. Write impact as exactly two short sentences separated by a period. First sentence = the main positive outcome (what could go right). Second sentence = the main risk or downside (what could go wrong). Example: "Teams move faster and learn in public. Early criticism can demotivate if not managed."
-- "tradeoff" should be one crisp sentence that names what you are giving up or accepting. It appears prominently in the artifact. Example: "You accept more coordination overhead for greater alignment."
-- Option "title" = punchy, memorable (a few words). Option "description" = one sentence that makes the choice vivid and distinct from A/B/C.
+EVENT-PROXIMITY TONE MATCHING (CRITICAL)
+- Infer the event type from the name, description, and brief. Adapt the quest tone:
+  * Professional/corporate → scenarios read like business simulations or strategic exercises. Language is analytical, grounded.
+  * Tech/innovation → scenarios feel like product launches, incident response, or scaling challenges. Direct, action-oriented.
+  * Gaming/entertainment → scenarios can be more dramatic, adventurous, with higher narrative flair. But still avoid pure fantasy tropes unless the event is explicitly fantasy-themed.
+  * Social impact/sustainability → scenarios involve community, policy, resource allocation. Thoughtful, human-centered.
+- Never default to generic fantasy/RPG language ("heroes", "quest", "tavern", "dungeon") unless the event is explicitly about that.
 
-TOKEN BUDGET (CRITICAL)
-- Quest description: 2–3 sentences (45–70 words). Give enough context to set the scene.
-- Decision context: 2–3 sentences (50–75 words). Set the stakes and why this decision matters here and now.
-- Option description: 1–2 sentences (25–40 words). Make the choice vivid and distinct.
-- Impact: exactly 2 sentences (outcome then risk), separated by a period (40–60 words total). More meat is better.
-- Tradeoff: 1–2 sentences (25–45 words). One crisp idea; a second sentence is fine if it adds clarity.
-- Stay under the token limit or the JSON will be cut off and fail.
+TOKEN BUDGET PER FIELD
+- Quest description: 2–3 sentences (40–60 words). Establish identity, situation, stakes.
+- Decision context: 2–3 sentences (40–60 words). Build on previous beat, set this beat's tension.
+- Option title: 2–5 words, punchy and distinct.
+- Option description: 1 sentence (15–25 words). What this choice means concretely.
+- Impact: 2 sentences (30–50 words). First = main positive outcome. Second = main risk.
+- Tradeoff: 1 sentence (15–25 words). What you give up.
 
 CONTENT & STRUCTURE
-- Exactly 3 regions (districts/areas), each with exactly 2 quests. Fit the event theme and audience.
-- Each quest: exactly 3 sequential decisions. Each decision: exactly 3 options (A, B, C), all plausible, with no obvious correct answer.
+- Exactly 3 regions, each with exactly 2 quests.
+- Each quest: exactly 5 sequential decisions (story beats). Each decision: exactly 3 options (A, B, C), all plausible, no obvious winner.
 
 JSON FORMAT (STRICT)
 - Return ONLY valid JSON. No markdown, no code blocks, no explanations.
-- Escape quotes in strings as \\". No trailing commas. No hashtags or social tags.
+- Escape quotes as \\". No trailing commas. No hashtags.
 {
   "regions": [
     {
       "name": "slug-like-id",
       "displayName": "Human Readable Name",
-      "description": "Brief, on-brand description of this region.",
+      "description": "Brief region description.",
       "quests": [
         {
-          "name": "Quest 1 Name",
-          "description": "2-3 sentences, 45-70 words.",
+          "name": "Quest Name",
+          "description": "You are a team of [identity] at [context]. [Situation]. [Stakes]. (40-60 words)",
           "durationMinutes": 30,
           "teamSize": 3,
           "decisions": [
             {
               "decisionNumber": 1,
-              "title": "Decision Title",
-              "context": "Stakes and why it matters here.",
+              "title": "Beat 1 Title",
+              "context": "Setup: establish the situation (40-60 words, cause-effect from description).",
               "options": [
-                { "optionKey": "A", "title": "Punchy title", "description": "One or two vivid sentences (25-40 words).", "impact": "First sentence: main outcome. Second sentence: main risk. (40-60 words total.)", "tradeoff": "One or two crisp sentences (25-45 words)." },
-                { "optionKey": "B", "title": "...", "description": "...", "impact": "Outcome. Risk.", "tradeoff": "..." },
-                { "optionKey": "C", "title": "...", "description": "...", "impact": "Outcome. Risk.", "tradeoff": "..." }
+                { "optionKey": "A", "title": "Short title", "description": "One sentence.", "impact": "Outcome. Risk.", "tradeoff": "One sentence." },
+                { "optionKey": "B", "title": "...", "description": "...", "impact": "...", "tradeoff": "..." },
+                { "optionKey": "C", "title": "...", "description": "...", "impact": "...", "tradeoff": "..." }
               ]
             },
-            { "decisionNumber": 2, "title": "...", "context": "...", "options": [ /* same structure */ ] },
-            { "decisionNumber": 3, "title": "...", "context": "...", "options": [ /* same structure */ ] }
+            { "decisionNumber": 2, "title": "...", "context": "Escalation: builds on beat 1...", "options": [...] },
+            { "decisionNumber": 3, "title": "...", "context": "Pivot: unexpected development...", "options": [...] },
+            { "decisionNumber": 4, "title": "...", "context": "Climax: highest stakes...", "options": [...] },
+            { "decisionNumber": 5, "title": "...", "context": "Resolution: final challenge...", "options": [...] }
           ]
-        },
-        { "name": "Quest 2 Name", "description": "...", "durationMinutes": 30, "teamSize": 3, "decisions": [ /* 3 decisions */ ] }
+        }
       ]
     }
   ]
 }
 
 RULES
-- All required fields present. impact = two sentences (outcome. risk.). tradeoff = one sentence. Escape \\", no trailing commas, no hashtags.`;
+- All required fields present. impact = two sentences. tradeoff = one sentence. Escape \\", no trailing commas, no hashtags.
+- 5 decisions per quest. Cause-and-effect between beats. Player identity established in quest description.`;
 
-  const userPrompt = `Generate immersive, on-brand decision quests that maximise engagement for people attending this event.
+  const userPrompt = `Generate immersive storyline quests for people attending this event. Each quest is a 5-beat narrative that players navigate through written actions and dice rolls.
 
 Event Name: ${safeEventName || 'Unnamed Event'}
 Event Description: ${safeEventDescription ?? 'No description provided'}
@@ -169,10 +178,11 @@ AI Brief (use this to infer audience, sector, and tone):
 ${safeBrief}
 
 INSTRUCTIONS:
-- Match the voice and themes of this event. Use the event name, description, and brief to decide: who is in the room (e.g. innovators, practitioners, leaders), what sector or theme (e.g. tech, sustainability, healthcare), and what would make them lean in and debate.
-- Every quest and decision should feel like it belongs at THIS event. Scenarios and dilemmas should resonate with why someone would attend. Prioritise the event goer's experience: vivid, relevant, discussion-worthy.
-- For each option: "impact" must be exactly two sentences separated by a period. First = main positive outcome. Second = main risk or downside. "tradeoff" = one crisp sentence (what you give up or accept). This structure powers the final decision map and must be clear.
-- Generate exactly 3 regions with exactly 2 quests each. Each quest has 3 decisions with 3 options (A, B, C). No obvious right answer; each option has real upside and real cost.
+- Infer the event type and match tone accordingly. Professional events get business simulations. Tech events get product/engineering scenarios. Gaming events can be more dramatic. Social impact events get community-centered stories.
+- Each quest description MUST start with "You are..." to establish the team's identity, role, and context. Players need to know who they are.
+- The 5 story beats must form a coherent narrative arc: Setup → Escalation → Pivot → Climax → Resolution. Each beat's context must reference or build on the previous beat.
+- Generate exactly 3 regions with exactly 2 quests each. Each quest has 5 decisions (story beats) with 3 options (A, B, C). No obvious right answer.
+- For each option: "impact" = two sentences (outcome then risk). "tradeoff" = one sentence (what you give up).
 
 Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid JSON.`;
 
@@ -186,8 +196,8 @@ Stay under the token limit. Escape quotes as \\", no hashtags. Return ONLY valid
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' }, // Force JSON output
-      temperature: 0.7, // Slightly higher for nuanced content while staying concise
-      max_tokens: 5250, // ~50% higher than before so generated content has more substance (paragraphs, not just phrases)
+      temperature: 0.7,
+      max_tokens: 8000,
     });
 
     const content = completion.choices[0]?.message?.content;

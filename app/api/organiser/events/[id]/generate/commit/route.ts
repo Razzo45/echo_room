@@ -41,9 +41,9 @@ export async function POST(
           ...region,
           quests: region.quests.map((quest) => ({
             ...quest,
-            decisions: quest.decisions.slice(0, 3).map((decision, decisionIdx) => ({
+            decisions: quest.decisions.slice(0, 5).map((decision, decisionIdx) => ({
               ...decision,
-              decisionNumber: (decisionIdx + 1) as 1 | 2 | 3,
+              decisionNumber: (decisionIdx + 1) as 1 | 2 | 3 | 4 | 5,
               options: decision.options.slice(0, 3).map((option, optionIdx) => ({
                 ...option,
                 optionKey: optionKeys[optionIdx],

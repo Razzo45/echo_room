@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { requireAdminAuth } from '@/lib/auth-organiser';
 import { runtimeConsequenceSchema } from '@/lib/validation';
+import type { BeatKey } from '@/lib/story-runtime';
 import {
-  computeScoreboard,
   isStoryStateColumnMissing,
   lockRoomForUpdate,
   normalizeStoryState,
@@ -61,7 +61,7 @@ export async function POST(
         return { kind: 'error' as const, status: 409, error: `Cannot persist consequence during ${state.phase}` };
       }
 
-      const beatKey = String(beat) as '1' | '2' | '3';
+      const beatKey = String(beat) as BeatKey;
       const rollCount = Object.keys(state.beats[beatKey].rolls).length;
       if (rollCount !== playerIds.length && !canUseAdminOverride) {
         return { kind: 'error' as const, status: 409, error: 'All players must roll before consequence' };
@@ -89,14 +89,12 @@ export async function POST(
         decisionCommitAt: now.toISOString(),
       };
 
-      computeScoreboard(state, playerIds);
-
       state.phase = 'beat_consequence';
       state.consequenceContinue = {
         beat,
         byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
       };
-      if (beat === (state.totalBeats ?? 3)) {
+      if (beat === (state.totalBeats ?? 5)) {
         const synthesis = await generateFinalSynthesisWithFallback(
           state,
           room.members.map((member) => ({ id: member.userId, name: member.user.name })),

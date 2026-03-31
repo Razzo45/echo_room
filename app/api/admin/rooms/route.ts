@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
+import type { BeatKey, BeatNumber } from '@/lib/story-runtime';
 import { createInitialStoryState, lockRoomForUpdate, normalizeStoryState } from '@/lib/story-runtime';
 import { logAdminAction } from '@/lib/admin-audit';
 
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
           if (!room) throw new Error('ROOM_NOT_FOUND');
           const playerIds = room.members.map((m) => m.userId);
           const storyState = normalizeStoryState(room.storyState, playerIds);
-          const beatKey = String(storyState.currentBeat) as '1' | '2' | '3';
+          const beatKey = String(storyState.currentBeat) as BeatKey;
           storyState.phase = 'beat_input';
           storyState.beats[beatKey].consequence = null;
           storyState.beats[beatKey].resolved = false;
@@ -189,9 +190,9 @@ export async function POST(request: NextRequest) {
           const playerIds = room.members.map((m) => m.userId);
           const storyState = normalizeStoryState(room.storyState, playerIds);
           const beat = storyState.currentBeat;
-          const totalBeats = storyState.totalBeats ?? 3;
+          const totalBeats = storyState.totalBeats ?? 5;
           storyState.phase = beat < totalBeats ? 'beat_input' : 'final_panel';
-          storyState.currentBeat = beat < totalBeats ? ((beat + 1) as 1 | 2 | 3) : beat;
+          storyState.currentBeat = beat < totalBeats ? ((beat + 1) as BeatNumber) : beat;
           await tx.room.update({
             where: { id: roomId },
             data: { storyState, lastActivityAt: new Date() },

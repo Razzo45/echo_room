@@ -14,52 +14,17 @@ export function getMockEventRooms(): EventGenerationOutput {
         quests: [
           {
             name: 'Debug Quest A1',
-            description: 'First test quest in debug mode. Use this to verify the full flow without calling the AI.',
+            description: 'You are a team of product managers at a fast-growing startup. A critical product launch is days away, and a major competitor just announced a similar feature. Your decisions over the next five beats will determine whether you ship on time and capture the market.',
             durationMinutes: 30,
             teamSize: 3,
-            decisions: [
-              {
-                decisionNumber: 1,
-                title: 'Test Decision 1',
-                context: 'Context for decision 1.',
-                options: [
-                  { optionKey: 'A', title: 'Option A', description: 'Desc A', impact: 'Impact A', tradeoff: 'Tradeoff A' },
-                  { optionKey: 'B', title: 'Option B', description: 'Desc B', impact: 'Impact B', tradeoff: 'Tradeoff B' },
-                  { optionKey: 'C', title: 'Option C', description: 'Desc C', impact: 'Impact C', tradeoff: 'Tradeoff C' },
-                ],
-              },
-              {
-                decisionNumber: 2,
-                title: 'Test Decision 2',
-                context: 'Context for decision 2.',
-                options: [
-                  { optionKey: 'A', title: 'Option A', description: 'Desc A', impact: 'Impact A', tradeoff: 'Tradeoff A' },
-                  { optionKey: 'B', title: 'Option B', description: 'Desc B', impact: 'Impact B', tradeoff: 'Tradeoff B' },
-                  { optionKey: 'C', title: 'Option C', description: 'Desc C', impact: 'Impact C', tradeoff: 'Tradeoff C' },
-                ],
-              },
-              {
-                decisionNumber: 3,
-                title: 'Test Decision 3',
-                context: 'Context for decision 3.',
-                options: [
-                  { optionKey: 'A', title: 'Option A', description: 'Desc A', impact: 'Impact A', tradeoff: 'Tradeoff A' },
-                  { optionKey: 'B', title: 'Option B', description: 'Desc B', impact: 'Impact B', tradeoff: 'Tradeoff B' },
-                  { optionKey: 'C', title: 'Option C', description: 'Desc C', impact: 'Impact C', tradeoff: 'Tradeoff C' },
-                ],
-              },
-            ],
+            decisions: makeDecisions(1),
           },
           {
             name: 'Debug Quest A2',
-            description: 'Second test quest in debug region A.',
+            description: 'You are a team of city planners evaluating proposals for a new transit corridor. Budgets are tight, community opinions are split, and the deadline is next week.',
             durationMinutes: 30,
             teamSize: 3,
-            decisions: [
-              { decisionNumber: 1, title: 'D1', context: 'C1', options: [{ optionKey: 'A', title: 'A', description: 'D', impact: 'I', tradeoff: 'T' }, { optionKey: 'B', title: 'B', description: 'D', impact: 'I', tradeoff: 'T' }, { optionKey: 'C', title: 'C', description: 'D', impact: 'I', tradeoff: 'T' }] },
-              { decisionNumber: 2, title: 'D2', context: 'C2', options: [{ optionKey: 'A', title: 'A', description: 'D', impact: 'I', tradeoff: 'T' }, { optionKey: 'B', title: 'B', description: 'D', impact: 'I', tradeoff: 'T' }, { optionKey: 'C', title: 'C', description: 'D', impact: 'I', tradeoff: 'T' }] },
-              { decisionNumber: 3, title: 'D3', context: 'C3', options: [{ optionKey: 'A', title: 'A', description: 'D', impact: 'I', tradeoff: 'T' }, { optionKey: 'B', title: 'B', description: 'D', impact: 'I', tradeoff: 'T' }, { optionKey: 'C', title: 'C', description: 'D', impact: 'I', tradeoff: 'T' }] },
-            ],
+            decisions: makeDecisions(2),
           },
         ],
       },
@@ -68,8 +33,8 @@ export function getMockEventRooms(): EventGenerationOutput {
         displayName: 'Debug Region B',
         description: 'Second test region.',
         quests: [
-          { name: 'Debug Quest B1', description: 'Quest B1.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(1) },
-          { name: 'Debug Quest B2', description: 'Quest B2.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(2) },
+          { name: 'Debug Quest B1', description: 'You are a crisis response team at a hospital during a sudden surge in patients.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(3) },
+          { name: 'Debug Quest B2', description: 'You are sustainability leads at a conference deciding how to reduce the event carbon footprint.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(4) },
         ],
       },
       {
@@ -77,8 +42,8 @@ export function getMockEventRooms(): EventGenerationOutput {
         displayName: 'Debug Region C',
         description: 'Third test region.',
         quests: [
-          { name: 'Debug Quest C1', description: 'Quest C1.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(1) },
-          { name: 'Debug Quest C2', description: 'Quest C2.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(2) },
+          { name: 'Debug Quest C1', description: 'You are a team of educators redesigning a curriculum under new guidelines.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(5) },
+          { name: 'Debug Quest C2', description: 'You are event organisers managing a live venue when the keynote speaker cancels last minute.', durationMinutes: 30, teamSize: 3, decisions: makeDecisions(6) },
         ],
       },
     ],
@@ -86,10 +51,12 @@ export function getMockEventRooms(): EventGenerationOutput {
 }
 
 function makeDecisions(seed: number): EventGenerationOutput['regions'][0]['quests'][0]['decisions'] {
-  const opt = (key: 'A' | 'B' | 'C') => ({ optionKey: key, title: `Option ${key}`, description: 'Desc', impact: 'Impact', tradeoff: 'Tradeoff' });
-  return [
-    { decisionNumber: 1, title: `Decision 1 (${seed})`, context: 'Context', options: [opt('A'), opt('B'), opt('C')] },
-    { decisionNumber: 2, title: `Decision 2 (${seed})`, context: 'Context', options: [opt('A'), opt('B'), opt('C')] },
-    { decisionNumber: 3, title: `Decision 3 (${seed})`, context: 'Context', options: [opt('A'), opt('B'), opt('C')] },
-  ];
+  const opt = (key: 'A' | 'B' | 'C') => ({ optionKey: key as 'A' | 'B' | 'C', title: `Option ${key}`, description: 'A concrete choice.', impact: 'Positive outcome. Possible risk.', tradeoff: 'What you give up.' });
+  const arcLabels = ['Setup', 'Escalation', 'Pivot', 'Climax', 'Resolution'];
+  return arcLabels.map((label, i) => ({
+    decisionNumber: (i + 1) as 1 | 2 | 3 | 4 | 5,
+    title: `${label} (seed ${seed})`,
+    context: `Beat ${i + 1} context: ${label.toLowerCase()} phase of the story.`,
+    options: [opt('A'), opt('B'), opt('C')],
+  }));
 }

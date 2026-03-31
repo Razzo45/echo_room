@@ -71,8 +71,9 @@ describe('runtime-state endpoints', () => {
               '1': { submissions: { u1: 'already' }, revealed: false, rolls: {}, consequence: null, resolved: false },
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u1: 0, u2: 0 }, teamAverage: 0, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -108,8 +109,9 @@ describe('runtime-state endpoints', () => {
               },
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u1: 0, u2: 0 }, teamAverage: 0, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -149,8 +151,9 @@ describe('runtime-state endpoints', () => {
               },
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u1: 10, u2: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -229,8 +232,9 @@ describe('runtime-state endpoints', () => {
               },
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u2: 10, u3: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -269,8 +273,9 @@ describe('runtime-state endpoints', () => {
               },
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u1: 10 }, teamAverage: 10, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -305,8 +310,9 @@ describe('runtime-state endpoints', () => {
         },
         '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
         '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+        '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+        '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
       },
-      scoreboard: { playerTotals: { u1: 10, u2: 12 }, teamAverage: 11, teamBand: 'critical_fail' },
       finalSynthesis: { status: 'idle', text: '', mode: '' },
       consequenceContinue: {
         beat: 1,
@@ -379,8 +385,9 @@ describe('runtime-state endpoints', () => {
                 resolved: false,
               },
               '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
             },
-            scoreboard: { playerTotals: { u1: 9, u2: 11 }, teamAverage: 10, teamBand: 'critical_fail' },
             finalSynthesis: { status: 'idle', text: '', mode: '' },
           },
         })
@@ -401,12 +408,15 @@ describe('runtime-state endpoints', () => {
           members: [{ userId: 'u1' }, { userId: 'u2' }],
           storyState: {
             phase: 'final_panel',
-            currentBeat: 3,
+            currentBeat: 5,
+            totalBeats: 5,
             readyCheck: { startedAt: null, deadlineAt: null, readyByPlayerId: { u1: true, u2: true } },
             beats: {
               '1': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
               '2': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
-              '3': {
+              '3': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '4': { submissions: {}, revealed: false, rolls: {}, consequence: null, resolved: false },
+              '5': {
                 submissions: { u1: 'a', u2: 'b' },
                 revealed: true,
                 rolls: {
@@ -417,7 +427,6 @@ describe('runtime-state endpoints', () => {
                 resolved: true,
               },
             },
-            scoreboard: { playerTotals: { u1: 18, u2: 19 }, teamAverage: 18.5, teamBand: 'success' },
             finalSynthesis: { status: 'done', text: 'summary', mode: 'ai' },
           },
         })

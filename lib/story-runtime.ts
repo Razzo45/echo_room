@@ -13,6 +13,10 @@ type RoomPhase =
 
 type RollBand = 'critical_fail' | 'fail' | 'mixed' | 'success' | 'critical_success';
 
+export type BeatNumber = 1 | 2 | 3 | 4 | 5;
+export type BeatKey = '1' | '2' | '3' | '4' | '5';
+export const ALL_BEAT_KEYS: readonly BeatKey[] = ['1', '2', '3', '4', '5'] as const;
+
 type BeatState = {
   submissions: Record<string, string>;
   revealed: boolean;
@@ -23,36 +27,29 @@ type BeatState = {
 
 type StoryState = {
   phase: RoomPhase;
-  currentBeat: 1 | 2 | 3;
-  totalBeats: 1 | 2 | 3;
+  currentBeat: BeatNumber;
+  totalBeats: BeatNumber;
   readyCheck: {
     startedAt: string | null;
     deadlineAt: string | null;
     readyByPlayerId: Record<string, boolean>;
   };
-  beats: Record<'1' | '2' | '3', BeatState>;
-  scoreboard: {
-    playerTotals: Record<string, number>;
-    teamAverage: number;
-    teamBand: string;
-  };
+  beats: Record<BeatKey, BeatState>;
   finalSynthesis: {
     status: 'idle' | 'pending' | 'done';
     text: string;
     mode: string;
   };
-  /** While in roll_reveal (all rolled), each player must POST /runtime/advance before moving to consequence. */
   rollContinue: {
-    beat: 1 | 2 | 3;
+    beat: BeatNumber;
     byPlayerId: Record<string, boolean>;
   } | null;
-  /** While in beat_consequence, each player must POST /runtime/advance before the story moves on. */
   consequenceContinue: {
-    beat: 1 | 2 | 3;
+    beat: BeatNumber;
     byPlayerId: Record<string, boolean>;
   } | null;
   internal?: {
-    decisionCommitBeat?: 1 | 2 | 3;
+    decisionCommitBeat?: BeatNumber;
     decisionCommitAt?: string;
   };
 };
@@ -67,22 +64,12 @@ function emptyBeat(): BeatState {
   };
 }
 
-function inferTeamBand(teamAverage: number): string {
-  if (teamAverage >= 48) return 'critical_success';
-  if (teamAverage >= 36) return 'success';
-  if (teamAverage >= 24) return 'mixed';
-  if (teamAverage >= 12) return 'fail';
-  return 'critical_fail';
-}
-
-export function createInitialStoryState(playerIds: string[], totalBeats: 1 | 2 | 3 = 3): StoryState {
+export function createInitialStoryState(playerIds: string[], totalBeats: BeatNumber = 5): StoryState {
   const uniquePlayerIds = [...new Set(playerIds)];
   const readyByPlayerId: Record<string, boolean> = {};
-  const playerTotals: Record<string, number> = {};
 
   for (const playerId of uniquePlayerIds) {
     readyByPlayerId[playerId] = false;
-    playerTotals[playerId] = 0;
   }
 
   return {
@@ -98,11 +85,8 @@ export function createInitialStoryState(playerIds: string[], totalBeats: 1 | 2 |
       '1': emptyBeat(),
       '2': emptyBeat(),
       '3': emptyBeat(),
-    },
-    scoreboard: {
-      playerTotals,
-      teamAverage: 0,
-      teamBand: inferTeamBand(0),
+      '4': emptyBeat(),
+      '5': emptyBeat(),
     },
     finalSynthesis: {
       status: 'idle',
@@ -134,14 +118,8 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
       '1': { ...fallback.beats['1'], ...(parsed.beats?.['1'] ?? {}) },
       '2': { ...fallback.beats['2'], ...(parsed.beats?.['2'] ?? {}) },
       '3': { ...fallback.beats['3'], ...(parsed.beats?.['3'] ?? {}) },
-    },
-    scoreboard: {
-      ...fallback.scoreboard,
-      ...(parsed.scoreboard ?? {}),
-      playerTotals: {
-        ...fallback.scoreboard.playerTotals,
-        ...((parsed.scoreboard?.playerTotals as Record<string, number> | undefined) ?? {}),
-      },
+      '4': { ...fallback.beats['4'], ...(parsed.beats?.['4'] ?? {}) },
+      '5': { ...fallback.beats['5'], ...(parsed.beats?.['5'] ?? {}) },
     },
     finalSynthesis: {
       ...fallback.finalSynthesis,
@@ -158,8 +136,8 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
     internal: parsed.internal ?? fallback.internal,
   };
 
-  const parsedTotal = Number(state.totalBeats ?? 3);
-  state.totalBeats = (parsedTotal >= 3 ? 3 : parsedTotal <= 1 ? 1 : 2) as 1 | 2 | 3;
+  const parsedTotal = Number(state.totalBeats ?? 5);
+  state.totalBeats = Math.max(1, Math.min(5, parsedTotal)) as BeatNumber;
   if (state.currentBeat > state.totalBeats) {
     state.currentBeat = state.totalBeats;
   }
@@ -168,13 +146,10 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
     if (!(playerId in state.readyCheck.readyByPlayerId)) {
       state.readyCheck.readyByPlayerId[playerId] = false;
     }
-    if (!(playerId in state.scoreboard.playerTotals)) {
-      state.scoreboard.playerTotals[playerId] = 0;
-    }
   }
 
   const cb = state.currentBeat;
-  const cbKey = String(cb) as '1' | '2' | '3';
+  const cbKey = String(cb) as BeatKey;
   if (
     state.phase === 'beat_consequence' &&
     state.beats[cbKey]?.consequence &&
@@ -187,23 +162,6 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
   }
 
   return state;
-}
-
-export function computeScoreboard(state: StoryState, playerIds: string[]): void {
-  for (const playerId of playerIds) {
-    let total = 0;
-    for (const beatKey of ['1', '2', '3'] as const) {
-      if (Number(beatKey) > state.totalBeats) continue;
-      total += state.beats[beatKey].rolls[playerId]?.value ?? 0;
-    }
-    state.scoreboard.playerTotals[playerId] = Math.max(0, Math.min(60, total));
-  }
-
-  const players = playerIds.filter((id) => id in state.scoreboard.playerTotals);
-  const sum = players.reduce((acc, id) => acc + state.scoreboard.playerTotals[id], 0);
-  const average = players.length > 0 ? sum / players.length : 0;
-  state.scoreboard.teamAverage = Number(average.toFixed(2));
-  state.scoreboard.teamBand = inferTeamBand(state.scoreboard.teamAverage);
 }
 
 export function stripInternalStoryState(state: StoryState): Omit<StoryState, 'internal'> {

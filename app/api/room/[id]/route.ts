@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import type { BeatKey, BeatNumber } from '@/lib/story-runtime';
 import { isStoryStateColumnMissing, normalizeStoryState, stripInternalStoryState } from '@/lib/story-runtime';
 
 export async function GET(
@@ -94,8 +95,8 @@ export async function GET(
     const storyState = normalizeStoryState(room.storyState, memberIds);
     const generatedBeatCount = Math.max(
       1,
-      Math.min(3, Array.isArray(decisionsData?.decisions) ? decisionsData.decisions.length : 3)
-    ) as 1 | 2 | 3;
+      Math.min(5, Array.isArray(decisionsData?.decisions) ? decisionsData.decisions.length : 5)
+    ) as BeatNumber;
     storyState.totalBeats = generatedBeatCount;
     if (storyState.currentBeat > generatedBeatCount) {
       storyState.currentBeat = generatedBeatCount;
@@ -105,7 +106,7 @@ export async function GET(
       if (!['preamble', 'beat_input'].includes(state.phase)) {
         return state;
       }
-      const beatKey = String(state.currentBeat) as '1' | '2' | '3';
+      const beatKey = String(state.currentBeat) as BeatKey;
       const beat = state.beats?.[beatKey];
       if (!beat || typeof beat.submissions !== 'object') {
         return state;

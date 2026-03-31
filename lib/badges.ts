@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import type { BadgeType } from '@prisma/client';
-import type { StoryState } from './story-runtime';
+import type { StoryState, BeatKey } from './story-runtime';
+import { ALL_BEAT_KEYS } from './story-runtime';
 
 // ── Badge definitions ──────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ const BADGE_DEFS: Record<BadgeType, BadgeDef> = {
   },
   RISING_PHOENIX: {
     name: 'Rising Phoenix',
-    description: 'Snatch victory from the jaws of defeat. Finish a room with a success band after rolling a critical fail.',
+    description: 'Snatch victory from the jaws of defeat. Roll 3 or under, then recover with 15+ on a later beat.',
     icon: '🦅',
     rarity: 'epic',
   },
@@ -147,8 +148,8 @@ export async function checkRoomCompletionBadges(roomId: string): Promise<void> {
   const state = room.storyState as StoryState | null;
   if (!state) return;
 
-  const totalBeats = state.totalBeats ?? 3;
-  const beatKeys = (['1', '2', '3'] as const).filter((k) => Number(k) <= totalBeats);
+  const totalBeats = state.totalBeats ?? 5;
+  const beatKeys = ALL_BEAT_KEYS.filter((k) => Number(k) <= totalBeats);
 
   for (const member of room.members) {
     const uid = member.userId;
@@ -180,11 +181,12 @@ export async function checkRoomCompletionBadges(roomId: string): Promise<void> {
       await awardBadge(uid, 'HOT_STREAK', { roomId, metadata: { rolls: playerRolls } });
     }
 
-    // ─ RISING_PHOENIX: had a critical fail (roll ≤ 3) on any beat, but room ended with success band ─
-    const hadCritFail = playerRolls.some((v) => v >= 1 && v <= 3);
-    const teamBand = state.scoreboard?.teamBand ?? '';
-    if (hadCritFail && (teamBand === 'success' || teamBand === 'critical_success')) {
-      await awardBadge(uid, 'RISING_PHOENIX', { roomId, metadata: { teamBand } });
+    // ─ RISING_PHOENIX: rolled ≤ 3 on any beat, then ≥ 15 on a later beat ─
+    const rollsByBeat = beatKeys.map((bk) => state.beats[bk]?.rolls?.[uid]?.value ?? 0);
+    const lowestBeatIdx = rollsByBeat.findIndex((v) => v >= 1 && v <= 3);
+    const recoveredLater = lowestBeatIdx >= 0 && rollsByBeat.slice(lowestBeatIdx + 1).some((v) => v >= 15);
+    if (recoveredLater) {
+      await awardBadge(uid, 'RISING_PHOENIX', { roomId, metadata: { recovered: true } });
     }
 
     // ─ SEASONED_ADVENTURER: 5 completed rooms ─
@@ -305,7 +307,7 @@ export async function getProgressTowardBadges(userId: string): Promise<ProgressH
         break;
 
       case 'RISING_PHOENIX':
-        hints.push({ ...base, hint: 'Recover from a critical fail and lead your team to a success ending.', current: 0, target: 1, percent: 0 });
+        hints.push({ ...base, hint: 'Roll 3 or under on a beat, then bounce back with 15+ on a later beat.', current: 0, target: 1, percent: 0 });
         break;
 
       case 'UNITED_FRONT':

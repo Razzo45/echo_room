@@ -93,7 +93,7 @@ function buildScenarioBrief(slots: ScenarioSlots): string {
     `- Forbidden tones/directions: ${slots.forbiddenDirections || 'None'}`,
     `- Custom notes: ${slots.customNotes || 'None'}`,
     '',
-    'Generate a 3-beat collaborative storytelling scenario suitable for live multiplayer play.',
+    'Generate a 5-beat collaborative storytelling scenario suitable for live multiplayer play.',
   ].join('\n');
 }
 
@@ -610,7 +610,7 @@ export default function EventDetailPage() {
               <textarea
                 value={aiBrief}
                 onChange={(e) => setAiBrief(e.target.value)}
-                placeholder="Describe your event theme, goals, and the story tension you want (e.g. tradeoffs, stakes). The AI will generate scenario scripts with three story beats and paths (A/B/C) for each beat—live play is blind actions plus d20 resolution."
+                placeholder="Describe your event theme, goals, and the story tension you want (e.g. tradeoffs, stakes). The AI will generate scenario scripts with five story beats and paths (A/B/C) for each beat — live play is blind actions plus d20 resolution."
                 rows={4}
                 className="input resize-y"
                 disabled={generating || savingBrief}

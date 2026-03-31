@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { joinRoomSchema } from '@/lib/validation';
 import crypto from 'crypto';
 import { sendRoomReadyPush } from '@/lib/push';
+import type { BeatNumber } from '@/lib/story-runtime';
 import { createInitialStoryState, normalizeStoryState } from '@/lib/story-runtime';
 
 function isStoryStateColumnMissing(error: unknown): boolean {
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
     });
 
     const minTeamSize = quest.minTeamSize ?? 2;
-    const totalBeats = Math.max(1, Math.min(3, quest._count?.decisions || 3)) as 1 | 2 | 3;
+    const totalBeats = Math.max(1, Math.min(5, quest._count?.decisions || 5)) as BeatNumber;
     let room;
 
     if (openRoom && openRoom._count.members < quest.teamSize) {
