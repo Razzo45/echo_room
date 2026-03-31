@@ -388,21 +388,18 @@ model OrganiserSession {
   @@index([organiserId])
 }
 
-// Badges System for Gamification
+// Badges System — d20 story-beat gameplay
 enum BadgeType {
-  FIRST_QUEST_COMPLETE      // Completed first quest/room
-  TEAM_PLAYER              // Completed a team decision room
-  COLLABORATOR             // Voted in all decisions of a room
-  STORYTELLER              // Provided detailed justifications (3+ decisions)
-  DECISION_MAKER           // Committed to final decision in a room
-  ARTIFACT_CREATOR         // Generated an artifact
-  QUEST_MASTER             // Completed 5+ quests
-  SOCIAL_CONNECTOR         // Teamed with 10+ different people
-  PERFECT_TEAM             // All 3 members voted and committed
-  EARLY_BIRD               // Joined within first hour of event
-  NIGHT_OWL                // Active during late hours
-  CONSENSUS_BUILDER        // Team reached unanimous votes
-  DIVERSITY_CHAMPION       // Teamed with people from different countries
+  FIRST_CHAPTER             // Complete your first story room
+  NATURAL_TWENTY            // Roll a natural 20
+  FUMBLE                    // Roll a natural 1
+  HOT_STREAK                // Roll 15+ on every beat in a single room
+  RISING_PHOENIX            // Finish a room with success band after a critical fail earlier
+  UNITED_FRONT              // All players roll 15+ on the same beat
+  SEASONED_ADVENTURER       // Complete 5 story rooms
+  SOCIAL_BUTTERFLY          // Play with 10 different people
+  ARTIFACT_COLLECTOR        // Finish and view 3 story artifacts
+  LEGENDARY_CAMPAIGN        // Complete 20 story rooms
 }
 
 model Badge {

@@ -492,9 +492,9 @@ async function main() {
 
   // Seed badge definitions (required for UserBadges and organiser insights)
   const badgeTypes: BadgeType[] = [
-    'FIRST_QUEST_COMPLETE', 'TEAM_PLAYER', 'COLLABORATOR', 'STORYTELLER', 'DECISION_MAKER',
-    'ARTIFACT_CREATOR', 'QUEST_MASTER', 'SOCIAL_CONNECTOR', 'PERFECT_TEAM', 'EARLY_BIRD',
-    'NIGHT_OWL', 'CONSENSUS_BUILDER', 'DIVERSITY_CHAMPION',
+    'FIRST_CHAPTER', 'NATURAL_TWENTY', 'FUMBLE', 'HOT_STREAK', 'RISING_PHOENIX',
+    'UNITED_FRONT', 'SEASONED_ADVENTURER', 'SOCIAL_BUTTERFLY', 'ARTIFACT_COLLECTOR',
+    'LEGENDARY_CAMPAIGN',
   ];
   for (const badgeType of badgeTypes) {
     const def = getBadgeDefinition(badgeType);
@@ -669,22 +669,20 @@ async function main() {
 
   // User badges for a subset of participants (so badge stats and profile show something)
   const badgeRecords = await prisma.badge.findMany({ where: {} });
-  const teamPlayerBadge = badgeRecords.find((b) => b.badgeType === 'TEAM_PLAYER');
-  const artifactBadge = badgeRecords.find((b) => b.badgeType === 'ARTIFACT_CREATOR');
-  const firstQuestBadge = badgeRecords.find((b) => b.badgeType === 'FIRST_QUEST_COMPLETE');
+  const firstChapterBadge = badgeRecords.find((b) => b.badgeType === 'FIRST_CHAPTER');
+  const natTwentyBadge = badgeRecords.find((b) => b.badgeType === 'NATURAL_TWENTY');
+  const fumbleBadge = badgeRecords.find((b) => b.badgeType === 'FUMBLE');
   const completedRooms = await prisma.room.findMany({ where: { eventId: event.id, status: 'COMPLETED' }, select: { id: true } });
-  if (teamPlayerBadge && artifactBadge && firstQuestBadge && completedRooms.length > 0) {
+  if (firstChapterBadge && natTwentyBadge && fumbleBadge && completedRooms.length > 0) {
     for (let i = 0; i < Math.min(createdUsers.length, 12); i++) {
       const user = createdUsers[i];
       const room = completedRooms[i % completedRooms.length];
-      await prisma.userBadge.createMany({
-        data: [
-          { userId: user.id, badgeId: firstQuestBadge.id, roomId: room.id },
-          { userId: user.id, badgeId: teamPlayerBadge.id, roomId: room.id },
-          { userId: user.id, badgeId: artifactBadge.id, roomId: room.id },
-        ],
-        skipDuplicates: true,
-      });
+      const data: { userId: string; badgeId: string; roomId: string }[] = [
+        { userId: user.id, badgeId: firstChapterBadge.id, roomId: room.id },
+      ];
+      if (i % 3 === 0) data.push({ userId: user.id, badgeId: natTwentyBadge.id, roomId: room.id });
+      if (i % 5 === 0) data.push({ userId: user.id, badgeId: fumbleBadge.id, roomId: room.id });
+      await prisma.userBadge.createMany({ data, skipDuplicates: true });
     }
     console.log('✅ Awarded mock badges to participants');
   }

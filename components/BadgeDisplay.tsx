@@ -18,7 +18,7 @@ type Badge = {
 
 type BadgeStats = {
   total: number;
-  byRarity: Record<Rarity, number>;
+  byRarity: Record<string, number>;
   recent: Badge[];
 };
 
@@ -29,13 +29,15 @@ type ProgressHint = {
   icon: string;
   rarity: string;
   hint: string;
+  current: number;
+  target: number;
   percent: number;
 };
 
-const RARITY_ORDER: Rarity[] = ['legendary', 'epic', 'rare', 'common'];
 const JOURNEY_ORDER = [
-  'FIRST_QUEST_COMPLETE', 'TEAM_PLAYER', 'COLLABORATOR', 'DECISION_MAKER', 'ARTIFACT_CREATOR',
-  'STORYTELLER', 'PERFECT_TEAM', 'CONSENSUS_BUILDER', 'QUEST_MASTER', 'DIVERSITY_CHAMPION',
+  'FIRST_CHAPTER', 'NATURAL_TWENTY', 'FUMBLE', 'HOT_STREAK', 'RISING_PHOENIX',
+  'UNITED_FRONT', 'SEASONED_ADVENTURER', 'SOCIAL_BUTTERFLY', 'ARTIFACT_COLLECTOR',
+  'LEGENDARY_CAMPAIGN',
 ];
 
 const rarityColors: Record<Rarity, string> = {
@@ -52,21 +54,18 @@ const rarityGradients: Record<Rarity, string> = {
   legendary: 'from-yellow-50 to-yellow-100',
 };
 
-function sortBadgesByRarityAndJourney(badges: Badge[]): Badge[] {
-  const journeyIndex = (t: string) => {
-    const i = JOURNEY_ORDER.indexOf(t);
-    return i === -1 ? 999 : i;
-  };
-  const rarityRank = (r: Rarity) => RARITY_ORDER.indexOf(r);
-  return [...badges].sort((a, b) => {
-    const rA = rarityRank(a.rarity as Rarity);
-    const rB = rarityRank(b.rarity as Rarity);
-    if (rA !== rB) return rA - rB;
-    const jA = journeyIndex(a.badgeType);
-    const jB = journeyIndex(b.badgeType);
-    if (jA !== jB) return jA - jB;
-    return new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime();
-  });
+const rarityBarColors: Record<string, string> = {
+  common: 'bg-gray-500',
+  rare: 'bg-blue-500',
+  epic: 'bg-purple-500',
+  legendary: 'bg-yellow-500',
+};
+
+const RARITY_ORDER: Rarity[] = ['legendary', 'epic', 'rare', 'common'];
+
+function sortBadgesByJourney(badges: Badge[]): Badge[] {
+  const idx = (t: string) => { const i = JOURNEY_ORDER.indexOf(t); return i === -1 ? 999 : i; };
+  return [...badges].sort((a, b) => idx(a.badgeType) - idx(b.badgeType));
 }
 
 export function BadgeDisplay({ userId, compact = false }: { userId?: string; compact?: boolean }) {
@@ -83,10 +82,7 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
       progressUrl ? fetch(progressUrl).then((r) => r.json()) : Promise.resolve({ hints: [] }),
     ])
       .then(([data, progressData]) => {
-        if (data.badges) {
-          setBadges(data.badges);
-          setStats(data.stats);
-        }
+        if (data.badges) { setBadges(data.badges); setStats(data.stats); }
         if (progressData?.hints) setProgressHints(progressData.hints);
         setLoading(false);
       })
@@ -96,36 +92,20 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
       </div>
     );
   }
 
-  if (badges.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-8 text-gray-500">
-          <p className="text-sm">No badges earned yet</p>
-          <p className="text-xs mt-1">Complete quests to earn badges!</p>
-        </div>
-        {progressHints.length > 0 && (
-          <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
-            <p className="text-sm font-semibold text-indigo-900 mb-2">Next up</p>
-            <p className="text-sm text-indigo-800">{progressHints[0].hint}</p>
-            <p className="text-xs text-indigo-600 mt-1">{progressHints[0].name} — {progressHints[0].description}</p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const sortedBadges = sortBadgesByRarityAndJourney(badges);
-  const nextHint = progressHints[0];
+  const earnedTypes = new Set(badges.map((b) => b.badgeType));
+  const earnedMap = new Map(badges.map((b) => [b.badgeType, b]));
+  const progressMap = new Map(progressHints.map((h) => [h.badgeType, h]));
 
   if (compact) {
+    const sorted = sortBadgesByJourney(badges);
     return (
       <div className="flex flex-wrap gap-2">
-        {sortedBadges.slice(0, 5).map((badge) => (
+        {sorted.slice(0, 5).map((badge) => (
           <div
             key={badge.id}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border-2 ${rarityColors[badge.rarity]}`}
@@ -135,69 +115,111 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
             <span className="text-xs font-semibold">{badge.name}</span>
           </div>
         ))}
-        {sortedBadges.length > 5 && (
+        {sorted.length > 5 && (
           <div className="inline-flex items-center px-3 py-1.5 rounded-full border-2 border-gray-300 bg-gray-50 text-gray-600">
-            <span className="text-xs font-semibold">+{sortedBadges.length - 5} more</span>
+            <span className="text-xs font-semibold">+{sorted.length - 5} more</span>
           </div>
         )}
       </div>
     );
   }
 
+  const earnedCount = badges.length;
+  const total = JOURNEY_ORDER.length;
+
   return (
     <div className="space-y-6">
-      {/* Progress hint: next badge to work toward */}
-      {nextHint && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 flex items-start gap-3">
-          <span className="text-2xl">{nextHint.icon}</span>
-          <div>
-            <p className="text-sm font-semibold text-indigo-900">You&apos;re close: {nextHint.name}</p>
-            <p className="text-sm text-indigo-800 mt-0.5">{nextHint.hint}</p>
-            {nextHint.percent > 0 && nextHint.percent < 100 && (
-              <div className="mt-2 w-full bg-indigo-200 rounded-full h-1.5">
-                <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: `${nextHint.percent}%` }} />
-              </div>
-            )}
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-lg font-bold text-gray-900">{earnedCount} / {total} Badges</p>
+          <p className="text-xs text-gray-500">
+            {earnedCount === 0
+              ? 'Complete story rooms to start earning badges.'
+              : earnedCount === total
+                ? 'All badges earned. Legendary!'
+                : `${total - earnedCount} remaining — keep playing.`}
+          </p>
         </div>
-      )}
-
-      {/* Stats Summary */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="card-elevated text-center">
-            <div className="text-2xl font-bold text-primary-600">{stats.total}</div>
-            <div className="text-xs text-gray-600 mt-1">Total Badges</div>
-          </div>
-          {RARITY_ORDER.filter((r) => (stats.byRarity[r] ?? 0) > 0).map((rarity) => (
-            <div key={rarity} className="card-elevated text-center">
-              <div className={`text-2xl font-bold ${rarityColors[rarity].split(' ')[2]}`}>
-                {stats.byRarity[rarity] ?? 0}
+        {stats && (
+          <div className="flex gap-3">
+            {RARITY_ORDER.filter((r) => (stats.byRarity[r] ?? 0) > 0).map((rarity) => (
+              <div key={rarity} className="text-center">
+                <div className={`text-lg font-bold ${rarityColors[rarity].split(' ')[2]}`}>
+                  {stats.byRarity[rarity]}
+                </div>
+                <div className="text-[10px] text-gray-500 capitalize">{rarity}</div>
               </div>
-              <div className="text-xs text-gray-600 mt-1 capitalize">{rarity}</div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* Badge Grid — sorted by rarity (legendary first) then journey order */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {sortedBadges.map((badge) => (
-          <div
-            key={badge.id}
-            className={`rounded-2xl border-2 p-4 ${rarityColors[badge.rarity]} bg-gradient-to-br ${rarityGradients[badge.rarity]} hover:shadow-lg transition-all cursor-pointer`}
-            title={badge.description}
-          >
-            <div className="text-center">
-              <div className="text-4xl mb-2">{badge.icon}</div>
-              <div className="font-bold text-sm mb-1">{badge.name}</div>
-              <div className="text-xs opacity-75 mb-2">{badge.description}</div>
-              <div className="text-xs opacity-60">
-                {new Date(badge.earnedAt).toLocaleDateString()}
+      {/* Badge journey — all 10, earned or locked */}
+      <div className="grid gap-3">
+        {JOURNEY_ORDER.map((bt) => {
+          const earned = earnedTypes.has(bt);
+          const badge = earnedMap.get(bt);
+          const progress = progressMap.get(bt);
+          const def = progress ?? badge;
+          if (!def) return null;
+
+          const rarity = (def.rarity ?? 'common') as Rarity;
+          const pct = earned ? 100 : (progress?.percent ?? 0);
+
+          return (
+            <div
+              key={bt}
+              className={`rounded-2xl border-2 p-4 transition-all ${
+                earned
+                  ? `${rarityColors[rarity]} bg-gradient-to-br ${rarityGradients[rarity]}`
+                  : 'border-gray-200 bg-gray-50/60 opacity-80'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <span className={`text-3xl ${earned ? '' : 'grayscale opacity-40'}`}>{def.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-bold ${earned ? '' : 'text-gray-500'}`}>{def.name}</p>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                      earned ? rarityColors[rarity] : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {rarity}
+                    </span>
+                  </div>
+                  <p className={`text-xs mt-0.5 ${earned ? 'opacity-80' : 'text-gray-400'}`}>
+                    {def.description}
+                  </p>
+                  {earned && badge && (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Earned {new Date(badge.earnedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                  {!earned && progress && (
+                    <p className="text-xs text-gray-500 mt-1">{progress.hint}</p>
+                  )}
+                  {/* Progress bar */}
+                  {pct > 0 && pct < 100 && (
+                    <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${rarityBarColors[rarity] ?? 'bg-gray-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+                  {pct > 0 && pct < 100 && progress && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {progress.current}/{progress.target}
+                    </p>
+                  )}
+                </div>
+                {earned && (
+                  <span className="text-emerald-500 text-lg flex-shrink-0">&#10003;</span>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

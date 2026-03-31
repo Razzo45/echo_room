@@ -1,68 +1,125 @@
 import { prisma } from './db';
 import type { BadgeType } from '@prisma/client';
+import type { StoryState } from './story-runtime';
 
-/**
- * Badge Service - Handles badge awarding logic for gamification
- * Awards badges based on user actions and collaborative achievements
- */
+// ── Badge definitions ──────────────────────────────────────────────────────
 
-export interface BadgeAwardContext {
-  userId: string;
-  roomId?: string;
-  metadata?: Record<string, any>;
+type BadgeDef = { name: string; description: string; icon: string; rarity: string };
+
+const BADGE_DEFS: Record<BadgeType, BadgeDef> = {
+  FIRST_CHAPTER: {
+    name: 'First Chapter',
+    description: 'Every legend starts somewhere. Complete your first story room.',
+    icon: '📖',
+    rarity: 'common',
+  },
+  NATURAL_TWENTY: {
+    name: 'Natural Twenty',
+    description: 'The dice gods smile upon you. Roll a natural 20.',
+    icon: '🎯',
+    rarity: 'rare',
+  },
+  FUMBLE: {
+    name: 'Fumble!',
+    description: 'Even heroes trip. Roll a natural 1.',
+    icon: '💀',
+    rarity: 'rare',
+  },
+  HOT_STREAK: {
+    name: 'Hot Streak',
+    description: 'Fortune favors the bold. Roll 15+ on every beat in a single room.',
+    icon: '🔥',
+    rarity: 'rare',
+  },
+  RISING_PHOENIX: {
+    name: 'Rising Phoenix',
+    description: 'Snatch victory from the jaws of defeat. Finish a room with a success band after rolling a critical fail.',
+    icon: '🦅',
+    rarity: 'epic',
+  },
+  UNITED_FRONT: {
+    name: 'United Front',
+    description: 'Together, unstoppable. All players roll 15+ on the same beat.',
+    icon: '⚔️',
+    rarity: 'epic',
+  },
+  SEASONED_ADVENTURER: {
+    name: 'Seasoned Adventurer',
+    description: 'Five tales, one storyteller. Complete 5 story rooms.',
+    icon: '🗺️',
+    rarity: 'common',
+  },
+  SOCIAL_BUTTERFLY: {
+    name: 'Social Butterfly',
+    description: 'A face in every tavern. Play with 10 different people.',
+    icon: '🦋',
+    rarity: 'epic',
+  },
+  ARTIFACT_COLLECTOR: {
+    name: 'Artifact Collector',
+    description: 'Keeper of tales. Generate 3 story artifacts.',
+    icon: '📜',
+    rarity: 'rare',
+  },
+  LEGENDARY_CAMPAIGN: {
+    name: 'Legendary Campaign',
+    description: 'A saga for the ages. Complete 20 story rooms.',
+    icon: '👑',
+    rarity: 'legendary',
+  },
+};
+
+export function getBadgeDefinition(badgeType: BadgeType): BadgeDef {
+  return BADGE_DEFS[badgeType];
 }
 
-/**
- * Award a badge to a user if they don't already have it
- */
+/** Journey order: easy → hard for UI display and progress tracking */
+export const BADGE_JOURNEY_ORDER: BadgeType[] = [
+  'FIRST_CHAPTER',
+  'NATURAL_TWENTY',
+  'FUMBLE',
+  'HOT_STREAK',
+  'RISING_PHOENIX',
+  'UNITED_FRONT',
+  'SEASONED_ADVENTURER',
+  'SOCIAL_BUTTERFLY',
+  'ARTIFACT_COLLECTOR',
+  'LEGENDARY_CAMPAIGN',
+];
+
+// ── Core award helper ──────────────────────────────────────────────────────
+
 export async function awardBadge(
   userId: string,
   badgeType: BadgeType,
   context?: { roomId?: string; metadata?: Record<string, any> }
 ): Promise<boolean> {
   try {
-    // Find or create the badge definition
-    let badge = await prisma.badge.findUnique({
-      where: { badgeType },
-    });
-
+    let badge = await prisma.badge.findUnique({ where: { badgeType } });
     if (!badge) {
-      // Create badge definition if it doesn't exist
-      const badgeDef = getBadgeDefinition(badgeType);
+      const def = getBadgeDefinition(badgeType);
       badge = await prisma.badge.create({
-        data: {
-          badgeType,
-          name: badgeDef.name,
-          description: badgeDef.description,
-          icon: badgeDef.icon,
-          rarity: badgeDef.rarity,
-        },
+        data: { badgeType, name: def.name, description: def.description, icon: def.icon, rarity: def.rarity },
       });
     }
 
-    // Check if user already has this badge (for this room if roomId provided)
     const existing = await prisma.userBadge.findFirst({
       where: {
         userId,
         badgeId: badge.id,
-        ...(context?.roomId && { roomId: context.roomId }),
+        ...(context?.roomId ? { roomId: context.roomId } : {}),
       },
     });
+    if (existing) return false;
 
-    if (existing) {
-      return false; // Already awarded
-    }
-
-    // Award the badge
     await prisma.userBadge.create({
       data: {
         userId,
         badgeId: badge.id,
-        roomId: context?.roomId || null,
+        roomId: context?.roomId ?? null,
         metadata: context?.metadata ? JSON.stringify(context.metadata) : null,
       },
     });
-
     return true;
   } catch (error) {
     console.error('Error awarding badge:', error);
@@ -70,328 +127,135 @@ export async function awardBadge(
   }
 }
 
+// ── Room-completion badge check ────────────────────────────────────────────
+
 /**
- * Check and award badges when a room is completed
+ * Evaluate all d20-gameplay badges after a room reaches COMPLETED.
+ * Called from complete/route.ts once all members have tapped "Finish".
  */
 export async function checkRoomCompletionBadges(roomId: string): Promise<void> {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
-      members: {
-        include: { user: true },
-      },
-      votes: true,
-      commits: true,
-      quest: true,
+      members: { include: { user: true } },
+      artifact: true,
     },
   });
+  if (!room || room.status !== 'COMPLETED') return;
 
-  if (!room || room.status !== 'COMPLETED') {
-    return;
-  }
+  const playerIds = room.members.map((m) => m.userId);
+  const state = room.storyState as StoryState | null;
+  if (!state) return;
 
-  const memberIds = room.members.map((m) => m.userId);
-  const decisionCount = room.commits.length;
+  const totalBeats = state.totalBeats ?? 3;
+  const beatKeys = (['1', '2', '3'] as const).filter((k) => Number(k) <= totalBeats);
 
-  // Award badges to each member
   for (const member of room.members) {
-    const userId = member.userId;
-    const userVotes = room.votes.filter((v) => v.userId === userId);
-    const userVoteCount = userVotes.length;
+    const uid = member.userId;
 
-    // FIRST_QUEST_COMPLETE - First completed quest
-    const completedRooms = await prisma.roomMember.count({
+    // ─ FIRST_CHAPTER: first completed room ─
+    const completedCount = await prisma.roomMember.count({
+      where: { userId: uid, room: { status: 'COMPLETED' } },
+    });
+    if (completedCount === 1) {
+      await awardBadge(uid, 'FIRST_CHAPTER', { roomId });
+    }
+
+    // ─ NATURAL_TWENTY / FUMBLE: check all rolls this player made in this room ─
+    for (const bk of beatKeys) {
+      const roll = state.beats[bk]?.rolls?.[uid];
+      if (!roll) continue;
+      if (roll.value === 20) {
+        await awardBadge(uid, 'NATURAL_TWENTY', { roomId, metadata: { beat: Number(bk), value: 20 } });
+      }
+      if (roll.value === 1) {
+        await awardBadge(uid, 'FUMBLE', { roomId, metadata: { beat: Number(bk), value: 1 } });
+      }
+    }
+
+    // ─ HOT_STREAK: every roll in this room ≥ 15 ─
+    const playerRolls = beatKeys.map((bk) => state.beats[bk]?.rolls?.[uid]?.value ?? 0);
+    const allPlayed = playerRolls.every((v) => v > 0);
+    if (allPlayed && playerRolls.every((v) => v >= 15)) {
+      await awardBadge(uid, 'HOT_STREAK', { roomId, metadata: { rolls: playerRolls } });
+    }
+
+    // ─ RISING_PHOENIX: had a critical fail (roll ≤ 3) on any beat, but room ended with success band ─
+    const hadCritFail = playerRolls.some((v) => v >= 1 && v <= 3);
+    const teamBand = state.scoreboard?.teamBand ?? '';
+    if (hadCritFail && (teamBand === 'success' || teamBand === 'critical_success')) {
+      await awardBadge(uid, 'RISING_PHOENIX', { roomId, metadata: { teamBand } });
+    }
+
+    // ─ SEASONED_ADVENTURER: 5 completed rooms ─
+    if (completedCount >= 5) {
+      await awardBadge(uid, 'SEASONED_ADVENTURER', { metadata: { count: completedCount } });
+    }
+
+    // ─ LEGENDARY_CAMPAIGN: 20 completed rooms ─
+    if (completedCount >= 20) {
+      await awardBadge(uid, 'LEGENDARY_CAMPAIGN', { metadata: { count: completedCount } });
+    }
+
+    // ─ ARTIFACT_COLLECTOR: 3 artifacts across all rooms ─
+    const artifactCount = await prisma.artifact.count({
+      where: { room: { members: { some: { userId: uid } }, status: 'COMPLETED' } },
+    });
+    if (artifactCount >= 3) {
+      await awardBadge(uid, 'ARTIFACT_COLLECTOR', { metadata: { count: artifactCount } });
+    }
+
+    // ─ SOCIAL_BUTTERFLY: 10 unique teammates ─
+    const teammates = await prisma.roomMember.findMany({
       where: {
-        userId,
-        room: {
-          status: 'COMPLETED',
-        },
+        room: { status: { in: ['COMPLETED', 'IN_PROGRESS'] }, members: { some: { userId: uid } } },
       },
+      select: { userId: true },
     });
-    if (completedRooms === 1) {
-      await awardBadge(userId, 'FIRST_QUEST_COMPLETE', { roomId });
-    }
-
-    // TEAM_PLAYER - Completed a team decision room
-    if (room.quest.questType === 'DECISION_ROOM' && room.members.length >= 3) {
-      await awardBadge(userId, 'TEAM_PLAYER', { roomId });
-    }
-
-    // COLLABORATOR - Voted in all decisions
-    if (userVoteCount === decisionCount && decisionCount > 0) {
-      await awardBadge(userId, 'COLLABORATOR', {
-        roomId,
-        metadata: { decisionsParticipated: decisionCount },
-      });
-    }
-
-    // STORYTELLER - Thoughtful justifications (all votes ≥40 chars; attainable but meaningful)
-    const hasDetailedJustifications = userVotes.every(
-      (v) => v.justification && v.justification.length >= 40
-    );
-    if (hasDetailedJustifications && userVoteCount >= 3) {
-      await awardBadge(userId, 'STORYTELLER', {
-        roomId,
-        metadata: { justificationCount: userVoteCount },
-      });
-    }
-
-    // DECISION_MAKER - Committed to final decision
-    const finalCommit = room.commits.find((c) => c.decisionNumber === decisionCount);
-    if (finalCommit) {
-      await awardBadge(userId, 'DECISION_MAKER', {
-        roomId,
-        metadata: { finalDecision: finalCommit.committedOption },
-      });
-    }
-
-    // ARTIFACT_CREATOR - Room has artifact
-    const artifact = await prisma.artifact.findUnique({
-      where: { roomId },
-    });
-    if (artifact) {
-      await awardBadge(userId, 'ARTIFACT_CREATOR', { roomId });
-    }
-
-    // PERFECT_TEAM - All 3 members voted and committed
-    if (room.members.length === 3) {
-      const allVoted = room.members.every((m) =>
-        room.votes.some((v) => v.userId === m.userId)
-      );
-      const allCommitted = room.commits.length === decisionCount;
-      if (allVoted && allCommitted) {
-        await awardBadge(userId, 'PERFECT_TEAM', {
-          roomId,
-          metadata: { teamSize: 3 },
-        });
-      }
-    }
-
-    // CONSENSUS_BUILDER - Team reached unanimous votes on at least one decision
-    for (let i = 1; i <= decisionCount; i++) {
-      const decisionVotes = room.votes.filter((v) => v.decisionNumber === i);
-      if (decisionVotes.length >= 3) {
-        const uniqueOptions = new Set(decisionVotes.map((v) => v.optionKey));
-        if (uniqueOptions.size === 1) {
-          await awardBadge(userId, 'CONSENSUS_BUILDER', {
-            roomId,
-            metadata: { unanimousDecision: i },
-          });
-          break;
-        }
-      }
-    }
-
-    // DIVERSITY_CHAMPION - Teamed with people from different countries
-    const countries = new Set(room.members.map((m) => m.user.country));
-    if (countries.size >= 3) {
-      await awardBadge(userId, 'DIVERSITY_CHAMPION', {
-        roomId,
-        metadata: { uniqueCountries: Array.from(countries) },
-      });
+    const uniqueMates = new Set(teammates.map((t) => t.userId).filter((id) => id !== uid));
+    if (uniqueMates.size >= 10) {
+      await awardBadge(uid, 'SOCIAL_BUTTERFLY', { metadata: { count: uniqueMates.size } });
     }
   }
 
-  // Check global badges (not room-specific)
-  for (const member of room.members) {
-    await checkGlobalBadges(member.userId);
+  // ─ UNITED_FRONT: all players rolled 15+ on the same beat (awarded to everyone in the room) ─
+  for (const bk of beatKeys) {
+    const beat = state.beats[bk];
+    if (!beat?.rolls) continue;
+    const allHigh = playerIds.every((pid) => (beat.rolls[pid]?.value ?? 0) >= 15);
+    if (allHigh && playerIds.length >= 2) {
+      for (const uid of playerIds) {
+        await awardBadge(uid, 'UNITED_FRONT', { roomId, metadata: { beat: Number(bk) } });
+      }
+      break; // one beat is enough
+    }
   }
 }
 
-/**
- * Check and award global badges (not tied to specific rooms)
- */
-export async function checkGlobalBadges(userId: string): Promise<void> {
-  // QUEST_MASTER - Completed 5+ quests
-  const completedQuests = await prisma.roomMember.count({
-    where: {
-      userId,
-      room: {
-        status: 'COMPLETED',
-      },
-    },
-  });
-  if (completedQuests >= 5) {
-    await awardBadge(userId, 'QUEST_MASTER', {
-      metadata: { questsCompleted: completedQuests },
-    });
-  }
+// ── Queries ────────────────────────────────────────────────────────────────
 
-  // SOCIAL_CONNECTOR - Teamed with 10+ different people
-  const uniqueTeammates = await prisma.roomMember.findMany({
-    where: {
-      room: {
-        members: {
-          some: { userId },
-        },
-        status: { in: ['COMPLETED', 'IN_PROGRESS'] },
-      },
-    },
-    include: {
-      room: {
-        include: {
-          members: true,
-        },
-      },
-    },
-  });
-
-  const teammateIds = new Set<string>();
-  uniqueTeammates.forEach((membership) => {
-    membership.room.members.forEach((m) => {
-      if (m.userId !== userId) {
-        teammateIds.add(m.userId);
-      }
-    });
-  });
-
-  if (teammateIds.size >= 10) {
-    await awardBadge(userId, 'SOCIAL_CONNECTOR', {
-      metadata: { uniqueTeammates: teammateIds.size },
-    });
-  }
-}
-
-/** Journey order: 10 badges from easy → very hard for engagement curve */
-export const BADGE_JOURNEY_ORDER: BadgeType[] = [
-  'FIRST_QUEST_COMPLETE',
-  'TEAM_PLAYER',
-  'COLLABORATOR',
-  'DECISION_MAKER',
-  'ARTIFACT_CREATOR',
-  'STORYTELLER',
-  'PERFECT_TEAM',
-  'CONSENSUS_BUILDER',
-  'QUEST_MASTER',
-  'DIVERSITY_CHAMPION',
-];
-
-/**
- * Get badge definitions (names, copy, rarity)
- */
-export function getBadgeDefinition(badgeType: BadgeType) {
-  const definitions: Record<
-    BadgeType,
-    { name: string; description: string; icon: string; rarity: string }
-  > = {
-    FIRST_QUEST_COMPLETE: {
-      name: 'First Steps',
-      description: 'You completed your first quest and left with a real outcome.',
-      icon: '🎯',
-      rarity: 'common',
-    },
-    TEAM_PLAYER: {
-      name: 'Team Player',
-      description: 'You finished a full team decision room with others.',
-      icon: '🤝',
-      rarity: 'common',
-    },
-    COLLABORATOR: {
-      name: 'Collaborator',
-      description: 'You voted in every decision in a room—no sitting on the fence.',
-      icon: '💬',
-      rarity: 'common',
-    },
-    STORYTELLER: {
-      name: 'Storyteller',
-      description: 'You wrote thoughtful justifications (40+ chars) for every decision in a room.',
-      icon: '📖',
-      rarity: 'rare',
-    },
-    DECISION_MAKER: {
-      name: 'Decision Maker',
-      description: 'Your room committed to a final set of choices—you were part of it.',
-      icon: '⚡',
-      rarity: 'common',
-    },
-    ARTIFACT_CREATOR: {
-      name: 'Artifact Creator',
-      description: 'You helped create a decision map your team can keep and share.',
-      icon: '🗺️',
-      rarity: 'common',
-    },
-    QUEST_MASTER: {
-      name: 'Quest Master',
-      description: 'You completed 5 or more quests. You’re a core part of the event.',
-      icon: '🏆',
-      rarity: 'epic',
-    },
-    SOCIAL_CONNECTOR: {
-      name: 'Social Connector',
-      description: 'You’ve teamed with 10+ different people across rooms.',
-      icon: '🌐',
-      rarity: 'rare',
-    },
-    PERFECT_TEAM: {
-      name: 'Perfect Team',
-      description: 'Everyone in your room voted and committed—full participation.',
-      icon: '✨',
-      rarity: 'rare',
-    },
-    EARLY_BIRD: {
-      name: 'Early Bird',
-      description: 'You joined within the first hour of the event.',
-      icon: '🌅',
-      rarity: 'common',
-    },
-    NIGHT_OWL: {
-      name: 'Night Owl',
-      description: 'You were active during late hours.',
-      icon: '🦉',
-      rarity: 'common',
-    },
-    CONSENSUS_BUILDER: {
-      name: 'Consensus Builder',
-      description: 'Your team reached a unanimous vote on at least one decision.',
-      icon: '🎯',
-      rarity: 'rare',
-    },
-    DIVERSITY_CHAMPION: {
-      name: 'Diversity Champion',
-      description: 'You teamed with people from 3+ different countries in one room.',
-      icon: '🌍',
-      rarity: 'epic',
-    },
-  };
-
-  return definitions[badgeType];
-}
-
-/**
- * Get user's badges with details
- */
 export async function getUserBadges(userId: string) {
-  return await prisma.userBadge.findMany({
+  return prisma.userBadge.findMany({
     where: { userId },
-    include: {
-      badge: true,
-    },
-    orderBy: {
-      earnedAt: 'desc',
-    },
+    include: { badge: true },
+    orderBy: { earnedAt: 'desc' },
   });
 }
 
-/**
- * Get badge statistics for a user
- */
 export async function getBadgeStats(userId: string) {
   const badges = await getUserBadges(userId);
   const byRarity = badges.reduce(
     (acc, ub) => {
-      const rarity = ub.badge.rarity;
-      acc[rarity] = (acc[rarity] || 0) + 1;
+      const r = ub.badge.rarity;
+      acc[r] = (acc[r] || 0) + 1;
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, number>,
   );
-
-  return {
-    total: badges.length,
-    byRarity,
-    recent: badges.slice(0, 5),
-  };
+  return { total: badges.length, byRarity, recent: badges.slice(0, 5) };
 }
+
+// ── Progress hints ─────────────────────────────────────────────────────────
 
 export type ProgressHint = {
   badgeType: BadgeType;
@@ -400,146 +264,87 @@ export type ProgressHint = {
   icon: string;
   rarity: string;
   hint: string;
+  current: number;
+  target: number;
   percent: number;
 };
 
-/**
- * Progress toward journey badges the user doesn't have yet. For contextual UI ("you're close to Storyteller").
- */
 export async function getProgressTowardBadges(userId: string): Promise<ProgressHint[]> {
   const earned = await getUserBadges(userId);
   const earnedTypes = new Set(earned.map((ub) => ub.badge.badgeType));
-
   const hints: ProgressHint[] = [];
 
-  for (const badgeType of BADGE_JOURNEY_ORDER) {
-    if (earnedTypes.has(badgeType)) continue;
-    const def = getBadgeDefinition(badgeType);
+  const completedCount = await prisma.roomMember.count({
+    where: { userId, room: { status: 'COMPLETED' } },
+  });
 
-    switch (badgeType) {
-      case 'FIRST_QUEST_COMPLETE': {
-        const completed = await prisma.roomMember.count({
-          where: { userId, room: { status: 'COMPLETED' } },
-        });
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: 'Complete your first quest.',
-          percent: completed >= 1 ? 100 : 0,
-        });
+  for (const bt of BADGE_JOURNEY_ORDER) {
+    const def = getBadgeDefinition(bt);
+    const base = { badgeType: bt, name: def.name, description: def.description, icon: def.icon, rarity: def.rarity };
+
+    if (earnedTypes.has(bt)) {
+      hints.push({ ...base, hint: 'Earned!', current: 1, target: 1, percent: 100 });
+      continue;
+    }
+
+    switch (bt) {
+      case 'FIRST_CHAPTER':
+        hints.push({ ...base, hint: 'Complete your first story room.', current: completedCount, target: 1, percent: completedCount >= 1 ? 100 : 0 });
+        break;
+
+      case 'NATURAL_TWENTY':
+        hints.push({ ...base, hint: 'Roll a 20 on the d20. 5% chance per roll — keep playing!', current: 0, target: 1, percent: 0 });
+        break;
+
+      case 'FUMBLE':
+        hints.push({ ...base, hint: 'Roll a 1 on the d20. It happens to the best of us.', current: 0, target: 1, percent: 0 });
+        break;
+
+      case 'HOT_STREAK':
+        hints.push({ ...base, hint: 'Roll 15+ on every beat in a single room.', current: 0, target: 1, percent: 0 });
+        break;
+
+      case 'RISING_PHOENIX':
+        hints.push({ ...base, hint: 'Recover from a critical fail and lead your team to a success ending.', current: 0, target: 1, percent: 0 });
+        break;
+
+      case 'UNITED_FRONT':
+        hints.push({ ...base, hint: 'The whole team rolls 15+ on the same beat. Rare, but glorious.', current: 0, target: 1, percent: 0 });
+        break;
+
+      case 'SEASONED_ADVENTURER': {
+        const pct = Math.min(100, Math.round((completedCount / 5) * 100));
+        hints.push({ ...base, hint: `${completedCount}/5 rooms completed.`, current: completedCount, target: 5, percent: pct });
         break;
       }
-      case 'TEAM_PLAYER':
-      case 'COLLABORATOR':
-      case 'DECISION_MAKER':
-      case 'ARTIFACT_CREATOR':
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: 'Complete a full team quest and vote in every decision.',
-          percent: 0,
+
+      case 'SOCIAL_BUTTERFLY': {
+        const mates = await prisma.roomMember.findMany({
+          where: { room: { status: { in: ['COMPLETED', 'IN_PROGRESS'] }, members: { some: { userId } } } },
+          select: { userId: true },
         });
-        break;
-      case 'STORYTELLER': {
-        const rooms = await prisma.roomMember.findMany({
-          where: { userId, room: { status: 'COMPLETED' } },
-          include: { room: { include: { votes: true } } },
-        });
-        let bestProgress = 0;
-        for (const m of rooms) {
-          const myVotes = m.room.votes.filter((v) => v.userId === userId);
-          const withLength = myVotes.filter((v) => (v.justification?.length ?? 0) >= 40).length;
-          if (myVotes.length >= 3) {
-            const p = Math.round((100 * withLength) / 3);
-            if (p > bestProgress) bestProgress = p;
-          }
-        }
-        const need = bestProgress >= 100 ? 0 : 3 - Math.floor((bestProgress / 100) * 3);
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: bestProgress >= 100
-            ? 'Earned in a past room.'
-            : need > 0
-              ? `In one room, write ${need} more justification${need !== 1 ? 's' : ''} with 40+ characters.`
-              : 'Write thoughtful justifications (40+ chars) for all 3 decisions in one room.',
-          percent: bestProgress,
-        });
+        const unique = new Set(mates.map((m) => m.userId).filter((id) => id !== userId));
+        const pct = Math.min(100, Math.round((unique.size / 10) * 100));
+        hints.push({ ...base, hint: `${unique.size}/10 unique teammates.`, current: unique.size, target: 10, percent: pct });
         break;
       }
-      case 'PERFECT_TEAM':
-      case 'CONSENSUS_BUILDER':
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: 'Complete a room where everyone votes and commits, or where the team agrees unanimously on one decision.',
-          percent: 0,
+
+      case 'ARTIFACT_COLLECTOR': {
+        const count = await prisma.artifact.count({
+          where: { room: { members: { some: { userId } }, status: 'COMPLETED' } },
         });
-        break;
-      case 'QUEST_MASTER': {
-        const completed = await prisma.roomMember.count({
-          where: { userId, room: { status: 'COMPLETED' } },
-        });
-        const percent = Math.min(100, Math.round((100 * completed) / 5));
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: completed >= 5 ? 'You have 5+ quests.' : `${completed}/5 quests completed. Complete ${5 - completed} more.`,
-          percent: percent,
-        });
+        const pct = Math.min(100, Math.round((count / 3) * 100));
+        hints.push({ ...base, hint: `${count}/3 story artifacts generated.`, current: count, target: 3, percent: pct });
         break;
       }
-      case 'DIVERSITY_CHAMPION': {
-        const rooms = await prisma.roomMember.findMany({
-          where: { userId, room: { status: 'COMPLETED' } },
-          include: { room: { include: { members: { include: { user: { select: { country: true } } } } } } },
-        });
-        let maxCountries = 0;
-        for (const m of rooms) {
-          const countries = new Set(m.room.members.map((x) => x.user.country));
-          if (countries.size > maxCountries) maxCountries = countries.size;
-        }
-        const percent = Math.min(100, Math.round((100 * maxCountries) / 3));
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: maxCountries >= 3 ? 'Earned.' : `Team with ${maxCountries}/3 different countries in one room. Join diverse rooms.`,
-          percent: percent,
-        });
-        break;
-      }
-      default: {
-        hints.push({
-          badgeType,
-          name: def.name,
-          description: def.description,
-          icon: def.icon,
-          rarity: def.rarity,
-          hint: def.description,
-          percent: 0,
-        });
+
+      case 'LEGENDARY_CAMPAIGN': {
+        const pct = Math.min(100, Math.round((completedCount / 20) * 100));
+        hints.push({ ...base, hint: `${completedCount}/20 rooms completed.`, current: completedCount, target: 20, percent: pct });
         break;
       }
     }
   }
 
-  return hints.slice(0, 5);
+  return hints;
 }

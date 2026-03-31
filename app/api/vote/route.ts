@@ -125,8 +125,6 @@ export async function POST(request: NextRequest) {
           where: { id: roomId },
           data: { status: 'COMPLETED', completedAt: now, lastActivityAt: now },
         });
-        const { checkRoomCompletionBadges } = await import('@/lib/badges');
-        checkRoomCompletionBadges(roomId).catch((err) => console.error('Badges check error:', err));
         const { generateArtifact } = await import('@/lib/artifact');
         try {
           await generateArtifact(roomId);

@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { generateArtifact } from '@/lib/artifact';
 import { isStoryStateColumnMissing, normalizeStoryState } from '@/lib/story-runtime';
 import { generateFinalSynthesisWithFallback } from '@/lib/story-synthesis';
+import { checkRoomCompletionBadges } from '@/lib/badges';
 
 /**
  * POST /api/room/[id]/complete
@@ -140,6 +141,10 @@ export async function POST(
             console.error('Artifact generation failed during completion:', generationError);
           }
         }
+        // Award d20-gameplay badges (fire-and-forget)
+        checkRoomCompletionBadges(roomId).catch((err) =>
+          console.error('Badge check error:', err)
+        );
       } else {
         console.error('Complete: room disappeared during synthesis step', roomId);
       }

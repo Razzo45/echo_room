@@ -7,17 +7,16 @@ async function main() {
   console.log('🌱 Seeding badge definitions...');
 
   const badgeTypes = [
-    'FIRST_QUEST_COMPLETE',
-    'TEAM_PLAYER',
-    'COLLABORATOR',
-    'STORYTELLER',
-    'DECISION_MAKER',
-    'ARTIFACT_CREATOR',
-    'QUEST_MASTER',
-    'SOCIAL_CONNECTOR',
-    'PERFECT_TEAM',
-    'CONSENSUS_BUILDER',
-    'DIVERSITY_CHAMPION',
+    'FIRST_CHAPTER',
+    'NATURAL_TWENTY',
+    'FUMBLE',
+    'HOT_STREAK',
+    'RISING_PHOENIX',
+    'UNITED_FRONT',
+    'SEASONED_ADVENTURER',
+    'SOCIAL_BUTTERFLY',
+    'ARTIFACT_COLLECTOR',
+    'LEGENDARY_CAMPAIGN',
   ] as const;
 
   for (const badgeType of badgeTypes) {

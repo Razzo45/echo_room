@@ -86,12 +86,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Award badges for room completion (async, don't block response)
-      import('@/lib/badges').then(({ checkRoomCompletionBadges }) => {
-        checkRoomCompletionBadges(roomId).catch((err) => {
-          console.error('Error checking badges:', err);
-        });
-      });
     } else {
       // Move to next decision
       await prisma.room.update({
