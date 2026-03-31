@@ -144,26 +144,26 @@ export default function AdminRoomsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-admin-bg">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500 mx-auto mb-4" />
-          <p className="text-gray-400">Loading rooms...</p>
+          <p className="text-zinc-400">Loading rooms...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div className="min-h-screen bg-admin-bg text-admin-text">
+      <header className="sticky top-0 z-20 bg-admin-surface border-b border-admin-border shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+              <Link href="/admin" className="text-cyan-400 hover:text-cyan-300 font-semibold text-sm mb-2 inline-block">
                 ← Back to Dashboard
               </Link>
-              <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Rooms Management</h1>
-              <p className="text-sm text-gray-400 mt-0.5">{rooms.length} total rooms · Inactive rooms auto-close after 1 week</p>
+              <h1 className="text-2xl font-bold tracking-tight mt-2 font-display">Rooms Management</h1>
+              <p className="text-sm text-zinc-400 mt-0.5">{rooms.length} total rooms · Inactive rooms auto-close after 1 week</p>
             </div>
             <button
               type="button"
@@ -179,7 +179,7 @@ export default function AdminRoomsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         <div className="space-y-4">
           {rooms.map((room) => (
-            <div key={room.id} className="bg-gray-800 rounded-2xl border border-gray-700 p-6 shadow-sm">
+            <div key={room.id} className="bg-admin-surface rounded-2xl border border-admin-border p-6 shadow-sm">
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
@@ -200,7 +200,7 @@ export default function AdminRoomsPage() {
                       {room.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
+                  <div className="flex items-center gap-4 text-sm text-zinc-400">
                     <span className="font-mono">{room.roomCode}</span>
                     <span>•</span>
                     <span>{room.memberCount} members</span>
@@ -232,7 +232,7 @@ export default function AdminRoomsPage() {
                   {formatTimer(room) && (
                     <p className="text-xs text-amber-400 mt-1">{formatTimer(room)}</p>
                   )}
-                  <div className="mt-2 text-xs text-gray-300 grid grid-cols-1 md:grid-cols-2 gap-1">
+                  <div className="mt-2 text-xs text-zinc-300 grid grid-cols-1 md:grid-cols-2 gap-1">
                     <p>Phase: <span className="font-semibold text-white">{room.storyState?.phase || 'n/a'}</span></p>
                     <p>Current beat: <span className="font-semibold text-white">{room.storyState?.currentBeat ?? 'n/a'}</span></p>
                     <p>
@@ -330,12 +330,12 @@ export default function AdminRoomsPage() {
         {rooms.some((r) => r.status === 'CLOSED' && r.hasArtifact) && (
           <section className="mt-10">
             <h2 className="text-xl font-bold text-white mb-4">Archived artifacts</h2>
-            <p className="text-sm text-gray-400 mb-4">Closed rooms with artifacts — quick access</p>
+            <p className="text-sm text-zinc-400 mb-4">Closed rooms with artifacts — quick access</p>
             <div className="space-y-3">
               {rooms
                 .filter((r) => r.status === 'CLOSED' && r.hasArtifact && r.artifactId)
                 .map((room) => (
-                  <div key={room.id} className="bg-gray-800 rounded-2xl border border-gray-700 p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div key={room.id} className="bg-admin-surface rounded-2xl border border-admin-border p-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <span className="font-mono text-white">{room.roomCode}</span>
                       <span className="text-gray-400 ml-2">· {room.questName}</span>

@@ -124,26 +124,26 @@ export default function AdminEventsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-admin-bg">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500 mx-auto mb-4" />
-          <p className="text-gray-400">Loading events...</p>
+          <p className="text-zinc-400">Loading events...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div className="min-h-screen bg-admin-bg text-admin-text">
+      <header className="sticky top-0 z-20 bg-admin-surface border-b border-admin-border shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div>
-            <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+            <Link href="/admin" className="text-cyan-400 hover:text-cyan-300 font-semibold text-sm mb-2 inline-block">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Events Management</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{events.length} total events</p>
-            <Link href="/admin/retention" className="text-sm text-primary-400 hover:text-primary-300 mt-2 inline-block font-medium">
+              <h1 className="text-2xl font-bold tracking-tight mt-2 font-display">Events Management</h1>
+              <p className="text-sm text-zinc-400 mt-0.5">{events.length} total events</p>
+            <Link href="/admin/retention" className="text-sm text-cyan-400 hover:text-cyan-300 mt-2 inline-block font-medium">
               Data lifecycle & retention →
             </Link>
           </div>
@@ -152,15 +152,15 @@ export default function AdminEventsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         {events.length === 0 ? (
-          <div className="bg-gray-800 rounded-3xl border border-gray-700 p-12 text-center shadow-sm">
-            <p className="text-gray-400">No events found</p>
+          <div className="bg-admin-surface rounded-3xl border border-admin-border p-12 text-center shadow-sm">
+            <p className="text-zinc-400">No events found</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
               <div
                 key={event.id}
-                className="bg-gray-800 rounded-2xl border border-gray-700 p-6 hover:border-primary-500/40 transition shadow-sm"
+                className="bg-admin-surface rounded-2xl border border-admin-border p-6 hover:border-cyan-500/40 transition shadow-sm"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">

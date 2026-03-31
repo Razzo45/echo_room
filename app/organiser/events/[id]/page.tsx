@@ -478,17 +478,17 @@ export default function EventDetailPage() {
 
   if (loading || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-org-bg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading event...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-violet-300/20 border-t-violet-300 mx-auto mb-4"></div>
+          <p className="text-violet-100/75">Loading event...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-org-bg text-org-text">
       {event.debugMode && (
         <div className="sticky top-0 left-0 right-0 z-50 flex items-center justify-center py-1.5 px-4 text-sm font-medium bg-amber-500 text-black" role="status" aria-label="Debug mode">
           Debug mode
@@ -510,16 +510,16 @@ export default function EventDetailPage() {
       {/* Re-generate confirmation */}
       {showGenerateConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="card-elevated max-w-md w-full p-6 rounded-3xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Re-generate rooms?</h3>
-            <p className="text-gray-600 text-sm mb-6">
+          <div className="max-w-md w-full p-6 rounded-3xl border border-org-border bg-org-surface shadow-soft">
+            <h3 className="text-lg font-semibold mb-3 font-display">Re-generate rooms?</h3>
+            <p className="text-violet-100/75 text-sm mb-6">
               Are you sure you want to re-generate new rooms? All content generated up until now will be lost and replaced with the newest version. If you want to keep it, you can always modify the content manually on a per room/quest basis.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 type="button"
                 onClick={() => setShowGenerateConfirm(false)}
-                className="btn btn-secondary"
+                className="btn border border-org-border bg-transparent text-org-text hover:bg-white/5"
               >
                 No – go back to page and no generation
               </button>
@@ -537,10 +537,10 @@ export default function EventDetailPage() {
       {/* Generating overlay – locks panel until draft is ready */}
       {generating && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
-          <div className="card-elevated max-w-md w-full p-8 text-center rounded-3xl">
-            <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Generating rooms</h3>
-            <p className="text-gray-600 text-sm mb-4">
+          <div className="max-w-md w-full p-8 text-center rounded-3xl border border-org-border bg-org-surface shadow-soft">
+            <div className="animate-spin rounded-full h-12 w-12 border-2 border-violet-300/20 border-t-violet-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2 font-display">Generating rooms</h3>
+            <p className="text-violet-100/75 text-sm mb-4">
               This may take a moment. When ready you can review and edit the AI content from this panel (AI content modification).
             </p>
             {generationStatus?.error && (
@@ -550,18 +550,18 @@ export default function EventDetailPage() {
         </div>
       )}
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
+      <div className="sticky top-0 z-10 bg-org-surface/95 border-b border-org-border backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/organiser/dashboard"
-              className="text-primary-600 hover:text-primary-700 font-semibold text-sm shrink-0"
+              className="text-violet-300 hover:text-violet-200 font-semibold text-sm shrink-0"
             >
               ← Dashboard
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{event.name}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold truncate font-display">{event.name}</h1>
                 <div
                   className="w-4 h-4 rounded-full shrink-0"
                   style={{ backgroundColor: event.brandColor }}
@@ -569,7 +569,7 @@ export default function EventDetailPage() {
                 />
               </div>
               {event.description && (
-                <p className="text-sm text-gray-600 mt-0.5 line-clamp-1">{event.description}</p>
+                <p className="text-sm text-violet-100/70 mt-0.5 line-clamp-1">{event.description}</p>
               )}
             </div>
           </div>
@@ -578,7 +578,7 @@ export default function EventDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         {/* AI Generation Section */}
-        <div className="card-elevated mb-6">
+        <div className="mb-6 rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Room Generation</h3>
           
           <div className="space-y-4">
@@ -678,7 +678,7 @@ export default function EventDetailPage() {
           {/* Left Column - Stats */}
           <div className="lg:col-span-1 space-y-6">
             {/* Quick Stats */}
-            <div className="card-elevated">
+            <div className="rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -703,7 +703,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Event Info */}
-            <div className="card-elevated">
+            <div className="rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h3>
               <div className="space-y-3 text-sm">
                 {event.startDate && (
@@ -735,7 +735,7 @@ export default function EventDetailPage() {
           {/* Right Column - Event Codes & Quests */}
           <div className="lg:col-span-2 space-y-6">
             {/* Event Codes */}
-            <div className="card-elevated">
+            <div className="rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Event Codes</h3>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 gap-3">
@@ -857,7 +857,7 @@ export default function EventDetailPage() {
             </div>
 
             {/* Quests & Script Editing */}
-            <div className="card-elevated">
+            <div className="rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Quests & Scripts</h3>
               <p className="text-sm text-gray-600 mb-4">Manage and remove generated quests by district. Deleting a quest is permanent.</p>
               {event.regions.length === 0 ? (

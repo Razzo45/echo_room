@@ -24,11 +24,11 @@ export function FinalPanel({
   const allFinalTapped = players.length > 0 && players.every((p) => p.completedAt);
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-      <h1 className="text-lg font-bold text-gray-900 mb-3">Story complete</h1>
+    <div className="bg-white rounded-3xl border border-amber-100 shadow p-5">
+      <h1 className="text-lg font-bold text-gray-900 mb-3 font-display">Story complete</h1>
       {finalSynthesisReady && (
-        <div className="p-4 rounded-xl bg-primary-50 border border-primary-100 mb-4">
-          <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 mb-4">
+          <p className="text-sm text-stone-800 whitespace-pre-wrap leading-relaxed">
             {storyState.finalSynthesis?.text}
           </p>
         </div>
@@ -42,7 +42,7 @@ export function FinalPanel({
         </div>
       )}
       {myFinalTapped ? (
-        <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-700">
+        <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/50 p-4 text-sm text-stone-700">
           {allFinalTapped ? (
             <p>Everyone has finished. Handing off to the artifact…</p>
           ) : (

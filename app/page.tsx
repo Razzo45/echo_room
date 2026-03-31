@@ -58,7 +58,7 @@ export default function LandingPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary-600">
+      <div className="min-h-screen flex items-center justify-center bg-[#312e81]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-white/30 border-t-white mx-auto mb-4" />
           <p className="text-white/90 text-sm">Checking session…</p>
@@ -68,22 +68,22 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-[var(--quest-cream)]">
       {/* Event-app style hero: full-bleed gradient */}
       <div className="hero-event">
-        <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-4">
+        <div className="w-16 h-16 rounded-2xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center mb-4">
           <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547z" />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Echo Room</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight mb-1 font-display">Echo Room</h1>
         <p className="text-white/90 text-base font-medium">AI Powered Decision Environment</p>
         <p className="text-white/70 text-sm mt-2 max-w-[260px]">You don&apos;t leave with slides. You leave with a decision map.</p>
       </div>
 
       {/* Content: single card, code + CTA (Figma event-entry pattern) */}
       <div className="flex-1 px-4 -mt-6 relative z-10 max-w-md mx-auto w-full">
-        <div className="card-elevated">
+        <div className="card-elevated border border-amber-100/70">
           <form onSubmit={handleSubmit} className="space-y-4">
             <label htmlFor="event-code" className="label text-center block">Enter event code</label>
             <input
@@ -92,7 +92,7 @@ export default function LandingPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="e.g. SMARTCITY26"
-              className="input text-center text-xl font-mono tracking-[0.2em] uppercase"
+              className="input text-center text-xl font-mono tracking-[0.2em] uppercase shadow-sm"
               required
               maxLength={20}
               autoFocus
@@ -114,7 +114,7 @@ export default function LandingPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
               />
               <span className="text-sm text-gray-500">Remember me (30 days)</span>
             </label>

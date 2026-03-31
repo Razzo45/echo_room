@@ -92,7 +92,7 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600" />
       </div>
     );
   }
@@ -132,8 +132,8 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-lg font-bold text-gray-900">{earnedCount} / {total} Badges</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-lg font-bold text-gray-900 font-display">{earnedCount} / {total} Badges</p>
+          <p className="text-xs text-stone-500">
             {earnedCount === 0
               ? 'Complete story rooms to start earning badges.'
               : earnedCount === total
@@ -148,7 +148,7 @@ export function BadgeDisplay({ userId, compact = false }: { userId?: string; com
                 <div className={`text-lg font-bold ${rarityColors[rarity].split(' ')[2]}`}>
                   {stats.byRarity[rarity]}
                 </div>
-                <div className="text-[10px] text-gray-500 capitalize">{rarity}</div>
+                <div className="text-[10px] text-stone-500 capitalize">{rarity}</div>
               </div>
             ))}
           </div>

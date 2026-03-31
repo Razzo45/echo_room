@@ -139,20 +139,20 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div className="min-h-screen bg-admin-bg text-admin-text">
+      <header className="sticky top-0 z-20 bg-admin-surface border-b border-admin-border shadow-lg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 safe-bottom">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Admin dashboard</h1>
-              <p className="text-sm text-gray-400 mt-0.5">
-                {currentUser && <>Logged in as <span className="font-semibold text-white">{currentUser.name}</span> ({currentUser.role})</>}
+              <h1 className="text-2xl font-bold tracking-tight font-display">Admin dashboard</h1>
+              <p className="text-sm text-zinc-400 mt-0.5">
+                {currentUser && <>Logged in as <span className="font-semibold text-admin-text">{currentUser.name}</span> ({currentUser.role})</>}
               </p>
             </div>
             <button
               type="button"
               onClick={handleLogout}
-              className="btn min-h-[48px] bg-gray-700 text-white border border-gray-600 hover:bg-gray-600 rounded-2xl font-semibold"
+              className="btn min-h-[48px] bg-zinc-800 text-admin-text border border-admin-border hover:bg-zinc-700 rounded-2xl font-semibold"
             >
               Logout
             </button>
@@ -164,22 +164,22 @@ export default function AdminDashboard() {
       {stats && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-sm">
-              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Events</div>
-              <div className="text-2xl font-bold text-white">{stats.events}</div>
+            <div className="bg-admin-surface rounded-2xl p-5 border border-admin-border shadow-sm">
+              <div className="text-zinc-400 text-xs font-medium uppercase tracking-wide mb-1">Events</div>
+              <div className="text-2xl font-bold text-admin-text">{stats.events}</div>
             </div>
-            <div className="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-sm">
-              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Organisers</div>
-              <div className="text-2xl font-bold text-white">{stats.organisers}</div>
+            <div className="bg-admin-surface rounded-2xl p-5 border border-admin-border shadow-sm">
+              <div className="text-zinc-400 text-xs font-medium uppercase tracking-wide mb-1">Organisers</div>
+              <div className="text-2xl font-bold text-admin-text">{stats.organisers}</div>
             </div>
-            <div className="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-sm">
-              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Participants</div>
-              <div className="text-2xl font-bold text-white">{stats.participants}</div>
+            <div className="bg-admin-surface rounded-2xl p-5 border border-admin-border shadow-sm">
+              <div className="text-zinc-400 text-xs font-medium uppercase tracking-wide mb-1">Participants</div>
+              <div className="text-2xl font-bold text-admin-text">{stats.participants}</div>
             </div>
-            <div className="bg-gray-800 rounded-2xl p-5 border border-gray-700 shadow-sm">
-              <div className="text-gray-400 text-xs font-medium uppercase tracking-wide mb-1">Rooms</div>
-              <div className="text-2xl font-bold text-white">{stats.rooms}</div>
-              {stats.activeRooms > 0 && <div className="text-sm text-primary-400 mt-1">{stats.activeRooms} active</div>}
+            <div className="bg-admin-surface rounded-2xl p-5 border border-admin-border shadow-sm">
+              <div className="text-zinc-400 text-xs font-medium uppercase tracking-wide mb-1">Rooms</div>
+              <div className="text-2xl font-bold text-admin-text">{stats.rooms}</div>
+              {stats.activeRooms > 0 && <div className="text-sm text-cyan-400 mt-1">{stats.activeRooms} active</div>}
             </div>
           </div>
         </div>
@@ -192,19 +192,19 @@ export default function AdminDashboard() {
             <Link
               key={section.href}
               href={section.href}
-              className="block bg-gray-800 rounded-3xl border border-gray-700 p-6 hover:border-primary-500/50 hover:shadow-lg transition-all group active:scale-[0.99]"
+              className="block bg-admin-surface rounded-3xl border border-admin-border p-6 hover:border-cyan-500/50 hover:shadow-[0_0_12px_rgba(6,182,212,0.18)] transition-all group active:scale-[0.99]"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="text-gray-400 group-hover:text-primary-400 transition">{section.icon}</div>
+                <div className="text-zinc-400 group-hover:text-cyan-400 transition">{section.icon}</div>
                 {section.count !== undefined && (
-                  <span className="bg-gray-700 text-white text-lg font-bold px-3 py-1 rounded-xl">{section.count}</span>
+                  <span className="bg-zinc-800 text-admin-text text-lg font-bold px-3 py-1 rounded-xl">{section.count}</span>
                 )}
                 {section.badge !== undefined && section.badge > 0 && (
-                  <span className="bg-primary-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full">{section.badge} active</span>
+                  <span className="bg-cyan-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full">{section.badge} active</span>
                 )}
               </div>
-              <h3 className="text-lg font-bold text-white mb-1">{section.title}</h3>
-              <p className="text-gray-400 text-sm">{section.description}</p>
+              <h3 className="text-lg font-bold text-admin-text mb-1 font-display">{section.title}</h3>
+              <p className="text-zinc-400 text-sm">{section.description}</p>
             </Link>
           ))}
         </div>

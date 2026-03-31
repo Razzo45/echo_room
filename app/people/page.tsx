@@ -72,9 +72,9 @@ export default function PeoplePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading…</p>
         </div>
       </div>
@@ -82,21 +82,21 @@ export default function PeoplePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-        <Link href="/world" className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center gap-2">
+    <div className="min-h-screen bg-[var(--quest-cream)] pb-8">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center gap-3">
+        <Link href="/world" className="p-2 -ml-2 rounded-xl text-amber-700 hover:bg-amber-50 flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           <span className="font-medium text-sm">World</span>
         </Link>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">People</h1>
+        <h1 className="text-lg font-bold text-gray-900 flex-1 font-display">People</h1>
       </div>
 
       <main className="max-w-lg mx-auto px-4 py-4">
-        <p className="text-sm text-gray-500 mb-3">Find participants who opted into the directory.</p>
+        <p className="text-sm text-stone-500 mb-3">Find participants who opted into the directory.</p>
         {levelLabel && (
-          <span className="inline-flex items-center mb-3 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+          <span className="inline-flex items-center mb-3 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
             Level: {levelLabel}
           </span>
         )}
@@ -107,9 +107,9 @@ export default function PeoplePage() {
           </div>
         )}
         {neighbours.length > 0 && (
-          <div className="mb-4 p-3 rounded-2xl bg-primary-50 border border-primary-200">
-            <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Decision neighbours</p>
-            <p className="text-sm text-primary-800">
+          <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Decision neighbours</p>
+            <p className="text-sm text-amber-900">
               {neighbours.slice(0, 3).map((n, i) => (
                 <span key={i}>{n.name} ({n.agreementPercent}%){i < Math.min(2, neighbours.length - 1) ? ', ' : ''}</span>
               ))}
@@ -130,11 +130,11 @@ export default function PeoplePage() {
         </form>
 
         {people.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 text-center">
-            <p className="text-gray-500">
+          <div className="bg-white rounded-3xl border border-amber-100 p-8 text-center">
+            <p className="text-stone-500">
               {search ? 'No matches.' : 'No one in the directory yet.'}
             </p>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-stone-400 mt-1">
               {search ? 'Try another search.' : 'Opt in from your profile.'}
             </p>
           </div>
@@ -142,14 +142,14 @@ export default function PeoplePage() {
           <ul className="space-y-3">
             {people.map((person) => (
               <li key={person.id}>
-                <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-4 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-lg shrink-0">
+                <div className="bg-white rounded-3xl shadow-lg border border-amber-100 p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg shrink-0">
                     {person.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-gray-900 truncate">{person.name}</p>
-                    {person.headline && <p className="text-sm text-gray-600 line-clamp-1">{person.headline}</p>}
-                    <p className="text-xs text-gray-500">{person.role} at {person.organisation}</p>
+                    <p className="font-bold text-gray-900 truncate font-display">{person.name}</p>
+                    {person.headline && <p className="text-sm text-stone-600 line-clamp-1">{person.headline}</p>}
+                    <p className="text-xs text-stone-500">{person.role} at {person.organisation}</p>
                   </div>
                   {person.linkedinUrl && (
                     <a
@@ -168,8 +168,8 @@ export default function PeoplePage() {
           </ul>
         )}
 
-        <p className="text-center text-sm text-gray-500 mt-4">
-          <Link href="/profile" className="text-primary-600 font-medium">Profile</Link> to show or hide yourself here.
+        <p className="text-center text-sm text-stone-500 mt-4">
+          <Link href="/profile" className="text-amber-700 font-medium">Profile</Link> to show or hide yourself here.
         </p>
       </main>
     </div>

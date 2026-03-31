@@ -98,16 +98,16 @@ export default function AdminOrganisersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div className="min-h-screen bg-admin-bg text-admin-text">
+      <header className="sticky top-0 z-20 bg-admin-surface border-b border-admin-border shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+              <Link href="/admin" className="text-cyan-400 hover:text-cyan-300 font-semibold text-sm mb-2 inline-block">
                 ← Back to Dashboard
               </Link>
-              <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Organisers Management</h1>
-              <p className="text-sm text-gray-400 mt-0.5">{organisers.length} total organisers</p>
+              <h1 className="text-2xl font-bold tracking-tight mt-2 font-display">Organisers Management</h1>
+              <p className="text-sm text-zinc-400 mt-0.5">{organisers.length} total organisers</p>
             </div>
             <button
               type="button"
@@ -121,7 +121,7 @@ export default function AdminOrganisersPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
-        <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-sm">
+        <div className="bg-admin-surface rounded-3xl border border-admin-border overflow-hidden shadow-sm">
           <table className="w-full">
             <thead className="bg-gray-700">
               <tr>

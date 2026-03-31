@@ -115,9 +115,9 @@ export default function RoomLobbyPage() {
 
   if (loading || !room) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading room…</p>
         </div>
       </div>
@@ -128,28 +128,28 @@ export default function RoomLobbyPage() {
   const emptySlots = Math.max(0, maxPlayers - room.members.length);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen bg-[var(--quest-cream)] pb-8">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center gap-3">
         <button
           type="button"
           onClick={() => router.push('/world')}
-          className="p-2 -ml-2 rounded-xl text-gray-600 hover:bg-gray-100 flex items-center"
+          className="p-2 -ml-2 rounded-xl text-stone-600 hover:bg-stone-100 flex items-center"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4">Room</h1>
+        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4 font-display">Room</h1>
       </div>
 
       <main className="max-w-lg mx-auto px-4 pt-4">
-        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="bg-primary-600 px-4 py-6 text-center">
-            <h2 className="text-xl font-bold text-white mb-1">{room.questName}</h2>
+        <div className="bg-white rounded-3xl shadow-lg border border-amber-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-700 to-indigo-800 px-4 py-6 text-center">
+            <h2 className="text-xl font-bold text-white mb-1 font-display">{room.questName}</h2>
             <p className="text-white/80 text-sm">{room.questDescription}</p>
           </div>
           <div className="p-4">
-            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide text-center mb-1">Share this code</p>
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide text-center mb-1">Share this code</p>
             <p className="text-3xl font-mono font-bold text-gray-900 text-center tracking-[0.25em] py-3">{room.roomCode}</p>
 
             <div className="flex items-center justify-between mt-4 mb-2">
@@ -159,7 +159,7 @@ export default function RoomLobbyPage() {
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1">
               {room.members.map((member) => (
                 <div key={member.id} className="shrink-0 flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
+                  <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
                     {member.name.charAt(0).toUpperCase()}
                   </div>
                   <span className="text-xs font-medium text-gray-700 truncate max-w-[72px]">{member.name}</span>
@@ -167,19 +167,19 @@ export default function RoomLobbyPage() {
               ))}
               {[...Array(emptySlots)].map((_, i) => (
                 <div key={`empty-${i}`} className="shrink-0 flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="w-12 h-12 rounded-full bg-amber-100/70 animate-pulse" />
                   <span className="text-xs text-gray-400">—</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 p-4 rounded-2xl bg-primary-50 border border-primary-100">
-              <p className="text-sm text-primary-800">
+            <div className="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+              <p className="text-sm text-amber-900">
                 Quest starts when {room.minPlayersToStart}+ have joined, then runs ready check, five blind-input beats with roll reveals, and a final synthesis.
               </p>
             </div>
           {pushSupported && (
-            <div className="mt-3 p-3 rounded-2xl bg-white border border-dashed border-primary-200">
+            <div className="mt-3 p-3 rounded-2xl bg-white border border-dashed border-amber-200">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-gray-800">
@@ -193,7 +193,7 @@ export default function RoomLobbyPage() {
                 <button
                   type="button"
                   onClick={enablePushNotifications}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-500 text-primary-600 hover:bg-primary-50 disabled:opacity-60"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold border border-amber-500 text-amber-700 hover:bg-amber-50 disabled:opacity-60"
                   disabled={pushEnabled}
                 >
                   {pushEnabled ? 'Enabled' : 'Enable'}

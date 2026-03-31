@@ -120,7 +120,7 @@ export function D20Die({ value, rolling, band, onRollVisualComplete }: Props) {
         {settled && value != null && (
           <div className="text-center pb-4 animate-d20-fade-in">
             <p
-              className="text-3xl font-black text-white tabular-nums"
+              className="text-3xl font-black text-white tabular-nums font-mono"
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
             >
               {value}
@@ -176,7 +176,7 @@ export function D20Die({ value, rolling, band, onRollVisualComplete }: Props) {
             <line x1="128" y1="49" x2="23" y2="128" stroke="rgba(120,53,15,0.15)" strokeWidth="0.75" />
           </svg>
           <span
-            className="absolute inset-0 flex items-center justify-center text-4xl font-black tabular-nums text-white z-10"
+            className="absolute inset-0 flex items-center justify-center text-4xl font-black tabular-nums text-white z-10 font-mono"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)', paddingBottom: '0.15em' }}
           >
             {display}
@@ -184,7 +184,7 @@ export function D20Die({ value, rolling, band, onRollVisualComplete }: Props) {
         </div>
         {isFallbackSettled && (
           <div className="mt-4 text-center animate-d20-fade-in">
-            <p className="text-3xl font-black text-white tabular-nums" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
+            <p className="text-3xl font-black text-white tabular-nums font-mono" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}>
               {value}
             </p>
             {band && (

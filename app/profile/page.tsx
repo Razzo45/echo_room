@@ -131,33 +131,33 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-        <Link href="/world" className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center">
+    <div className="min-h-screen bg-[var(--quest-cream)] pb-8">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center gap-3">
+        <Link href="/world" className="p-2 -ml-2 rounded-xl text-amber-700 hover:bg-amber-50 flex items-center">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">
+        <h1 className="text-lg font-bold text-gray-900 flex-1 font-display">
           {isEditing ? 'Edit profile' : 'Create profile'}
         </h1>
       </div>
       <div className="max-w-lg mx-auto px-4 pt-4">
-        <p className="text-gray-500 text-sm mb-4">
+        <p className="text-stone-500 text-sm mb-4">
             {isEditing ? 'Update your details anytime.' : 'Tell us about yourself to get started.'}
         </p>
         {isEditing && profileUpdatedAt && (
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-stone-500">
               Last updated: {new Date(profileUpdatedAt).toLocaleString()}
             </p>
           )}
         {isEditing && levelLabel && (
-          <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+          <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
             Level: {levelLabel}
           </span>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 space-y-5">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-lg border border-amber-100 p-5 space-y-5">
           {saveSuccess && (
             <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 font-medium">
               Profile updated successfully.
@@ -179,33 +179,33 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 -mt-2">
-            When you turn on <span className="font-medium text-gray-700">Show me in the People directory</span>, your name, organisation, role, headline and LinkedIn (if provided) are visible to other participants.
+          <p className="text-xs text-stone-500 -mt-2">
+            When you turn on <span className="font-medium text-stone-700">Show me in the People directory</span>, your name, organisation, role, headline and LinkedIn (if provided) are visible to other participants.
           </p>
 
           <div>
             <label className="label">Country *</label>
             <input type="text" name="country" value={formData.country} onChange={handleChange} className="input" required placeholder="Where are you based?" />
-            <p className="mt-1.5 text-xs text-gray-500">Used for organiser insights only; not shown in the People directory.</p>
+            <p className="mt-1.5 text-xs text-stone-500">Used for organiser insights only; not shown in the People directory.</p>
           </div>
 
           <div>
             <label className="label">One skill *</label>
             <input type="text" name="skill" value={formData.skill} onChange={handleChange} className="input" required placeholder="A key skill you bring" />
-            <p className="mt-1.5 text-xs text-gray-500">Used to understand team composition; not shown in the People directory.</p>
+            <p className="mt-1.5 text-xs text-stone-500">Used to understand team composition; not shown in the People directory.</p>
           </div>
 
           <div>
             <label className="label">One curiosity *</label>
             <textarea name="curiosity" value={formData.curiosity} onChange={handleChange} className="input min-h-[88px]" required rows={3} maxLength={200} placeholder="What are you most curious about in smart cities or AI? (max 200 characters)" />
-            <p className="mt-1.5 text-sm text-gray-500">{formData.curiosity.length}/200</p>
-            <p className="mt-0.5 text-xs text-gray-500">Used internally for facilitation and insights; not shown to other participants.</p>
+            <p className="mt-1.5 text-sm text-stone-500">{formData.curiosity.length}/200</p>
+            <p className="mt-0.5 text-xs text-stone-500">Used internally for facilitation and insights; not shown to other participants.</p>
           </div>
 
           <div>
             <label className="label">Headline (optional)</label>
             <input type="text" name="headline" value={formData.headline} onChange={handleChange} className="input" maxLength={120} placeholder="e.g. Sustainability lead at Acme Corp" />
-            <p className="mt-1.5 text-sm text-gray-500">Short tagline in People directory. {formData.headline.length}/120</p>
+            <p className="mt-1.5 text-sm text-stone-500">Short tagline in People directory. {formData.headline.length}/120</p>
           </div>
 
           <div>
@@ -213,11 +213,11 @@ export default function ProfilePage() {
             <input type="url" name="linkedinUrl" value={formData.linkedinUrl} onChange={handleChange} className="input" placeholder="https://linkedin.com/in/yourprofile" />
           </div>
 
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
-            <input type="checkbox" id="isDiscoverable" name="isDiscoverable" checked={formData.isDiscoverable} onChange={handleChange} className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+            <input type="checkbox" id="isDiscoverable" name="isDiscoverable" checked={formData.isDiscoverable} onChange={handleChange} className="mt-1 w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500" />
             <div>
-              <label htmlFor="isDiscoverable" className="text-sm font-medium text-gray-900 cursor-pointer">Show me in the People directory (networking search)</label>
-              <p className="text-xs text-gray-500 mt-0.5">Only people who turn this on appear on the People page. You control your visibility.</p>
+              <label htmlFor="isDiscoverable" className="text-sm font-medium text-stone-900 cursor-pointer">Show me in the People directory (networking search)</label>
+              <p className="text-xs text-stone-500 mt-0.5">Only people who turn this on appear on the People page. You control your visibility.</p>
             </div>
           </div>
 
@@ -231,15 +231,15 @@ export default function ProfilePage() {
             {loading ? 'Saving…' : isEditing ? 'Save changes' : 'Continue to World Map'}
           </button>
 
-          <p className="text-xs text-gray-500 text-center pt-2">
+          <p className="text-xs text-stone-500 text-center pt-2">
             {isEditing ? (
-              <Link href="/world" className="text-primary-600 hover:text-primary-700 font-medium">
+              <Link href="/world" className="text-amber-700 hover:text-amber-800 font-medium">
                 ← Back to World Map
               </Link>
             ) : (
               <>
                 By clicking <span className="font-medium">Continue to World Map</span>, you agree to our{' '}
-                <button type="button" className="underline text-gray-700 hover:text-gray-900" onClick={() => setShowTerms(true)}>
+                <button type="button" className="underline text-stone-700 hover:text-stone-900" onClick={() => setShowTerms(true)}>
                   terms of use and data retention policy
                 </button>
                 .
@@ -248,12 +248,12 @@ export default function ProfilePage() {
           </p>
         </form>
 
-        <div className="mt-6 bg-white rounded-3xl shadow border border-gray-100 p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900">Account</h2>
+        <div className="mt-6 bg-white rounded-3xl shadow border border-amber-100 p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-gray-900 font-display">Account</h2>
           {accountError && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-800">{accountError}</div>
           )}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-stone-500">
             Log out ends your session on this device. Deleting your data permanently removes your profile and related activity for this event (rooms, votes, badges, and sessions), then logs you out.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">

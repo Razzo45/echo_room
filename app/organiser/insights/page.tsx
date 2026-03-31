@@ -171,31 +171,31 @@ export default function OrganiserInsightsPage() {
 
   if (loadingEvents) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-org-bg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-violet-300/20 border-t-violet-300 mx-auto mb-4"></div>
+          <p className="text-violet-100/75">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-org-bg text-org-text">
+      <div className="sticky top-0 z-20 bg-org-surface/95 border-b border-org-border backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <Link
                 href="/organiser/dashboard"
-                className="text-primary-600 hover:text-primary-700 font-semibold text-sm"
+                className="text-violet-300 hover:text-violet-200 font-semibold text-sm"
               >
                 ← Dashboard
               </Link>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Insights</h1>
+              <h1 className="text-2xl font-bold tracking-tight font-display">Insights</h1>
             </div>
             <div className="flex items-center gap-3">
-              <label htmlFor="event-select" className="label mb-0 text-gray-700">
+              <label htmlFor="event-select" className="label mb-0 text-violet-100/85">
                 Event:
               </label>
               <select
@@ -218,28 +218,28 @@ export default function OrganiserInsightsPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
         {!selectedEventId && (
-          <div className="card-elevated p-12 text-center">
-            <p className="text-gray-600">Select an event to view insights.</p>
+          <div className="rounded-3xl border border-org-border bg-org-surface p-12 text-center shadow-soft">
+            <p className="text-violet-100/75">Select an event to view insights.</p>
           </div>
         )}
 
         {selectedEventId && loadingInsights && (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600" />
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-300/20 border-t-violet-300" />
           </div>
         )}
 
         {selectedEventId && !loadingInsights && insights && (
           <>
-            <section className="card-elevated overflow-hidden rounded-3xl">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-3xl">
-                <h2 className="text-lg font-semibold text-gray-900">Participants</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
+            <section className="rounded-3xl border border-org-border bg-org-surface overflow-hidden shadow-soft">
+              <div className="px-4 py-3 border-b border-org-border bg-[#151423] rounded-t-3xl">
+                <h2 className="text-lg font-semibold text-org-text font-display">Participants</h2>
+                <p className="text-sm text-violet-100/70 mt-0.5">
                   {insights.participants.length} participant{insights.participants.length !== 1 ? 's' : ''} in this event
                 </p>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-org-border">
                   <thead>
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -252,18 +252,18 @@ export default function OrganiserInsightsPage() {
                   <tbody className="divide-y divide-gray-200">
                     {insights.participants.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                          <td colSpan={5} className="px-4 py-6 text-center text-violet-100/70">
                           No participants yet
                         </td>
                       </tr>
                     ) : (
                       insights.participants.map((p) => (
-                        <tr key={p.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{p.organisation}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{p.role}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{p.country}</td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
+                        <tr key={p.id} className="hover:bg-white/5">
+                          <td className="px-4 py-3 text-sm font-medium text-org-text">{p.name}</td>
+                          <td className="px-4 py-3 text-sm text-violet-100/75">{p.organisation}</td>
+                          <td className="px-4 py-3 text-sm text-violet-100/75">{p.role}</td>
+                          <td className="px-4 py-3 text-sm text-violet-100/75">{p.country}</td>
+                          <td className="px-4 py-3 text-sm text-violet-100/65">
                             {new Date(p.createdAt).toLocaleDateString()}
                           </td>
                         </tr>
@@ -274,14 +274,14 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="card-elevated overflow-hidden rounded-3xl">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-lg font-semibold text-gray-900">Room compositions</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Who joined whom in each room</p>
+            <section className="rounded-3xl border border-org-border bg-org-surface overflow-hidden shadow-soft">
+              <div className="px-4 py-3 border-b border-org-border bg-[#151423]">
+                <h2 className="text-lg font-semibold text-org-text font-display">Room compositions</h2>
+                <p className="text-sm text-violet-100/70 mt-0.5">Who joined whom in each room</p>
               </div>
               <div className="divide-y divide-gray-200">
                 {insights.rooms.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-gray-500">No rooms yet</div>
+                  <div className="px-4 py-8 text-center text-violet-100/70">No rooms yet</div>
                 ) : (
                   insights.rooms.map((room) => (
                     <div key={room.id} className="px-4 py-4">
@@ -306,7 +306,7 @@ export default function OrganiserInsightsPage() {
                         {room.members.map((m) => (
                           <li
                             key={m.userId}
-                            className="text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-2xl border border-gray-200"
+                            className="text-sm text-violet-100/80 bg-[#151423] px-3 py-1.5 rounded-2xl border border-org-border"
                           >
                             <span className="font-medium">{m.name}</span>
                             <span className="text-gray-500">
@@ -323,26 +323,26 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="card-elevated overflow-hidden rounded-3xl">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-lg font-semibold text-gray-900">Badge stats</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Badges earned by participants in this event</p>
+            <section className="rounded-3xl border border-org-border bg-org-surface overflow-hidden shadow-soft">
+              <div className="px-4 py-3 border-b border-org-border bg-[#151423]">
+                <h2 className="text-lg font-semibold text-org-text font-display">Badge stats</h2>
+                <p className="text-sm text-violet-100/70 mt-0.5">Badges earned by participants in this event</p>
               </div>
               <div className="p-4">
                 {insights.badgeStats.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No badges earned yet</p>
+                  <p className="text-violet-100/70 text-sm">No badges earned yet</p>
                 ) : (
                   <div className="flex flex-wrap gap-3">
                     {insights.badgeStats.map((b) => (
                       <div
                         key={b.badgeType}
-                        className="flex items-center gap-2 rounded-2xl border-2 border-gray-200 px-4 py-2 bg-white"
+                        className="flex items-center gap-2 rounded-2xl border border-org-border px-4 py-2 bg-[#151423]"
                       >
                         <span className="text-xl" title={b.name}>
                           {b.icon}
                         </span>
-                        <span className="text-sm font-medium text-gray-900">{b.name}</span>
-                        <span className="text-sm text-gray-500">× {b.count}</span>
+                        <span className="text-sm font-medium text-org-text">{b.name}</span>
+                        <span className="text-sm text-violet-100/70">× {b.count}</span>
                         <span
                           className={`text-xs capitalize ${
                             b.rarity === 'legendary'
@@ -526,7 +526,7 @@ export default function OrganiserInsightsPage() {
         )}
 
         {selectedEventId && !loadingInsights && !insights?.event && (
-          <div className="card-elevated p-8 text-center text-gray-500">
+          <div className="rounded-3xl border border-org-border bg-org-surface p-8 text-center text-violet-100/75">
             Failed to load insights for this event.
           </div>
         )}

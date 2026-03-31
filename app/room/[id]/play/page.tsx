@@ -237,10 +237,10 @@ export default function QuestPlayPage() {
 
   if (loading || !room || !storyState || !currentBeat) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">{error ?? 'Loading room...'}</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
+          <p className="text-stone-500 text-sm">{error ?? 'Loading room...'}</p>
         </div>
       </div>
     );
@@ -250,12 +250,12 @@ export default function QuestPlayPage() {
   if (room.status === 'COMPLETED' && !room.artifactId) {
     const allDone = players.length > 0 && players.every((p) => p.completedAt);
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-gray-100 shadow p-5 text-center">
+      <div className="min-h-screen bg-[var(--quest-cream)] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl border border-amber-100 shadow p-5 text-center">
           <p className="text-sm font-semibold text-gray-900 mb-1">
             {allDone ? 'Building your artifact…' : 'Waiting for everyone to finish'}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-stone-500">
             {allDone
               ? 'This usually takes a few seconds. Keep this page open.'
               : 'Each player needs to tap "Finish story" on the final panel.'}
@@ -289,19 +289,19 @@ export default function QuestPlayPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+    <div className="min-h-screen bg-[var(--quest-cream)] pb-24">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-800">{phaseTitle[storyState.phase]}</p>
-          <p className="text-xs text-gray-500">{room.memberCount}/{room.maxPlayers} players</p>
+          <p className="text-sm font-semibold text-stone-800 font-display">{phaseTitle[storyState.phase]}</p>
+          <p className="text-xs text-stone-500">{room.memberCount}/{room.maxPlayers} players</p>
         </div>
       </div>
 
       <main className="max-w-lg mx-auto px-4 py-5 space-y-4">
         {storyState.phase === 'waiting' && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
-            <h1 className="text-lg font-bold text-gray-900 mb-2">Waiting for players</h1>
-            <p className="text-sm text-gray-600">
+          <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 text-center">
+            <h1 className="text-lg font-bold text-gray-900 mb-2 font-display">Waiting for players</h1>
+            <p className="text-sm text-stone-600">
               The room opens the briefing once enough players have joined ({room.memberCount}/{room.maxPlayers} here now).
             </p>
           </div>
@@ -375,9 +375,9 @@ export default function QuestPlayPage() {
         )}
 
         {storyState.phase === 'completed' && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
-            <h1 className="text-lg font-bold text-gray-900 mb-2">Wrapping up story</h1>
-            <p className="text-sm text-gray-600">
+          <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 text-center">
+            <h1 className="text-lg font-bold text-gray-900 mb-2 font-display">Wrapping up story</h1>
+            <p className="text-sm text-stone-600">
               Finalizing your artifact and results. This page will update automatically.
             </p>
           </div>

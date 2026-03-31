@@ -42,21 +42,21 @@ export default function OrganiserArchivedArtifactPage() {
 
   if (loading || htmlContent === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-org-bg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading archived artifact…</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-violet-300/20 border-t-violet-300 mx-auto mb-4" />
+          <p className="text-violet-100/75 text-sm">Loading archived artifact…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm px-4 py-4 flex items-center justify-between safe-bottom">
+    <div className="min-h-screen bg-org-bg text-org-text">
+      <div className="sticky top-0 z-10 bg-org-surface/95 border-b border-org-border backdrop-blur-md px-4 py-4 flex items-center justify-between safe-bottom">
         <Link
           href="/organiser/insights"
-          className="text-primary-600 hover:text-primary-700 font-semibold text-sm min-h-[48px] flex items-center"
+          className="text-violet-300 hover:text-violet-200 font-semibold text-sm min-h-[48px] flex items-center"
         >
           ← Back to Insights
         </Link>
@@ -69,7 +69,7 @@ export default function OrganiserArchivedArtifactPage() {
         </button>
       </div>
       <div
-        className="max-w-4xl mx-auto p-6 my-6 card-elevated overflow-auto rounded-3xl"
+        className="max-w-4xl mx-auto p-6 my-6 rounded-3xl border border-org-border bg-org-surface overflow-auto shadow-soft"
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
     </div>

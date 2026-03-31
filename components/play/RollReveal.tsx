@@ -36,11 +36,11 @@ export function RollReveal({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-2">Revealed actions</h2>
+      <div className="bg-white rounded-3xl border border-amber-100 shadow p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-2 font-display">Revealed actions</h2>
         <div className="space-y-1.5">
           {players.map((player) => (
-            <p key={player.id} className="text-sm text-gray-700">
+            <p key={player.id} className="text-sm text-stone-700">
               <span className="font-semibold text-gray-900">{player.name}:</span>{' '}
               {beat.submissions[player.id] ?? '...'}
             </p>
@@ -63,15 +63,15 @@ export function RollReveal({
           >
             {myRoll ? 'Roll saved' : rollSubmitting ? 'Rolling...' : 'Roll d20'}
           </button>
-          <p className="text-xs text-gray-500 text-center">Rolls submitted: {rollCount}/{players.length}</p>
+          <p className="text-xs text-stone-500 text-center">Rolls submitted: {rollCount}/{players.length}</p>
         </>
       )}
 
       {allRolled && (
         <>
           <D20Die value={rollDisplayValue} rolling={false} band={myRoll ? myRoll.band : null} />
-          <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2">All rolls are in</h2>
+          <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900 mb-2 font-display">All rolls are in</h2>
             <div className="space-y-2">
               {players.map((player) => {
                 const r = beat.rolls[player.id];
@@ -84,7 +84,7 @@ export function RollReveal({
                   r.band === 'critical_fail' || r.band === 'fail' ? 'text-red-600' : 'text-amber-600';
                 return (
                   <div key={player.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">{player.name}</span>
+                    <span className="text-stone-700">{player.name}</span>
                     <span className={`font-bold ${bandColor}`}>
                       d20 &rarr; {r.value} <span className="font-normal text-xs">({bandLabel})</span>
                     </span>
@@ -92,10 +92,10 @@ export function RollReveal({
                 );
               })}
             </div>
-            <p className="text-sm font-medium text-primary-800">
+            <p className="text-sm font-medium text-amber-800">
               Ready to continue: {rollContinueReady} / {players.length}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-stone-500">
               Tap Continue once you have reviewed the rolls. The story advances when everyone is ready.
             </p>
             <button

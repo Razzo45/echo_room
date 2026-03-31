@@ -34,19 +34,19 @@ export default function OrganiserLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <div className="hero-event rounded-b-[2rem]">
-        <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-4">
+    <div className="min-h-screen flex flex-col bg-org-bg text-org-text">
+      <div className="w-full min-h-[220px] flex flex-col items-center justify-center text-center px-4 py-10 rounded-b-[2rem] bg-gradient-to-b from-[#26203f] to-[#0f0e17]">
+        <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center mb-4">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Organiser portal</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight mb-1 font-display">Organiser portal</h1>
         <p className="text-white/90 text-base font-medium">Echo Room management</p>
       </div>
 
       <div className="flex-1 px-4 -mt-6 relative z-10 max-w-md mx-auto w-full pb-8 safe-bottom">
-        <div className="card-elevated">
+        <div className="rounded-3xl p-6 bg-org-surface border border-org-border shadow-soft">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="label">Email</label>
@@ -84,13 +84,13 @@ export default function OrganiserLoginPage() {
               {loading ? 'Logging in…' : 'Log in'}
             </button>
           </form>
-          <p className="mt-5 pt-5 border-t border-gray-200 text-center text-sm text-gray-500">
+          <p className="mt-5 pt-5 border-t border-org-border text-center text-sm text-violet-100/70">
             Need access? Contact your system administrator.
           </p>
         </div>
 
         <p className="mt-6 text-center">
-          <a href="/" className="text-primary-600 hover:text-primary-700 text-sm font-medium">← Back to participant login</a>
+          <a href="/" className="text-violet-300 hover:text-violet-200 text-sm font-medium">← Back to participant login</a>
         </p>
       </div>
     </div>

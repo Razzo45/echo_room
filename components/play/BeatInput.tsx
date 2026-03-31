@@ -60,48 +60,48 @@ export function BeatInput({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
+      <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 space-y-3">
         {currentMeta ? (
           <>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-400">
               Beat {currentBeat} of {totalBeats}
             </p>
             <h1 className="text-lg font-bold text-gray-900 leading-snug">{currentMeta.title}</h1>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
+            <p className="text-sm text-stone-600 whitespace-pre-wrap">{currentMeta.description}</p>
           </>
         ) : (
-          <p className="text-sm text-gray-600">Write one short sentence describing your move.</p>
+          <p className="text-sm text-stone-600">Write one short sentence describing your move.</p>
         )}
       </div>
 
       {pathKeys.length > 0 && (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 p-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/40 p-4">
+          <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">
             Paths (reference only)
           </p>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-stone-500 mb-3">
             These are not votes — use them as inspiration, then write your own line.
           </p>
           <div className="grid gap-2">
             {pathKeys.map((key) => (
-              <div key={key} className="rounded-xl bg-white border border-gray-100 p-3 text-sm">
-                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary-100 text-primary-800 text-xs font-bold mr-2">
+              <div key={key} className="rounded-xl bg-white border border-amber-100 p-3 text-sm">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-800 text-xs font-bold mr-2">
                   {key}
                 </span>
                 <span className="font-semibold text-gray-900">{currentMeta?.options[key]?.label}</span>
-                <p className="text-gray-600 mt-1 pl-9">{optionBlurb(currentMeta?.options[key])}</p>
+                <p className="text-stone-600 mt-1 pl-9">{optionBlurb(currentMeta?.options[key])}</p>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
+      <div className="bg-white rounded-3xl border border-amber-100 shadow p-5">
         {mySubmittedAction ? (
           <>
-            <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-1">Locked in</p>
-            <p className="text-sm text-gray-700 mb-4">{mySubmittedAction}</p>
-            <p className="text-xs text-gray-500">Blind input is active: reveals after all submissions.</p>
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Locked in</p>
+            <p className="text-sm text-stone-700 mb-4">{mySubmittedAction}</p>
+            <p className="text-xs text-stone-500">Blind input is active: reveals after all submissions.</p>
           </>
         ) : (
           <>
@@ -114,7 +114,7 @@ export function BeatInput({
               onChange={(e) => onActionTextChange(e.target.value.slice(0, ACTION_MAX_CHARS))}
               placeholder="I redirect power to shields while we cross."
             />
-            <p className="mt-1 text-xs text-gray-500">{actionText.length}/{ACTION_MAX_CHARS}</p>
+            <p className="mt-1 text-xs text-stone-500">{actionText.length}/{ACTION_MAX_CHARS}</p>
             <button
               type="button"
               onClick={onSubmitAction}
@@ -127,8 +127,8 @@ export function BeatInput({
         )}
       </div>
 
-      <div className="bg-primary-50 border border-primary-100 rounded-2xl p-4">
-        <p className="text-sm text-primary-800">Submissions received: {submissionCount}/{playerCount}</p>
+      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+        <p className="text-sm text-amber-800">Submissions received: {submissionCount}/{playerCount}</p>
       </div>
     </div>
   );

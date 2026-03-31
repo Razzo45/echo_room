@@ -5,14 +5,14 @@ import type { EventGenerationOutput, RegionData, QuestData, DecisionData, Option
 
 type QuestReviewModalProps = {
   draft: EventGenerationOutput;
-  generationId: string;
+  generationId?: string;
   onClose: () => void;
   onConfirm: (editedDraft: EventGenerationOutput) => Promise<void>;
 };
 
 export default function QuestReviewModal({
   draft,
-  generationId,
+  generationId: _generationId,
   onClose,
   onConfirm,
 }: QuestReviewModalProps) {
@@ -79,19 +79,19 @@ export default function QuestReviewModal({
   const currentQuest = currentRegion?.quests[activeQuest];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-org-surface text-org-text rounded-2xl border border-org-border shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-org-border px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Review generated scenario</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-2xl font-bold font-display">Review generated scenario</h2>
+            <p className="text-sm text-violet-100/70 mt-1">
               Review and edit the generated scenario, beats, and path options before committing
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition"
+            className="text-zinc-400 hover:text-zinc-200 transition"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -102,9 +102,9 @@ export default function QuestReviewModal({
         {/* Content */}
         <div className="flex-1 overflow-hidden flex">
           {/* Sidebar - Regions and Quests */}
-          <div className="w-64 border-r border-gray-200 overflow-y-auto bg-gray-50">
+          <div className="w-64 border-r border-org-border overflow-y-auto bg-[#151423]">
             <div className="p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Regions</h3>
+              <h3 className="text-sm font-semibold text-violet-100/80 mb-3">Regions</h3>
               {editedDraft.regions.map((region, regionIdx) => (
                 <div key={regionIdx} className="mb-4">
                   <button
@@ -115,12 +115,12 @@ export default function QuestReviewModal({
                     }}
                     className={`w-full text-left p-3 rounded-lg transition ${
                       activeRegion === regionIdx
-                        ? 'bg-indigo-100 text-indigo-900'
-                        : 'bg-white hover:bg-gray-100 text-gray-900'
+                        ? 'bg-violet-500/25 text-violet-100'
+                        : 'bg-transparent hover:bg-white/5 text-violet-100/85'
                     }`}
                   >
                     <div className="font-semibold text-sm">{region.displayName}</div>
-                    <div className="text-xs text-gray-600 mt-1">
+                    <div className="text-xs text-violet-100/60 mt-1">
                       {region.quests.length} quest{region.quests.length !== 1 ? 's' : ''}
                     </div>
                   </button>
@@ -136,8 +136,8 @@ export default function QuestReviewModal({
                           }}
                           className={`w-full text-left p-2 rounded text-sm transition ${
                             activeQuest === questIdx
-                              ? 'bg-indigo-200 text-indigo-900 font-medium'
-                              : 'bg-white hover:bg-gray-100 text-gray-700'
+                              ? 'bg-violet-500/30 text-violet-100 font-medium'
+                              : 'bg-transparent hover:bg-white/5 text-violet-100/75'
                           }`}
                         >
                           {quest.name}
@@ -430,17 +430,17 @@ export default function QuestReviewModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
+        <div className="border-t border-org-border px-6 py-4 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg font-semibold hover:bg-gray-200 transition"
+            className="px-4 py-2 text-org-text bg-white/5 rounded-lg font-semibold hover:bg-white/10 transition"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={saving}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-violet-600 text-white rounded-lg font-semibold hover:bg-violet-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Confirm and Save'}
           </button>

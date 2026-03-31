@@ -30,7 +30,7 @@ export default function DebugBanner() {
 
   return (
     <div
-      className="sticky top-0 left-0 right-0 z-50 flex items-center justify-center py-1.5 px-4 text-sm font-medium bg-amber-500 text-black"
+      className="sticky top-0 left-0 right-0 z-50 flex items-center justify-center py-1.5 px-4 text-sm font-medium bg-gradient-to-r from-amber-500 to-amber-600 text-black"
       role="status"
       aria-label="Debug mode"
     >

@@ -68,9 +68,9 @@ export default function ArtifactPage() {
 
   if (loading || !artifact) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading…</p>
         </div>
       </div>
@@ -78,42 +78,42 @@ export default function ArtifactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen bg-[var(--quest-cream)]">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center gap-3">
         <Link
           href={fromInsights ? '/organiser/insights' : '/me'}
-          className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center gap-2"
+          className="p-2 -ml-2 rounded-xl text-amber-700 hover:bg-amber-50 flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           <span className="font-medium text-sm">{fromInsights ? 'Insights' : 'My Rooms'}</span>
         </Link>
-        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4">Decision map</h1>
+        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 pr-4 font-display">Decision map</h1>
         <button
           type="button"
           onClick={handlePrint}
-          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold border border-primary-500 text-primary-600 hover:bg-primary-50"
+          className="ml-auto px-3 py-1.5 rounded-full text-xs font-semibold border border-amber-500 text-amber-700 hover:bg-amber-50"
         >
           Save as PDF
         </button>
       </div>
       <div className="max-w-lg mx-auto px-4 py-4">
         <div
-          className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden [&_*]:max-w-full"
+          className="bg-white rounded-3xl shadow-lg border border-amber-100 overflow-hidden [&_*]:max-w-full"
           dangerouslySetInnerHTML={{ __html: artifact.htmlContent }}
         />
 
-        <div className="mt-4 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
+        <div className="mt-4 bg-white rounded-2xl border border-amber-100 p-4 flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-800">Try a different path?</p>
-            <p className="text-xs text-gray-500 mt-0.5">Replay this quest with a new team and see how the story unfolds differently.</p>
+            <p className="text-sm font-semibold text-stone-800">Try a different path?</p>
+            <p className="text-xs text-stone-500 mt-0.5">Replay this quest with a new team and see how the story unfolds differently.</p>
           </div>
           <button
             type="button"
             onClick={handlePlayAgain}
             disabled={joining}
-            className="shrink-0 text-xs font-semibold text-amber-700 hover:text-amber-800 px-4 py-2 rounded-xl bg-amber-50 disabled:opacity-50"
+            className="shrink-0 text-xs font-semibold text-white px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-50"
           >
             {joining ? 'Joining...' : 'Play again'}
           </button>

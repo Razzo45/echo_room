@@ -52,21 +52,21 @@ export default function AdminAuditLogPage() {
 
   if (loading && logs.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-admin-bg">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div className="min-h-screen bg-admin-bg text-admin-text">
+      <header className="sticky top-0 z-20 bg-admin-surface border-b border-admin-border shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+          <Link href="/admin" className="text-cyan-400 hover:text-cyan-300 font-semibold text-sm mb-2 inline-block">
             ← Back to Dashboard
           </Link>
-          <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Admin audit log</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-2xl font-bold tracking-tight mt-2 font-display">Admin audit log</h1>
+          <p className="text-sm text-zinc-400 mt-0.5">
             All Admin and SuperAdmin actions are logged here for compliance and audit.
           </p>
         </div>
@@ -74,7 +74,7 @@ export default function AdminAuditLogPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom">
         <div className="mb-4 flex items-center gap-4">
-          <label className="label text-gray-400 mb-0">Action</label>
+          <label className="label text-zinc-400 mb-0">Action</label>
           <select
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
@@ -89,9 +89,9 @@ export default function AdminAuditLogPage() {
           </select>
         </div>
 
-        <div className="bg-gray-800 rounded-3xl border border-gray-700 overflow-hidden shadow-sm">
+        <div className="bg-admin-surface rounded-3xl border border-admin-border overflow-hidden shadow-sm">
           {logs.length === 0 ? (
-            <div className="p-12 text-center text-gray-400">No audit entries yet.</div>
+            <div className="p-12 text-center text-zinc-400">No audit entries yet.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

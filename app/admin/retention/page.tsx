@@ -81,30 +81,30 @@ export default function AdminRetentionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-admin-bg">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-500/30 border-t-primary-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <header className="sticky top-0 z-20 bg-gray-800 border-b border-gray-700 shadow-lg">
+    <div className="min-h-screen bg-admin-bg text-admin-text">
+      <header className="sticky top-0 z-20 bg-admin-surface border-b border-admin-border shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/admin" className="text-primary-400 hover:text-primary-300 font-semibold text-sm mb-2 inline-block">
+          <Link href="/admin" className="text-cyan-400 hover:text-cyan-300 font-semibold text-sm mb-2 inline-block">
             ← Back to Dashboard
           </Link>
-          <h1 className="text-2xl font-bold text-white tracking-tight mt-2">Data lifecycle & retention</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-2xl font-bold tracking-tight mt-2 font-display">Data lifecycle & retention</h1>
+          <p className="text-sm text-zinc-400 mt-0.5">
             Two weeks after an event’s end date, participant and activity data (sessions, rooms, votes, users, etc.) can be automatically removed. Events with “Keep data longer” are excluded.
           </p>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
-        <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
+        <div className="bg-admin-surface rounded-3xl border border-admin-border p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-white mb-2">Run cleanup now</h2>
-          <p className="text-sm text-gray-400 mb-4">
+          <p className="text-sm text-zinc-400 mb-4">
             {eligible.length === 0
               ? 'No events are currently eligible (endDate + 2 weeks in the past, no retention override).'
               : `${eligible.length} event(s) eligible for cleanup.`}
@@ -120,11 +120,11 @@ export default function AdminRetentionPage() {
         </div>
 
         {eligible.length > 0 && (
-          <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
+          <div className="bg-admin-surface rounded-3xl border border-admin-border p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-white mb-4">Eligible for cleanup</h2>
             <ul className="space-y-2">
               {eligible.map((e) => (
-                <li key={e.id} className="text-sm text-gray-300">
+                <li key={e.id} className="text-sm text-zinc-300">
                   {e.name} — end: {new Date(e.endDate).toLocaleDateString()}
                 </li>
               ))}
@@ -132,10 +132,10 @@ export default function AdminRetentionPage() {
           </div>
         )}
 
-        <div className="bg-gray-800 rounded-3xl border border-gray-700 p-6 shadow-sm">
+        <div className="bg-admin-surface rounded-3xl border border-admin-border p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-white mb-4">Cleanup audit log</h2>
           {logs.length === 0 ? (
-            <p className="text-sm text-gray-400">No cleanup runs yet.</p>
+            <p className="text-sm text-zinc-400">No cleanup runs yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

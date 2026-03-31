@@ -93,9 +93,9 @@ export default function DistrictPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Loading quests...</p>
         </div>
       </div>
@@ -107,16 +107,16 @@ export default function DistrictPage() {
   const regionProgress = region ? `${region.completed} of ${region.questCount} completed` : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
+    <div className="min-h-screen bg-[var(--quest-cream)] pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-        <Link href="/world" className="p-2 -ml-2 rounded-xl text-primary-600 hover:bg-primary-50 flex items-center gap-2">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center gap-3">
+        <Link href="/world" className="p-2 -ml-2 rounded-xl text-amber-700 hover:bg-amber-50 flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           <span className="font-medium text-sm">World</span>
         </Link>
-        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 text-center pr-12">
+        <h1 className="text-lg font-bold text-gray-900 truncate flex-1 text-center pr-12 font-display">
           {region?.displayName || 'Region'}
         </h1>
       </div>
@@ -130,15 +130,15 @@ export default function DistrictPage() {
             )}
             {regionProgress && (
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div className="flex-1 h-2 rounded-full bg-amber-100/60 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      region.completed === region.questCount ? 'bg-emerald-500' : 'bg-primary-500'
+                      region.completed === region.questCount ? 'bg-emerald-500' : 'bg-amber-500'
                     }`}
                     style={{ width: `${region.questCount > 0 ? Math.round((region.completed / region.questCount) * 100) : 0}%` }}
                   />
                 </div>
-                <span className="text-xs text-gray-500 font-medium shrink-0">{regionProgress}</span>
+                <span className="text-xs text-stone-500 font-medium shrink-0">{regionProgress}</span>
               </div>
             )}
           </div>
@@ -154,17 +154,17 @@ export default function DistrictPage() {
               const totalBeats = quest.userStatus?.totalBeats ?? 5;
 
               return (
-                <div key={quest.id} className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+                <div key={quest.id} className="bg-white rounded-3xl shadow-lg border border-amber-100/80 overflow-hidden">
                   <div className="p-5">
                     <div className="flex items-start gap-3 mb-3">
                       <span className={`w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-bold shrink-0 ${
-                        isActive ? 'bg-amber-100 text-amber-700' : 'bg-primary-100 text-primary-700'
+                        isActive ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'
                       }`}>
                         {idx + 1}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-base font-bold text-gray-900 truncate">{quest.name}</h2>
+                          <h2 className="text-base font-bold text-gray-900 truncate font-display">{quest.name}</h2>
                           {isReplaying && (
                             <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -179,7 +179,7 @@ export default function DistrictPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-stone-400">
                           <span>{quest.durationMinutes} min</span>
                           <span>&middot;</span>
                           <span>5-beat story</span>
@@ -187,12 +187,12 @@ export default function DistrictPage() {
                       </div>
                     </div>
 
-                    <p className="text-sm text-gray-600 leading-relaxed mb-4">{quest.description}</p>
+                    <p className="text-sm text-stone-600 leading-relaxed mb-4">{quest.description}</p>
 
                     {/* Beat progress for active quests */}
                     {isActive && (
                       <div className="mb-4">
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                        <div className="flex items-center justify-between text-xs text-stone-500 mb-1.5">
                           <span>Beat {beat} of {totalBeats}</span>
                         </div>
                         <div className="flex gap-1">
@@ -200,7 +200,7 @@ export default function DistrictPage() {
                             <div
                               key={i}
                               className={`h-2 flex-1 rounded-full ${
-                                i < beat ? 'bg-amber-400' : 'bg-gray-100'
+                                i < beat ? 'bg-amber-400' : 'bg-stone-100'
                               }`}
                             />
                           ))}
@@ -237,15 +237,15 @@ export default function DistrictPage() {
         {completedQuests.length > 0 && (
           <>
             <div className="flex items-center gap-3 mt-8 mb-4">
-              <div className="h-px flex-1 bg-gray-200" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Completed</span>
-              <div className="h-px flex-1 bg-gray-200" />
+              <div className="h-px flex-1 bg-amber-100" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Completed</span>
+              <div className="h-px flex-1 bg-amber-100" />
             </div>
             <div className="space-y-3">
               {completedQuests.map((quest) => {
                 const artifactLink = quest.userStatus?.artifactId || quest.userStatus?.latestArtifactId;
                 return (
-                  <div key={quest.id} className="bg-white rounded-2xl border border-gray-100 p-4 opacity-80">
+                  <div key={quest.id} className="bg-white rounded-2xl border border-amber-100 p-4">
                     <div className="flex items-center gap-3">
                       <span className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,7 +253,7 @@ export default function DistrictPage() {
                         </svg>
                       </span>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-gray-700 truncate">{quest.name}</h3>
+                        <h3 className="text-sm font-semibold text-stone-700 truncate">{quest.name}</h3>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                           Completed
                         </span>
@@ -263,7 +263,7 @@ export default function DistrictPage() {
                       {artifactLink && (
                         <Link
                           href={`/artifact/${artifactLink}`}
-                          className="flex-1 text-center text-xs font-medium text-primary-600 hover:text-primary-700 px-3 py-2 rounded-xl bg-primary-50"
+                          className="flex-1 text-center text-xs font-medium text-indigo-700 hover:text-indigo-800 px-3 py-2 rounded-xl bg-indigo-50"
                         >
                           View artifact
                         </Link>
@@ -272,7 +272,7 @@ export default function DistrictPage() {
                         type="button"
                         onClick={() => handleJoinQuest(quest.id)}
                         disabled={joiningId !== null}
-                        className="flex-1 text-center text-xs font-medium text-amber-700 hover:text-amber-800 px-3 py-2 rounded-xl bg-amber-50"
+                        className="flex-1 text-center text-xs font-semibold text-white px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
                       >
                         {joiningId === quest.id ? 'Joining...' : 'Play again'}
                       </button>
@@ -285,8 +285,8 @@ export default function DistrictPage() {
         )}
 
         {quests.length === 0 && (
-          <div className="bg-white rounded-3xl p-8 text-center">
-            <p className="text-gray-500 mb-4">No quests in this region yet.</p>
+          <div className="bg-white rounded-3xl border border-amber-100 p-8 text-center">
+            <p className="text-stone-500 mb-4">No quests in this region yet.</p>
             <Link href="/world" className="btn btn-secondary">Back to World</Link>
           </div>
         )}

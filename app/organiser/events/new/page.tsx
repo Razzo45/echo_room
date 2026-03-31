@@ -72,19 +72,19 @@ export default function NewEventPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-org-bg text-org-text">
+      <header className="sticky top-0 z-20 bg-org-surface/95 border-b border-org-border backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
-          <Link href="/organiser/dashboard" className="inline-flex items-center min-h-[48px] text-primary-600 hover:text-primary-700 font-semibold text-sm">
+          <Link href="/organiser/dashboard" className="inline-flex items-center min-h-[48px] text-violet-300 hover:text-violet-200 font-semibold text-sm">
             ← Back to dashboard
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mt-2">Create new event</h1>
-          <p className="text-sm text-gray-600 mt-0.5">Set up a new Echo Room event</p>
+          <h1 className="text-2xl font-bold tracking-tight mt-2 font-display">Create new event</h1>
+          <p className="text-sm text-violet-100/70 mt-0.5">Set up a new Echo Room event</p>
         </div>
       </header>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-8 safe-bottom">
-        <form onSubmit={handleSubmit} className="card-elevated space-y-6">
+        <form onSubmit={handleSubmit} className="rounded-3xl p-6 border border-org-border bg-org-surface space-y-6 shadow-soft">
           <div>
             <label className="label">Event name *</label>
             <input
@@ -115,7 +115,7 @@ export default function NewEventPage() {
               rows={4}
               className="input"
             />
-            <p className="text-xs text-gray-500 mt-1.5">You can add or edit this later. AI uses it to generate scenario scripts (five beats per quest, paths A/B/C).</p>
+            <p className="text-xs text-violet-100/65 mt-1.5">You can add or edit this later. AI uses it to generate scenario scripts (five beats per quest, paths A/B/C).</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -152,7 +152,7 @@ export default function NewEventPage() {
                 type="color"
                 value={formData.brandColor}
                 onChange={(e) => setFormData({ ...formData, brandColor: e.target.value })}
-                className="h-11 w-20 border border-gray-300 rounded-xl cursor-pointer"
+                className="h-11 w-20 border border-org-border rounded-xl cursor-pointer bg-transparent"
               />
               <input
                 type="text"
@@ -189,7 +189,7 @@ export default function NewEventPage() {
                     <button
                       type="button"
                       onClick={() => removeSponsorLogo(index)}
-                      className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition"
+                      className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition"
                       aria-label="Remove"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +199,7 @@ export default function NewEventPage() {
                   )}
                 </div>
               ))}
-              <button type="button" onClick={addSponsorLogo} className="text-sm text-primary-600 hover:text-primary-700 font-semibold">
+              <button type="button" onClick={addSponsorLogo} className="text-sm text-violet-300 hover:text-violet-200 font-semibold">
                 + Add sponsor logo
               </button>
             </div>
@@ -209,8 +209,8 @@ export default function NewEventPage() {
               <p className="text-sm text-red-800 font-medium">{error}</p>
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-gray-200">
-            <Link href="/organiser/dashboard" className="btn btn-secondary">Cancel</Link>
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-org-border">
+            <Link href="/organiser/dashboard" className="btn border border-org-border bg-transparent text-org-text hover:bg-white/5">Cancel</Link>
             <button type="submit" disabled={loading || !formData.name} className="btn btn-primary">
               {loading ? 'Creating…' : 'Create event'}
             </button>

@@ -27,31 +27,31 @@ export function BeatConsequence({
 
   if (!hasConsequence) {
     return (
-      <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-        <h1 className="text-lg font-bold text-gray-900">What happened</h1>
-        <p className="text-sm text-gray-600">The story is resolving this beat now.</p>
+      <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 space-y-3">
+        <h1 className="text-lg font-bold text-gray-900 font-display">What happened</h1>
+        <p className="text-sm text-stone-600">The story is resolving this beat now.</p>
       </div>
     );
   }
 
   if (showWaiting) {
     return (
-      <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-200 border-t-primary-600 mx-auto" />
+      <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 space-y-3 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-amber-200 border-t-amber-600 mx-auto" />
         <p className="text-sm font-semibold text-gray-900">Waiting for effects...</p>
-        <p className="text-xs text-gray-500">The narrator is weaving the consequences of your actions.</p>
+        <p className="text-xs text-stone-500">The narrator is weaving the consequences of your actions.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 space-y-3">
-      <h1 className="text-lg font-bold text-gray-900">What happened</h1>
-      <p className="text-sm text-gray-800 whitespace-pre-wrap">{beat.consequence!.text}</p>
-      <p className="text-sm font-medium text-primary-800">
+    <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 space-y-3">
+      <h1 className="text-lg font-bold text-gray-900 font-display">What happened</h1>
+      <p className="text-sm text-stone-800 whitespace-pre-wrap">{beat.consequence!.text}</p>
+      <p className="text-sm font-medium text-amber-800">
         Ready to continue: {continueReady} / {continueTotal}
       </p>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-stone-500">
         Everyone taps Continue when ready. The story moves on only after all players have continued.
       </p>
       <button

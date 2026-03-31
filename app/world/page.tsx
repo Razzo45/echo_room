@@ -78,7 +78,7 @@ export default function WorldPage() {
 
   if (loading || !worldData || !userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary-600">
+      <div className="min-h-screen flex items-center justify-center bg-[#312e81]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-2 border-white/30 border-t-white mx-auto mb-4" />
           <p className="text-white/90 text-sm">Loading world...</p>
@@ -95,10 +95,10 @@ export default function WorldPage() {
   const progressPercent = totalQuests > 0 ? Math.round((totalCompleted / totalQuests) * 100) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-primary-600 pb-40">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#4338ca] via-[#312e81] to-[#1f2937] pb-40">
       {/* Header: event framing + player identity */}
       <header className="px-4 pt-6 pb-5 shrink-0">
-        <h1 className="text-2xl font-bold text-white text-center">{eventName}</h1>
+        <h1 className="text-2xl font-bold text-white text-center font-display">{eventName}</h1>
         {eventDescription && (
           <p className="text-white/70 text-sm text-center mt-1 max-w-md mx-auto line-clamp-2">
             {eventDescription}
@@ -106,7 +106,7 @@ export default function WorldPage() {
         )}
 
         {/* Player identity card */}
-        <div className="mt-4 mx-auto max-w-sm bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+        <div className="mt-4 mx-auto max-w-sm bg-white/12 backdrop-blur-md border border-white/15 rounded-2xl p-4 shadow-soft">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-lg shrink-0">
               {user.name.charAt(0).toUpperCase()}
@@ -145,7 +145,7 @@ export default function WorldPage() {
           <button
             type="button"
             onClick={() => router.push(`/room/${activeRoom.roomId}/play`)}
-            className="w-full mb-4 bg-amber-500 rounded-2xl p-4 flex items-center gap-3 shadow-lg active:scale-[0.99] transition-transform"
+            className="w-full mb-4 bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-4 flex items-center gap-3 shadow-lg active:scale-[0.99] transition-transform"
           >
             <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -178,14 +178,14 @@ export default function WorldPage() {
                   key={region.id}
                   type="button"
                   onClick={() => router.push(`/district?regionId=${region.id}`)}
-                  className="w-full text-left bg-white rounded-3xl shadow-lg p-5 active:scale-[0.99] transition-transform"
+                  className="w-full text-left bg-white/95 border border-amber-100 rounded-3xl shadow-lg p-5 active:scale-[0.99] transition-transform"
                 >
                   <div className="flex items-start gap-4">
                     <span className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shrink-0 ${
                       isComplete
                         ? 'bg-emerald-100 text-emerald-700'
                         : isStarted
-                          ? 'bg-primary-100 text-primary-700'
+                          ? 'bg-amber-100 text-amber-700'
                           : 'bg-gray-100 text-gray-500'
                     }`}>
                       {isComplete ? (
@@ -205,7 +205,7 @@ export default function WorldPage() {
                           </span>
                         )}
                         {!isComplete && isStarted && (
-                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                             In progress
                           </span>
                         )}
@@ -218,7 +218,7 @@ export default function WorldPage() {
                       <div className="flex items-center gap-3 mb-1.5">
                         <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-emerald-500' : 'bg-primary-500'}`}
+                            className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-emerald-500' : 'bg-amber-500'}`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -229,7 +229,7 @@ export default function WorldPage() {
 
                       {/* Next quest preview */}
                       {!isComplete && region.nextQuestName && (
-                        <p className="text-xs text-primary-600 font-medium truncate">
+                        <p className="text-xs text-amber-700 font-medium truncate">
                           Next: {region.nextQuestName}
                         </p>
                       )}
@@ -254,7 +254,7 @@ export default function WorldPage() {
       {/* Bottom stats strip */}
       <div className="fixed bottom-[4.5rem] left-0 right-0 z-10 pointer-events-none">
         <div className="max-w-lg mx-auto px-4">
-          <div className="pointer-events-auto bg-gray-900/90 backdrop-blur-sm rounded-2xl px-5 py-2.5 flex items-center justify-around shadow-xl">
+          <div className="pointer-events-auto bg-black/40 border border-white/10 backdrop-blur-md rounded-2xl px-5 py-2.5 flex items-center justify-around shadow-xl">
             <div className="text-center">
               <p className="text-white font-bold text-sm">{totalCompleted}/{totalQuests}</p>
               <p className="text-gray-400 text-[10px] uppercase tracking-wider">Quests</p>
@@ -274,21 +274,21 @@ export default function WorldPage() {
       </div>
 
       {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-bottom z-20">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-xl border-t border-amber-100 safe-bottom z-20">
         <div className="max-w-lg mx-auto px-4 py-2 flex items-center justify-around">
-          <Link href="/me" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-primary-600">
+          <Link href="/me" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-amber-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
             <span className="text-xs font-medium">My Rooms</span>
           </Link>
-          <Link href="/people" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-gray-600 hover:text-primary-600">
+          <Link href="/people" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-gray-600 hover:text-amber-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span className="text-xs font-medium">People</span>
           </Link>
-          <Link href="/profile" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-gray-600 hover:text-primary-600">
+          <Link href="/profile" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-gray-600 hover:text-amber-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>

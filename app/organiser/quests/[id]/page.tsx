@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 type QuestOption = {
   id: string;
@@ -66,7 +65,7 @@ export default function QuestEditPage() {
         };
         setQuest(q);
         setLoading(false);
-      } catch (e) {
+      } catch {
         setError('Failed to load quest');
         setLoading(false);
       }
@@ -132,7 +131,7 @@ export default function QuestEditPage() {
       } else if (data.quest) {
         setQuest(data.quest);
       }
-    } catch (e) {
+    } catch {
       setError('Failed to save quest');
     }
     setSaving(false);
@@ -168,7 +167,7 @@ export default function QuestEditPage() {
         };
         setQuest(q);
       }
-    } catch (e) {
+    } catch {
       setError('Failed to revert quest');
     }
     setReverting(false);
@@ -176,10 +175,10 @@ export default function QuestEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-org-bg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading scenario...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-violet-300/20 border-t-violet-300 mx-auto mb-4"></div>
+          <p className="text-violet-100/75">Loading scenario...</p>
         </div>
       </div>
     );
@@ -187,10 +186,10 @@ export default function QuestEditPage() {
 
   if (!quest || error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-org-bg text-org-text">
         <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Scenario editor</h1>
-          <p className="text-gray-600 mb-4">
+          <h1 className="text-2xl font-bold mb-2 font-display">Scenario editor</h1>
+          <p className="text-violet-100/75 mb-4">
             {error || 'Quest not found or could not be loaded.'}
           </p>
           <button
@@ -205,20 +204,20 @@ export default function QuestEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm">
+    <div className="min-h-screen bg-org-bg text-org-text">
+      <div className="sticky top-0 z-20 border-b border-org-border bg-org-surface/95 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.back()}
               type="button"
-              className="text-primary-600 hover:text-primary-700 font-semibold text-sm min-h-[48px] flex items-center"
+              className="text-violet-300 hover:text-violet-200 font-semibold text-sm min-h-[48px] flex items-center"
             >
               ← Back
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">Edit scenario script</h1>
-              <p className="text-sm text-gray-600">
+              <h1 className="text-xl font-bold tracking-tight font-display">Edit scenario script</h1>
+              <p className="text-sm text-violet-100/70">
                 {quest.region?.displayName ? `${quest.region.displayName} · ` : ''}
                 Scenario ID: {quest.id}
               </p>
@@ -229,7 +228,7 @@ export default function QuestEditPage() {
               onClick={handleRevert}
               disabled={reverting}
               type="button"
-              className="btn btn-secondary"
+              className="btn border border-org-border bg-transparent text-org-text hover:bg-white/5"
             >
               {reverting ? 'Reverting…' : 'Revert to generated baseline'}
             </button>
@@ -247,7 +246,7 @@ export default function QuestEditPage() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom">
         {/* Scenario (quest) overview */}
-        <div className="card-elevated space-y-4">
+        <div className="rounded-3xl border border-org-border bg-org-surface p-6 space-y-4 shadow-soft">
           <div>
             <label className="label">Scenario title</label>
             <input
@@ -272,9 +271,9 @@ export default function QuestEditPage() {
           </div>
 
           {/* Room size – organiser only; participants cannot see or change this */}
-          <div className="pt-4 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">Room size</h3>
-            <p className="text-xs text-gray-500 mb-3">
+          <div className="pt-4 border-t border-org-border">
+            <h3 className="text-sm font-semibold text-violet-100 mb-2">Room size</h3>
+            <p className="text-xs text-violet-100/65 mb-3">
               Minimum and maximum players per room. Only you can change this; participants cannot see or edit it.
             </p>
             <div className="flex flex-wrap gap-6">
@@ -310,9 +309,9 @@ export default function QuestEditPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-primary-100 bg-primary-50/80 px-4 py-3 text-sm text-primary-900">
-          <p className="font-medium text-primary-950">How this maps to live play</p>
-          <p className="mt-1 text-primary-900/90">
+        <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-100">
+          <p className="font-medium text-violet-50">How this maps to live play</p>
+          <p className="mt-1 text-violet-100/90">
             Participants run through <strong>up to five story beats</strong>. Each beat is blind one-line actions, then a{' '}
             <strong>d20 roll</strong> that resolves the moment. The fields below set the beat prompt and{' '}
             <strong>paths</strong> (A/B/C) the narrative can lean on—think tone and framing, not a branching vote UI.
@@ -323,13 +322,13 @@ export default function QuestEditPage() {
         {quest.decisions.map((d) => (
           <div
             key={d.id}
-            className="card-elevated space-y-4"
+            className="rounded-3xl border border-org-border bg-org-surface p-6 space-y-4 shadow-soft"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold font-display">
                 Beat {d.decisionNumber}
               </h2>
-              <span className="text-xs text-gray-500 font-mono">Beat ID: {d.id}</span>
+              <span className="text-xs text-violet-100/65 font-mono">Beat ID: {d.id}</span>
             </div>
 
             <div>
