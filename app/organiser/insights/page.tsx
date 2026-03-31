@@ -375,8 +375,8 @@ export default function OrganiserInsightsPage() {
                     onClick={() => setArtifactFilter('all')}
                     className={`min-h-[44px] px-4 py-2 rounded-2xl text-sm font-semibold transition ${
                       artifactFilter === 'all'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-[#1c1a2a] text-violet-100 hover:bg-[#26233a] border border-org-border'
                     }`}
                   >
                     All
@@ -386,8 +386,8 @@ export default function OrganiserInsightsPage() {
                     onClick={() => setArtifactFilter('archived')}
                     className={`min-h-[44px] px-4 py-2 rounded-2xl text-sm font-semibold transition ${
                       artifactFilter === 'archived'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-[#1c1a2a] text-violet-100 hover:bg-[#26233a] border border-org-border'
                     }`}
                   >
                     Archived (closed rooms)
@@ -397,8 +397,8 @@ export default function OrganiserInsightsPage() {
                     onClick={() => setArtifactFilter('past')}
                     className={`min-h-[44px] px-4 py-2 rounded-2xl text-sm font-semibold transition ${
                       artifactFilter === 'past'
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-[#1c1a2a] text-violet-100 hover:bg-[#26233a] border border-org-border'
                     }`}
                   >
                     Past generations

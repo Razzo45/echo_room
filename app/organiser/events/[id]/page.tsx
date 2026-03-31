@@ -641,31 +641,31 @@ export default function EventDetailPage() {
             {(event?.aiGenerationStatus !== 'IDLE' || generationStatus) && (
               <div className={`p-4 rounded-2xl border-2 ${
                 event?.aiGenerationStatus === 'READY' || generationStatus?.status === 'READY'
-                  ? 'bg-green-50 border-green-200'
+                  ? 'bg-emerald-500/12 border-emerald-400/40'
                   : event?.aiGenerationStatus === 'GENERATING' || generationStatus?.status === 'GENERATING'
-                  ? 'bg-blue-50 border-blue-200'
-                  : 'bg-red-50 border-red-200'
+                  ? 'bg-sky-500/12 border-sky-400/40'
+                  : 'bg-rose-500/12 border-rose-400/40'
               }`}>
                 <div className="flex items-center">
-                  <span className="text-sm font-semibold mr-2">
+                  <span className="text-sm font-semibold mr-2 text-violet-100">
                     Status:
                   </span>
-                  <span className="text-sm">
+                  <span className="text-sm text-violet-100">
                     {event?.aiGenerationStatus || generationStatus?.status}
                   </span>
                 </div>
                 {event?.aiGeneratedAt && (
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-violet-100/70 mt-1">
                     Generated: {new Date(event.aiGeneratedAt).toLocaleString()}
                   </p>
                 )}
                 {generationStatus?.error && (
-                  <p className="text-sm text-red-800 mt-2">
+                  <p className="text-sm text-rose-200 mt-2">
                     Error: {generationStatus.error}
                   </p>
                 )}
                 {event?.aiGenerationStatus === 'READY' && (
-                  <p className="text-sm text-green-800 mt-2">
+                  <p className="text-sm text-emerald-200 mt-2">
                     ✓ Rooms generated successfully! Participants can now join quests.
                   </p>
                 )}
