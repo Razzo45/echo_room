@@ -118,20 +118,13 @@ export async function POST(
         computeScoreboard(state, playerIds);
 
         if (beat === 3) {
-          try {
-            const synthesis = await generateFinalSynthesisWithFallback(
-              state,
-              room.members.map((m) => ({ id: m.userId, name: m.user.name }))
-            );
-            state.finalSynthesis = {
-              status: 'done',
-              text: synthesis.text,
-              mode: synthesis.mode,
-            };
-          } catch (synthesisError) {
-            console.error('Runtime roll final synthesis failed, leaving deterministic scoreboard only:', synthesisError);
-            // Keep scoreboard; finalSynthesis will be filled in on /complete as a fallback.
-          }
+          // Never run external synthesis while holding a DB transaction lock.
+          // This avoids request timeouts / transaction aborts under load.
+          state.finalSynthesis = {
+            status: 'pending',
+            text: '',
+            mode: 'queued_after_roll',
+          };
         }
       }
 
@@ -149,10 +142,45 @@ export async function POST(
         roll,
         storyState: stripInternalStoryState(state),
       };
-    });
+    }, { maxWait: 5000, timeout: 15000 });
 
     if (result.kind === 'error') {
       return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    // Best-effort final synthesis after beat 3, outside transaction.
+    if (beat === 3 && result.storyState.phase === 'beat_consequence') {
+      void (async () => {
+        try {
+          const room = await prisma.room.findUnique({
+            where: { id: roomId },
+            include: { members: { include: { user: true } } },
+          });
+          if (!room) return;
+          const playerIds = room.members.map((m) => m.userId);
+          const state = normalizeStoryState(room.storyState, playerIds);
+          const alreadyDone =
+            String(state.finalSynthesis?.status || '') === 'done' &&
+            String(state.finalSynthesis?.text || '').trim().length > 0;
+          if (alreadyDone) return;
+
+          const synthesis = await generateFinalSynthesisWithFallback(
+            state,
+            room.members.map((m) => ({ id: m.userId, name: m.user.name }))
+          );
+          state.finalSynthesis = {
+            status: 'done',
+            text: synthesis.text,
+            mode: synthesis.mode,
+          };
+          await prisma.room.update({
+            where: { id: roomId },
+            data: { storyState: state, lastActivityAt: new Date() },
+          });
+        } catch (e) {
+          console.error('Post-roll final synthesis failed (non-blocking):', e);
+        }
+      })();
     }
 
     return NextResponse.json({
