@@ -40,6 +40,11 @@ type StoryState = {
     teamAverage: number;
     teamBand: string;
   };
+  finalSynthesis?: {
+    status: 'idle' | 'pending' | 'done';
+    text: string;
+    mode: string;
+  };
   consequenceContinue?: {
     beat: 1 | 2 | 3;
     byPlayerId: Record<string, boolean>;
@@ -380,6 +385,8 @@ export default function QuestPlayPage() {
 
   const myFinalTapped = Boolean(players.find((p) => p.id === myUserId)?.completedAt);
   const allFinalTapped = players.length > 0 && players.every((p) => p.completedAt);
+  const finalSynthesisReady =
+    storyState.finalSynthesis?.status === 'done' && Boolean(storyState.finalSynthesis?.text?.trim());
 
   const phaseTitle: Record<RoomPhase, string> = {
     waiting: 'Waiting for more players',
@@ -625,6 +632,14 @@ export default function QuestPlayPage() {
                 Team average: {storyState.scoreboard.teamAverage} / 60
               </p>
             </div>
+            {!finalSynthesisReady && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-900">Drafting final synthesis...</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Hold tight. We are compiling the collaborative story outcome before finish is enabled.
+                </p>
+              </div>
+            )}
             {myFinalTapped ? (
               <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-700">
                 {allFinalTapped ? (
@@ -640,10 +655,14 @@ export default function QuestPlayPage() {
               <button
                 type="button"
                 onClick={handleCompleteStory}
-                disabled={completeSubmitting}
+                disabled={completeSubmitting || !finalSynthesisReady}
                 className="btn btn-primary w-full mt-4"
               >
-                {completeSubmitting ? 'Finalizing...' : 'Finish story'}
+                {completeSubmitting
+                  ? 'Finalizing...'
+                  : finalSynthesisReady
+                    ? 'Finish story'
+                    : 'Waiting for final synthesis...'}
               </button>
             )}
           </div>

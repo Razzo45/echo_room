@@ -54,6 +54,17 @@ export async function POST(
         { status: 400 }
       );
     }
+    const finalSynthesisReady =
+      String((storyState as { finalSynthesis?: { status?: string } } | null)?.finalSynthesis?.status || '') ===
+        'done' &&
+      String((storyState as { finalSynthesis?: { text?: string } } | null)?.finalSynthesis?.text || '').trim()
+        .length > 0;
+    if (room.status !== 'COMPLETED' && !finalSynthesisReady) {
+      return NextResponse.json(
+        { error: 'Final synthesis is still being prepared. Please wait a moment and retry.' },
+        { status: 409 }
+      );
+    }
 
     if (!membership.completedAt) {
       await prisma.roomMember.update({
