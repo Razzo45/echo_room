@@ -95,7 +95,7 @@ export default function WorldPage() {
   const progressPercent = totalQuests > 0 ? Math.round((totalCompleted / totalQuests) * 100) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#4338ca] via-[#312e81] to-[#1f2937] pb-40">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#4338ca] via-[#312e81] to-[#1f2937] pb-44">
       {/* Header: event framing + player identity */}
       <header className="px-4 pt-6 pb-5 shrink-0">
         <h1 className="text-2xl font-bold text-white text-center font-display">{eventName}</h1>
@@ -252,7 +252,7 @@ export default function WorldPage() {
       </main>
 
       {/* Bottom stats strip */}
-      <div className="fixed bottom-[4.5rem] left-0 right-0 z-10 pointer-events-none">
+      <div className="fixed bottom-[6.25rem] left-0 right-0 z-10 pointer-events-none">
         <div className="max-w-lg mx-auto px-4">
           <div className="pointer-events-auto bg-black/40 border border-white/10 backdrop-blur-md rounded-2xl px-5 py-2.5 flex items-center justify-around shadow-xl">
             <div className="text-center">
