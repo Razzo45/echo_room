@@ -95,14 +95,6 @@ function isSingleSentence(input: string): boolean {
   return sentenceParts.length <= 1;
 }
 
-function bandLabel(band: RollBand): string {
-  if (band === 'critical_success') return 'Critical success';
-  if (band === 'success') return 'Success';
-  if (band === 'mixed') return 'Mixed';
-  if (band === 'fail') return 'Fail';
-  return 'Critical fail';
-}
-
 function getBeatMeta(
   decisionsData: DecisionsPayload | null | undefined,
   beat: number
@@ -113,14 +105,35 @@ function getBeatMeta(
 
 function optionBlurb(opt: DecisionOption | undefined): string {
   if (!opt) return '';
-  const bits = [
-    opt.label,
+
+  const sentencePool = [
     opt.tradeoffs,
     ...(opt.outcomes ?? []),
     ...(opt.risks ?? []),
-  ].filter(Boolean);
-  const s = bits.join(' · ');
-  return s || opt.label || '';
+  ]
+    .filter((v): v is string => Boolean(v && v.trim()))
+    .flatMap((text) =>
+      text
+        .split(/[.!?]+/)
+        .map((s) => s.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+    );
+
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const sentence of sentencePool) {
+    const key = sentence.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(sentence);
+    if (unique.length >= 2) break;
+  }
+
+  const concise = unique.join('. ');
+  if (!concise) return 'Use this as a directional nudge, not a strict script.';
+
+  const clipped = concise.length > 160 ? `${concise.slice(0, 157).trimEnd()}...` : concise;
+  return clipped.endsWith('.') ? clipped : `${clipped}.`;
 }
 
 export default function QuestPlayPage() {
@@ -297,9 +310,6 @@ export default function QuestPlayPage() {
     setRolling(true);
     setRollSubmitting(true);
     const animationStart = Date.now();
-    const ticker = window.setInterval(() => {
-      setRollDisplayValue(Math.floor(Math.random() * 20) + 1);
-    }, 80);
 
     try {
       const res = await fetch(`/api/room/${roomId}/runtime/roll`, {
@@ -315,9 +325,9 @@ export default function QuestPlayPage() {
       if (elapsed < ROLL_ANIMATION_MS) {
         await new Promise((resolve) => setTimeout(resolve, ROLL_ANIMATION_MS - elapsed));
       }
+      setRollDisplayValue(value);
       await loadRoom();
     } finally {
-      window.clearInterval(ticker);
       setRolling(false);
       setRollSubmitting(false);
     }
@@ -540,15 +550,9 @@ export default function QuestPlayPage() {
 
         {storyState.phase === 'roll_reveal' && (
           <div className="space-y-4">
-            {currentMeta && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
-                <h2 className="text-base font-bold text-gray-900 leading-snug">{currentMeta.title}</h2>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{currentMeta.description}</p>
-              </div>
-            )}
             <div className="bg-white rounded-3xl border border-gray-100 shadow p-5">
-              <h1 className="text-lg font-bold text-gray-900 mb-2">Revealed actions</h1>
-              <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-gray-900 mb-2">Revealed actions</h2>
+              <div className="space-y-1.5">
                 {players.map((player) => (
                   <p key={player.id} className="text-sm text-gray-700">
                     <span className="font-semibold text-gray-900">{player.name}:</span>{' '}
@@ -557,22 +561,22 @@ export default function QuestPlayPage() {
                 ))}
               </div>
             </div>
-            <div className="bg-white rounded-3xl border border-gray-100 shadow p-5 text-center">
-              <p className="text-sm text-gray-600 mb-3">Roll to resolve your move.</p>
-              <D20Die value={rollDisplayValue} rolling={rolling && !myRoll} />
-              {myRoll && !rolling && (
-                <p className="text-sm font-semibold text-primary-700 mb-3">{bandLabel(myRoll.band)}</p>
-              )}
-              <button
-                type="button"
-                onClick={handleRoll}
-                disabled={Boolean(myRoll) || rollSubmitting}
-                className="btn btn-primary w-full"
-              >
-                {myRoll ? 'Roll saved' : rollSubmitting ? 'Rolling...' : 'Roll d20'}
-              </button>
-              <p className="text-xs text-gray-500 mt-3">Rolls submitted: {rollCount}/{players.length}</p>
-            </div>
+
+            <D20Die
+              value={rollDisplayValue}
+              rolling={rolling && !myRoll}
+              band={myRoll && !rolling ? myRoll.band : null}
+            />
+
+            <button
+              type="button"
+              onClick={handleRoll}
+              disabled={Boolean(myRoll) || rollSubmitting}
+              className="btn btn-primary w-full"
+            >
+              {myRoll ? 'Roll saved' : rollSubmitting ? 'Rolling...' : 'Roll d20'}
+            </button>
+            <p className="text-xs text-gray-500 text-center">Rolls submitted: {rollCount}/{players.length}</p>
           </div>
         )}
 
