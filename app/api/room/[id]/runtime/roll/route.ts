@@ -9,11 +9,6 @@ import {
   normalizeStoryState,
   stripInternalStoryState,
 } from '@/lib/story-runtime';
-import {
-  buildDeterministicBeatConsequence,
-  generateBeatConsequenceWithFallback,
-  generateFinalSynthesisWithFallback,
-} from '@/lib/story-synthesis';
 
 export async function POST(
   request: NextRequest,
@@ -82,54 +77,13 @@ export async function POST(
       const rollCount = Object.keys(state.beats[beatKey].rolls).length;
       if (rollCount === playerIds.length) {
         state.beats[beatKey].revealed = true;
-        state.phase = 'beat_consequence';
-
-        // Build safe inputs for consequence / synthesis so we never 500 on bad quest data.
-        const submissionList = room.members.map((member) => ({
-          name: member.user.name,
-          text: state.beats[beatKey].submissions[member.userId] || 'support the team plan',
-        }));
-        const rollValues = Object.values(state.beats[beatKey].rolls).map((r) => r.value);
-        const averageRoll = rollValues.length
-          ? rollValues.reduce((sum, current) => sum + current, 0) / rollValues.length
-          : 0;
-        const rollList = room.members.map((member) => {
-          const r = state.beats[beatKey].rolls[member.userId];
-          return {
-            name: member.user.name,
-            value: r?.value ?? 0,
-            band: r?.band ?? 'mixed',
-          };
-        });
-
-        const deterministic = buildDeterministicBeatConsequence({
-          beat,
-          submissions: submissionList,
-          rolls: rollList,
-          averageRoll,
-        });
-        state.beats[beatKey].consequence = {
-          text: deterministic.text,
-          mode: deterministic.mode,
-          generatedAt: now.toISOString(),
-        };
-
-        state.beats[beatKey].resolved = true;
-        state.consequenceContinue = {
+        // Stay in roll_reveal so everyone can see the results.
+        // Transition to beat_consequence happens when all players click "Continue" via /advance.
+        state.rollContinue = {
           beat,
           byPlayerId: Object.fromEntries(playerIds.map((id) => [id, false])),
         };
         computeScoreboard(state, playerIds);
-
-        if (beat === (state.totalBeats ?? 3)) {
-          // Never run external synthesis while holding a DB transaction lock.
-          // This avoids request timeouts / transaction aborts under load.
-          state.finalSynthesis = {
-            status: 'pending',
-            text: '',
-            mode: 'queued_after_roll',
-          };
-        }
       }
 
       await tx.room.update({
@@ -150,85 +104,6 @@ export async function POST(
 
     if (result.kind === 'error') {
       return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
-    // Best-effort AI upgrades outside the transaction (non-blocking).
-    if (result.storyState.phase === 'beat_consequence' && !result.idempotent) {
-      void (async () => {
-        try {
-          const room = await prisma.room.findUnique({
-            where: { id: roomId },
-            include: {
-              members: { include: { user: true } },
-              quest: {
-                include: {
-                  decisions: {
-                    orderBy: { decisionNumber: 'asc' },
-                    include: { options: { orderBy: { optionKey: 'asc' } } },
-                  },
-                },
-              },
-            },
-          });
-          if (!room) return;
-          const playerIds = room.members.map((m) => m.userId);
-          const state = normalizeStoryState(room.storyState, playerIds);
-          const beatKey = String(beat) as '1' | '2' | '3';
-          const decision = room.quest.decisions.find((d) => d.decisionNumber === beat);
-
-          // Upgrade beat consequence with AI narrative
-          const aiResult = await generateBeatConsequenceWithFallback({
-            beat,
-            beatTitle: decision?.title || `Beat ${beat}`,
-            beatScene: decision?.context || '',
-            paths: (decision?.options || []).map((o) => ({
-              key: o.optionKey,
-              label: o.title,
-              summary: o.tradeoff || o.description || '',
-            })),
-            submissions: room.members.map((m) => ({
-              name: m.user.name,
-              text: state.beats[beatKey].submissions[m.userId] || '',
-            })),
-            rolls: room.members.map((m) => {
-              const r = state.beats[beatKey].rolls[m.userId];
-              return { name: m.user.name, value: r?.value ?? 0, band: r?.band ?? 'mixed' };
-            }),
-            averageRoll: (() => {
-              const vals = Object.values(state.beats[beatKey].rolls).map((r) => r.value);
-              return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-            })(),
-          });
-
-          if (aiResult.mode === 'ai') {
-            state.beats[beatKey].consequence = {
-              text: aiResult.text,
-              mode: aiResult.mode,
-              generatedAt: new Date().toISOString(),
-            };
-          }
-
-          // Final synthesis on last beat
-          if (beat === (state.totalBeats ?? 3)) {
-            const synthesis = await generateFinalSynthesisWithFallback(
-              state,
-              room.members.map((m) => ({ id: m.userId, name: m.user.name }))
-            );
-            state.finalSynthesis = {
-              status: 'done',
-              text: synthesis.text,
-              mode: synthesis.mode,
-            };
-          }
-
-          await prisma.room.update({
-            where: { id: roomId },
-            data: { storyState: state, lastActivityAt: new Date() },
-          });
-        } catch (e) {
-          console.error('Post-roll AI upgrade failed (non-blocking):', e);
-        }
-      })();
     }
 
     return NextResponse.json({

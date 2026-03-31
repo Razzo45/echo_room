@@ -41,6 +41,11 @@ type StoryState = {
     text: string;
     mode: string;
   };
+  /** While in roll_reveal (all rolled), each player must POST /runtime/advance before moving to consequence. */
+  rollContinue: {
+    beat: 1 | 2 | 3;
+    byPlayerId: Record<string, boolean>;
+  } | null;
   /** While in beat_consequence, each player must POST /runtime/advance before the story moves on. */
   consequenceContinue: {
     beat: 1 | 2 | 3;
@@ -104,6 +109,7 @@ export function createInitialStoryState(playerIds: string[], totalBeats: 1 | 2 |
       text: '',
       mode: '',
     },
+    rollContinue: null,
     consequenceContinue: null,
   };
 }
@@ -141,6 +147,10 @@ export function normalizeStoryState(raw: unknown, playerIds: string[]): StorySta
       ...fallback.finalSynthesis,
       ...(parsed.finalSynthesis ?? {}),
     },
+    rollContinue:
+      parsed.rollContinue === undefined
+        ? fallback.rollContinue
+        : parsed.rollContinue,
     consequenceContinue:
       parsed.consequenceContinue === undefined
         ? fallback.consequenceContinue
