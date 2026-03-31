@@ -6,6 +6,8 @@
 import { prisma } from './db';
 import type { Event, Organiser, Region, Quest } from '@prisma/client';
 
+type HttpError = Error & { status?: number };
+
 type OrganiserLike = Pick<Organiser, 'id' | 'role'>;
 
 /** Returns event if organiser has access (owns it or SUPER_ADMIN). Throws 404 if not found / no access. */
@@ -21,8 +23,8 @@ export async function requireOrganiserEventAccess(
     },
   });
   if (!baseEvent) {
-    const err = new Error('Event not found');
-    (err as any).status = 404;
+    const err: HttpError = new Error('Event not found');
+    err.status = 404;
     throw err;
   }
 
@@ -63,8 +65,8 @@ export async function requireOrganiserDistrictAccess(
     include: { event: true },
   });
   if (!region) {
-    const err = new Error('District not found');
-    (err as any).status = 404;
+    const err: HttpError = new Error('District not found');
+    err.status = 404;
     throw err;
   }
   return region as Region & { event: Event };
@@ -88,8 +90,8 @@ export async function requireOrganiserQuestAccess(
     include: { region: { include: { event: true } } },
   });
   if (!quest) {
-    const err = new Error('Quest not found');
-    (err as any).status = 404;
+    const err: HttpError = new Error('Quest not found');
+    err.status = 404;
     throw err;
   }
   return quest as Quest & { region: Region & { event: Event } };

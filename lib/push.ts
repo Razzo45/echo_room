@@ -1,4 +1,4 @@
-import webPush from 'web-push';
+import webPush, { type PushSubscription } from 'web-push';
 import { prisma } from '@/lib/db';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -17,7 +17,15 @@ function ensureConfigured() {
   webPushConfigured = true;
 }
 
-export async function savePushSubscription(userId: string, subscription: any) {
+type RawPushSubscription = {
+  endpoint: string;
+  keys?: {
+    p256dh?: string;
+    auth?: string;
+  };
+};
+
+export async function savePushSubscription(userId: string, subscription: RawPushSubscription) {
   if (!subscription || !subscription.endpoint || !subscription.keys) {
     throw new Error('Invalid push subscription payload');
   }
@@ -85,18 +93,17 @@ export async function sendRoomReadyPush(roomId: string) {
   await Promise.all(
     subscriptions.map(async (sub) => {
       try {
-        await webPush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth,
-            },
-          } as any,
-          payload
-        );
-      } catch (err: any) {
-        const statusCode = err?.statusCode ?? err?.statusCode;
+        const pushSub: PushSubscription = {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth,
+          },
+        };
+        await webPush.sendNotification(pushSub, payload);
+      } catch (err: unknown) {
+        const error = err as { statusCode?: number };
+        const statusCode = error.statusCode;
         if (statusCode === 404 || statusCode === 410) {
           await prisma.pushSubscription.update({
             where: { endpoint: sub.endpoint },

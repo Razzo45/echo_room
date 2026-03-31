@@ -62,8 +62,6 @@ async function rateLimitRedis(
   if (!redisClient) return rateLimitMemory(identifier, maxAttempts, windowMs);
 
   const key = `ratelimit:${identifier}`;
-  const now = Date.now();
-
   try {
     // Use Redis pipeline for atomic operations
     const pipeline = redisClient.pipeline();
