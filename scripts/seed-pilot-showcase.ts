@@ -322,12 +322,12 @@ async function ensureForum(
   eventName: string
 ) {
   const seeds = forumForEvent(eventName, code);
-  const posts = [];
+  const posts: Awaited<ReturnType<typeof prisma.eventForumPost.create>>[] = [];
   for (const s of seeds) {
     const existing = await prisma.eventForumPost.findFirst({
       where: { eventId, title: s.title },
     });
-    const post = existing
+    const post: Awaited<ReturnType<typeof prisma.eventForumPost.create>> = existing
       ? await prisma.eventForumPost.update({
           where: { id: existing.id },
           data: {
