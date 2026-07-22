@@ -11,6 +11,7 @@ jest.mock('@/lib/db', () => ({
     },
     user: {
       findMany: jest.fn(),
+      update: jest.fn(),
     },
   },
 }));
@@ -20,6 +21,7 @@ jest.mock('@/lib/auth', () => ({
 jest.mock('@/lib/auth-password', () => ({
   normalizeParticipantName: (n: string) => n.trim().toLowerCase(),
   verifyParticipantPassword: jest.fn(),
+  hashParticipantPassword: jest.fn().mockResolvedValue('new-hash'),
 }));
 jest.mock('@/lib/rate-limit', () => ({
   rateLimit: jest.fn().mockReturnValue(true),
@@ -30,7 +32,10 @@ jest.mock('@/lib/data-retention', () => ({
 }));
 
 const prisma = require('@/lib/db').prisma;
-const { verifyParticipantPassword } = require('@/lib/auth-password');
+const {
+  verifyParticipantPassword,
+  hashParticipantPassword,
+} = require('@/lib/auth-password');
 const { createSession } = require('@/lib/auth');
 
 function request(body: unknown) {
@@ -53,7 +58,7 @@ describe('POST /api/auth/login', () => {
     expect(res.status).toBe(400);
   });
 
-  it('returns 401 for unknown name', async () => {
+  it('returns 404 for unknown name', async () => {
     prisma.eventCode.findUnique.mockResolvedValue({
       id: 'ec1',
       active: true,
@@ -63,7 +68,7 @@ describe('POST /api/auth/login', () => {
     const res = await POST(
       request({ code: 'TEST', name: 'Ada', password: 'secret1' })
     );
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
   });
 
   it('returns 200 and creates session when credentials match', async () => {
@@ -73,7 +78,12 @@ describe('POST /api/auth/login', () => {
       eventId: 'e1',
     });
     prisma.user.findMany.mockResolvedValue([
-      { id: 'u1', name: 'Ada', passwordHash: 'hash' },
+      {
+        id: 'u1',
+        name: 'Ada',
+        organisation: 'Acme',
+        passwordHash: 'hash',
+      },
     ]);
     verifyParticipantPassword.mockResolvedValue(true);
 
@@ -84,6 +94,37 @@ describe('POST /api/auth/login', () => {
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.needsProfile).toBe(false);
+    expect(data.passwordCreated).toBe(false);
     expect(createSession).toHaveBeenCalledWith('u1', 'ec1', false);
+  });
+
+  it('sets password on first login for existing account without hash', async () => {
+    prisma.eventCode.findUnique.mockResolvedValue({
+      id: 'ec1',
+      active: true,
+      eventId: 'e1',
+    });
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: 'u2',
+        name: 'Bea',
+        organisation: 'Org',
+        passwordHash: null,
+      },
+    ]);
+    prisma.user.update.mockResolvedValue({});
+
+    const res = await POST(
+      request({ code: 'TEST', name: 'Bea', password: 'secret1' })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.passwordCreated).toBe(true);
+    expect(hashParticipantPassword).toHaveBeenCalledWith('secret1');
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u2' },
+      data: { passwordHash: 'new-hash' },
+    });
+    expect(createSession).toHaveBeenCalledWith('u2', 'ec1', false);
   });
 });

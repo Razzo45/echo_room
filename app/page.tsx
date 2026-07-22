@@ -1,27 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Badge, FeaturedIcon } from '@/components/ui/untitled';
 
 type Mode = 'join' | 'login';
 
-export default function LandingPage() {
+function LandingPageInner() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>('join');
+  const searchParams = useSearchParams();
+  const initialMode: Mode =
+    searchParams.get('mode') === 'login' ? 'login' : 'join';
+
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState<boolean | null>(null);
+  const [lookupHint, setLookupHint] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
 
   useEffect(() => {
+    const wantLogin = searchParams.get('mode') === 'login';
     fetch('/api/auth/me')
       .then((r) => r.json())
       .then((data) => {
+        // If user asked for login panel, clear any half-finished join session first
+        if (wantLogin && data.user) {
+          return fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+            setMode('login');
+            setCheckingSession(false);
+          });
+        }
         if (data.user) {
           if (data.needsProfile) router.push('/profile');
           else router.push('/world');
@@ -29,20 +45,64 @@ export default function LandingPage() {
         }
         const savedCode = localStorage.getItem('echo_room_event_code');
         if (savedCode) setCode(savedCode);
+        if (wantLogin || localStorage.getItem('echo_room_returning') === '1') {
+          setMode('login');
+        }
         setCheckingSession(false);
       })
       .catch(() => {
         const savedCode = localStorage.getItem('echo_room_event_code');
         if (savedCode) setCode(savedCode);
+        if (wantLogin) setMode('login');
         setCheckingSession(false);
       });
-  }, [router]);
+  }, [router, searchParams]);
 
   const switchMode = (next: Mode) => {
     setMode(next);
     setError('');
     setPassword('');
+    setConfirmPassword('');
+    setNeedsPasswordSetup(null);
+    setLookupHint('');
     if (next === 'join') setName('');
+  };
+
+  const lookupAccount = async () => {
+    if (!code.trim() || name.trim().length < 2) return;
+    setLookingUp(true);
+    setLookupHint('');
+    setError('');
+    try {
+      const res = await fetch('/api/auth/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim(), name: name.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNeedsPasswordSetup(null);
+        setLookupHint(data.error || 'Could not look up account');
+        return;
+      }
+      if (!data.found) {
+        setNeedsPasswordSetup(null);
+        setLookupHint(
+          'No account with that name for this event. Switch to Join event if you are new.'
+        );
+        return;
+      }
+      setNeedsPasswordSetup(Boolean(data.needsPasswordSetup));
+      setLookupHint(
+        data.needsPasswordSetup
+          ? `Welcome back, ${data.displayName}. Choose a password to secure your account (first login).`
+          : `Welcome back, ${data.displayName}. Enter your password to continue.`
+      );
+    } catch {
+      setLookupHint('Could not look up account. Try again.');
+    } finally {
+      setLookingUp(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +110,14 @@ export default function LandingPage() {
     setError('');
     setLoading(true);
     try {
+      if (mode === 'login') {
+        if (needsPasswordSetup && password !== confirmPassword) {
+          setError('Passwords do not match');
+          setLoading(false);
+          return;
+        }
+      }
+
       const endpoint = mode === 'join' ? '/api/auth/start' : '/api/auth/login';
       const body =
         mode === 'join'
@@ -71,6 +139,9 @@ export default function LandingPage() {
         return;
       }
       localStorage.setItem('echo_room_event_code', code.trim().toUpperCase());
+      if (mode === 'login') {
+        localStorage.setItem('echo_room_returning', '1');
+      }
       if (data.needsProfile) router.push('/profile');
       else router.push('/world');
     } catch {
@@ -158,7 +229,11 @@ export default function LandingPage() {
                 id="event-code"
                 type="text"
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setCode(e.target.value.toUpperCase());
+                  setNeedsPasswordSetup(null);
+                  setLookupHint('');
+                }}
                 placeholder="e.g. TEST2"
                 className="input text-center text-xl font-mono tracking-[0.25em] uppercase !min-h-[52px]"
                 required
@@ -177,8 +252,13 @@ export default function LandingPage() {
                     id="login-name"
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="The name you used"
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setNeedsPasswordSetup(null);
+                      setLookupHint('');
+                    }}
+                    onBlur={() => void lookupAccount()}
+                    placeholder="The name on your profile"
                     className="input"
                     required
                     minLength={2}
@@ -186,23 +266,69 @@ export default function LandingPage() {
                     autoFocus
                   />
                 </div>
+
+                {lookupHint && (
+                  <div
+                    className={`p-3 rounded-xl border text-sm ${
+                      needsPasswordSetup === false
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : needsPasswordSetup
+                          ? 'bg-amber-50 border-amber-200 text-amber-950'
+                          : 'bg-stone-50 border-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {lookingUp ? 'Looking up account…' : lookupHint}
+                  </div>
+                )}
+
                 <div>
                   <label htmlFor="login-password" className="label">
-                    Password
+                    {needsPasswordSetup ? 'Choose a password *' : 'Password *'}
                   </label>
                   <input
                     id="login-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Your password"
+                    placeholder={
+                      needsPasswordSetup
+                        ? 'At least 6 characters'
+                        : 'Your password'
+                    }
                     className="input"
                     required
                     minLength={6}
                     maxLength={100}
-                    autoComplete="current-password"
+                    autoComplete={needsPasswordSetup ? 'new-password' : 'current-password'}
                   />
                 </div>
+
+                {(needsPasswordSetup || needsPasswordSetup === null) && (
+                  <div>
+                    <label htmlFor="login-confirm" className="label">
+                      {needsPasswordSetup
+                        ? 'Confirm password *'
+                        : 'Confirm password (if setting one)'}
+                    </label>
+                    <input
+                      id="login-confirm"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repeat password"
+                      className="input"
+                      required={needsPasswordSetup === true}
+                      minLength={needsPasswordSetup ? 6 : undefined}
+                      maxLength={100}
+                      autoComplete="new-password"
+                    />
+                    {needsPasswordSetup === null && (
+                      <p className="mt-1.5 text-xs text-[var(--theme-muted)]">
+                        Tab out of Name after entering it — we&apos;ll detect if you need to create a password.
+                      </p>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
@@ -216,17 +342,24 @@ export default function LandingPage() {
               disabled={
                 loading ||
                 !code.trim() ||
-                (mode === 'login' && (!name.trim() || password.length < 6))
+                (mode === 'login' &&
+                  (!name.trim() ||
+                    password.length < 6 ||
+                    (needsPasswordSetup === true && password !== confirmPassword)))
               }
               className="btn btn-primary w-full"
             >
               {loading
                 ? mode === 'join'
                   ? 'Verifying…'
-                  : 'Logging in…'
+                  : needsPasswordSetup
+                    ? 'Saving password…'
+                    : 'Logging in…'
                 : mode === 'join'
                   ? 'Enter event'
-                  : 'Log in'}
+                  : needsPasswordSetup
+                    ? 'Set password & log in'
+                    : 'Log in'}
             </button>
             <label className="flex items-center justify-center gap-2 cursor-pointer pt-1">
               <input
@@ -241,8 +374,8 @@ export default function LandingPage() {
 
           <p className="text-center text-xs text-[var(--theme-muted)] mt-4 leading-relaxed">
             {mode === 'join'
-              ? 'New here? Enter the code, then set your name and a password on your profile.'
-              : 'Returning? Use the same event code, name, and password. Accounts unused for 30 days are removed.'}
+              ? 'New to this event? Enter the code, then create your profile and password. Already joined before? Use Log in.'
+              : 'Returning participants: use your event code and the name on your profile. If you never set a password, this login creates one.'}
           </p>
         </div>
         <p className="text-center text-sm text-[var(--theme-muted)] mt-6 pb-2">
@@ -258,5 +391,19 @@ export default function LandingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-corridor-ink">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-white/30 border-t-white" />
+        </div>
+      }
+    >
+      <LandingPageInner />
+    </Suspense>
   );
 }

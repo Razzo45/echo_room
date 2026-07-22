@@ -206,6 +206,33 @@ export default function ProfilePage() {
               ? 'Update your details anytime. You can also change your login password below.'
               : 'Tell us about yourself and choose a password so you can log back in after logout.'}
         </p>
+        {!isEditing && (
+          <div className="mb-4 p-4 rounded-2xl bg-white border border-amber-200 shadow-sm">
+            <p className="text-sm text-stone-800 font-medium">Already have an account for this event?</p>
+            <p className="text-xs text-stone-500 mt-1 mb-3">
+              Don&apos;t create a second profile. Log in with your existing name — if you never chose a password, you can set one on first login.
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                setAccountError('');
+                setLogoutLoading(true);
+                try {
+                  await fetch('/api/auth/logout', { method: 'POST' });
+                  router.push('/?mode=login');
+                  router.refresh();
+                } catch {
+                  setAccountError('Could not switch to login. Try again.');
+                  setLogoutLoading(false);
+                }
+              }}
+              disabled={logoutLoading || loading}
+              className="btn btn-primary w-full sm:w-auto text-sm"
+            >
+              {logoutLoading ? 'Switching…' : 'Log in with existing account'}
+            </button>
+          </div>
+        )}
         {isEditing && profileUpdatedAt && (
             <p className="mt-2 text-xs text-stone-500">
               Last updated: {new Date(profileUpdatedAt).toLocaleString()}

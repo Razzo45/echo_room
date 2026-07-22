@@ -1,14 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createSession } from '@/lib/auth';
-import { normalizeParticipantName, verifyParticipantPassword } from '@/lib/auth-password';
+import {
+  hashParticipantPassword,
+  normalizeParticipantName,
+  verifyParticipantPassword,
+} from '@/lib/auth-password';
 import { participantLoginSchema } from '@/lib/validation';
 import { rateLimit, getRateLimitKey } from '@/lib/rate-limit';
 import { purgeInactiveUsers } from '@/lib/data-retention';
 
+type FoundUser = {
+  id: string;
+  name: string;
+  organisation: string;
+  passwordHash: string | null;
+};
+
+async function findNamedUserInEvent(
+  eventId: string,
+  name: string
+): Promise<FoundUser | null> {
+  const nameKey = normalizeParticipantName(name);
+  const candidates = await prisma.user.findMany({
+    where: {
+      eventId,
+      name: { equals: name.trim(), mode: 'insensitive' },
+      NOT: { name: 'Unnamed' },
+    },
+    select: {
+      id: true,
+      name: true,
+      organisation: true,
+      passwordHash: true,
+    },
+  });
+
+  return (
+    candidates.find((u) => normalizeParticipantName(u.name) === nameKey) ??
+    candidates[0] ??
+    null
+  );
+}
+
+function profileIncomplete(user: FoundUser): boolean {
+  return (
+    user.name === 'Unnamed' ||
+    !user.passwordHash ||
+    user.organisation === 'Not set'
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Opportunistic cleanup (non-blocking for response path)
     void purgeInactiveUsers().catch((err) =>
       console.error('Inactive user purge failed:', err)
     );
@@ -36,11 +80,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { code, name, password, rememberMe } = validation.data;
-    const nameKey = normalizeParticipantName(name);
 
     const eventCode = await prisma.eventCode.findUnique({
       where: { code },
-      include: { event: true },
     });
 
     if (!eventCode || !eventCode.active) {
@@ -50,38 +92,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const candidates = await prisma.user.findMany({
-      where: {
-        eventId: eventCode.eventId,
-        passwordHash: { not: null },
-        name: { equals: name.trim(), mode: 'insensitive' },
-        NOT: { name: 'Unnamed' },
-      },
-      select: {
-        id: true,
-        name: true,
-        passwordHash: true,
-      },
-    });
+    const user = await findNamedUserInEvent(eventCode.eventId, name);
 
-    // Prefer exact normalized match if multiple casing variants somehow exist
-    const user =
-      candidates.find((u) => normalizeParticipantName(u.name) === nameKey) ??
-      candidates[0];
-
-    if (!user?.passwordHash) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Name or password is incorrect' },
-        { status: 401 }
+        {
+          error:
+            'No account with that name for this event. Use Join event if you are new, or check the name spelling.',
+        },
+        { status: 404 }
       );
     }
 
-    const valid = await verifyParticipantPassword(password, user.passwordHash);
-    if (!valid) {
-      return NextResponse.json(
-        { error: 'Name or password is incorrect' },
-        { status: 401 }
-      );
+    let passwordCreated = false;
+
+    if (user.passwordHash) {
+      const valid = await verifyParticipantPassword(password, user.passwordHash);
+      if (!valid) {
+        return NextResponse.json(
+          { error: 'Name or password is incorrect' },
+          { status: 401 }
+        );
+      }
+    } else {
+      // Existing account from before passwords: set password on first login
+      const passwordHash = await hashParticipantPassword(password);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      });
+      user.passwordHash = passwordHash;
+      passwordCreated = true;
     }
 
     await createSession(user.id, eventCode.id, rememberMe || false);
@@ -89,7 +130,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       userId: user.id,
-      needsProfile: false,
+      needsProfile: profileIncomplete(user),
+      passwordCreated,
     });
   } catch (error) {
     console.error('Auth login error:', error);
