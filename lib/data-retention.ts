@@ -47,21 +47,6 @@ export async function purgeInactiveUsers(): Promise<number> {
   return result.count;
 }
 
-export type CleanupResult = {
-  eventId: string;
-  eventName: string;
-  deletedSessions: number;
-  deletedVotes: number;
-  deletedDecisionCommits: number;
-  deletedArtifacts: number;
-  deletedUserBadges: number;
-  deletedRoomMembers: number;
-  deletedRooms: number;
-  deletedUsers: number;
-  deletedAnalyticsEvents: number;
-  logId: string;
-};
-
 /** Events eligible for cleanup: endDate + 2 weeks < now and retentionOverride = false */
 export async function getEligibleEventIds(): Promise<{ id: string; name: string; endDate: Date }[]> {
   const cutoff = new Date();
