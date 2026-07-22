@@ -17,6 +17,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "seed:pilot": "tsx scripts/seed-pilot-showcase.ts",
     "prisma:studio": "prisma studio",
     "setup": "npm install && prisma generate && prisma migrate dev && prisma db seed"
   },

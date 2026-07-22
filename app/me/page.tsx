@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BadgeDisplay } from '@/components/BadgeDisplay';
+import DualSurfaceNav from '@/components/DualSurfaceNav';
 
 type Room = {
   id: string;
@@ -58,26 +59,40 @@ export default function MyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--theme-bg)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading…</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-[var(--theme-border)] border-t-[var(--theme-accent)] mx-auto mb-4" />
+          <p className="text-[var(--theme-muted)] text-sm">Loading…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--quest-cream)] pb-24">
-      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center justify-between">
-        <Link href="/world" className="p-2 -ml-2 rounded-xl text-stone-600 hover:bg-stone-100 flex items-center gap-2">
+    <div className="min-h-screen bg-[var(--theme-bg)] pb-24">
+      <DualSurfaceNav />
+      <div
+        className="sticky top-0 z-10 px-4 py-3 flex items-center justify-between border-b"
+        style={{
+          borderColor: 'var(--theme-border)',
+          background: 'color-mix(in srgb, var(--theme-surface) 92%, transparent)',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <Link
+          href="/world"
+          className="p-2 -ml-2 rounded text-[var(--theme-muted)] hover:text-[var(--theme-accent)] flex items-center gap-2"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           <span className="font-medium text-sm">World</span>
         </Link>
-        <h1 className="text-lg font-bold text-gray-900 font-display">My Rooms</h1>
-        <Link href="/profile" className="p-2 rounded-xl text-amber-700 hover:bg-amber-50 text-sm font-medium">
+        <h1 className="text-lg font-bold text-[var(--theme-text)] font-display">My Rooms</h1>
+        <Link
+          href="/profile"
+          className="p-2 rounded text-[var(--theme-accent)] text-sm font-medium hover:opacity-80"
+        >
           Profile
         </Link>
       </div>
@@ -85,44 +100,57 @@ export default function MyPage() {
       <main className="max-w-lg mx-auto px-4 py-4">
         {levelLabel && (
           <div className="mb-4">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-              Level: {levelLabel}
-            </span>
+            <span className="level-banner">{levelLabel}</span>
           </div>
         )}
 
         {rooms.length === 0 ? (
-          <div className="bg-white rounded-3xl shadow-lg border border-amber-100 p-8 text-center">
-            <p className="text-stone-600 mb-4">You haven&apos;t joined any quests yet.</p>
-            <Link href="/world" className="btn btn-primary">Explore World Map</Link>
+          <div className="card p-8 text-center">
+            <p className="text-[var(--theme-muted)] mb-4">You haven&apos;t joined any quests yet.</p>
+            <Link href="/world" className="btn btn-primary">
+              Explore World Map
+            </Link>
           </div>
         ) : (
           <div className="space-y-3">
             {rooms.map((room) => (
-              <div key={room.id} className="bg-white rounded-3xl shadow-lg border border-amber-100 overflow-hidden">
+              <div key={room.id} className="card !p-0 overflow-hidden">
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h2 className="text-lg font-bold text-gray-900 flex-1 font-display">{room.questName}</h2>
+                    <h2 className="text-lg font-bold text-[var(--theme-text)] flex-1 font-display">
+                      {room.questName}
+                    </h2>
                     <span
-                      className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        room.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                        room.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800' :
-                        'bg-gray-100 text-gray-700'
+                      className={`shrink-0 px-2.5 py-0.5 rounded text-xs font-semibold ${
+                        room.status === 'COMPLETED'
+                          ? 'bg-[color-mix(in_srgb,var(--theme-success)_20%,transparent)] text-[var(--theme-success)]'
+                          : room.status === 'IN_PROGRESS'
+                          ? 'bg-[color-mix(in_srgb,var(--theme-accent)_18%,transparent)] text-[var(--theme-accent)]'
+                          : 'bg-[var(--theme-surface-muted)] text-[var(--theme-muted)]'
                       }`}
                     >
                       {room.status.replace('_', ' ')}
                     </span>
                   </div>
-                  <p className="text-sm text-stone-500 font-mono mb-3">{room.roomCode} · {room.memberCount}{room.maxPlayers != null ? `/${room.maxPlayers}` : ''}</p>
+                  <p className="text-sm text-[var(--theme-muted)] font-mono mb-3">
+                    {room.roomCode} · {room.memberCount}
+                    {room.maxPlayers != null ? `/${room.maxPlayers}` : ''}
+                  </p>
                   <div className="flex gap-2">
                     {room.status === 'COMPLETED' && room.hasArtifact && room.artifactId && (
-                      <Link href={`/artifact/${room.artifactId}`} className="btn btn-primary flex-1">View map</Link>
+                      <Link href={`/artifact/${room.artifactId}`} className="btn btn-primary flex-1">
+                        View map
+                      </Link>
                     )}
                     {room.status === 'IN_PROGRESS' && (
-                      <Link href={`/room/${room.id}/play`} className="btn btn-primary flex-1">Continue</Link>
+                      <Link href={`/room/${room.id}/play`} className="btn btn-primary flex-1">
+                        Continue
+                      </Link>
                     )}
                     {(room.status === 'OPEN' || room.status === 'FULL') && (
-                      <Link href={`/room/${room.id}`} className="btn btn-secondary flex-1">View room</Link>
+                      <Link href={`/room/${room.id}`} className="btn btn-secondary flex-1">
+                        View room
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -132,39 +160,84 @@ export default function MyPage() {
         )}
 
         <section className="mt-8">
-          <h3 className="text-base font-bold text-gray-900 mb-2 font-display">Badges</h3>
-          <p className="text-sm text-stone-500 mb-3">Earn badges by completing quests and decisions.</p>
+          <h3 className="text-base font-bold text-[var(--theme-text)] mb-2 font-display">Badges</h3>
+          <p className="text-sm text-[var(--theme-muted)] mb-3">
+            Earn badges by completing quests and decisions.
+          </p>
           <BadgeDisplay />
         </section>
 
-        <div className="mt-6">
-          <Link href="/people" className="btn btn-secondary w-full">People</Link>
+        <div className="mt-6 space-y-2">
+          <Link href="/companions" className="btn btn-secondary w-full">
+            Companions
+          </Link>
+          <Link href="/people" className="btn btn-secondary w-full">
+            People
+          </Link>
+          <Link href="/badges" className="btn btn-secondary w-full">
+            All badges
+          </Link>
         </div>
 
-        <section className="mt-8 pt-6 border-t border-amber-100">
-          <h3 className="text-base font-bold text-gray-900 mb-2 font-display">Privacy</h3>
-          <p className="text-sm text-stone-500 mb-3">Delete your profile, rooms, votes and artifacts.</p>
-          <button onClick={handleDeleteData} className="btn btn-danger w-full">Delete all my data</button>
+        <section
+          className="mt-8 pt-6 border-t"
+          style={{ borderColor: 'var(--theme-border)' }}
+        >
+          <h3 className="text-base font-bold text-[var(--theme-text)] mb-2 font-display">Privacy</h3>
+          <p className="text-sm text-[var(--theme-muted)] mb-3">
+            Delete your profile, rooms, votes and artifacts.
+          </p>
+          <button onClick={handleDeleteData} className="btn btn-danger w-full">
+            Delete all my data
+          </button>
         </section>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-xl border-t border-amber-100 safe-bottom z-20">
+      <nav
+        className="fixed bottom-0 left-0 right-0 safe-bottom z-20 border-t"
+        style={{
+          borderColor: 'var(--theme-border)',
+          background: 'color-mix(in srgb, var(--theme-surface) 90%, transparent)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
         <div className="max-w-lg mx-auto px-4 py-2 flex items-center justify-around">
-          <span className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-amber-700">
+          <span className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-[var(--theme-accent)]">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
             </svg>
             <span className="text-xs font-medium">My Rooms</span>
           </span>
-          <Link href="/people" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-gray-600 hover:text-amber-700">
+          <Link
+            href="/people"
+            className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-[var(--theme-muted)] hover:text-[var(--theme-accent)]"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+              />
             </svg>
             <span className="text-xs font-medium">People</span>
           </Link>
-          <Link href="/profile" className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-gray-600 hover:text-amber-700">
+          <Link
+            href="/profile"
+            className="flex flex-col items-center gap-1 py-2 min-w-[72px] text-[var(--theme-muted)] hover:text-[var(--theme-accent)]"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
             </svg>
             <span className="text-xs font-medium">Profile</span>
           </Link>

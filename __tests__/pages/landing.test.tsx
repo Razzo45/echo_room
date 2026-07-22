@@ -24,8 +24,8 @@ describe('Landing page', () => {
   it('renders Echo Room title and event code form', async () => {
     render(<LandingPage />);
     await screen.findByRole('heading', { name: /echo room/i });
-    expect(screen.getByPlaceholderText(/e\.g\. SMARTCITY/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/e\.g\. TEST2/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /enter event/i })).toBeInTheDocument();
   });
 
   it('has accessible label for event code input', async () => {
@@ -38,7 +38,7 @@ describe('Landing page', () => {
   it('continue button is disabled when code is empty', async () => {
     render(<LandingPage />);
     await screen.findByRole('heading', { name: /echo room/i });
-    const btn = screen.getByRole('button', { name: /continue/i });
+    const btn = screen.getByRole('button', { name: /enter event/i });
     expect(btn).toBeDisabled();
   });
 
@@ -48,7 +48,7 @@ describe('Landing page', () => {
     await screen.findByRole('heading', { name: /echo room/i });
     const input = screen.getByLabelText(/enter event code/i);
     await user.type(input, 'ABC');
-    const btn = screen.getByRole('button', { name: /continue/i });
+    const btn = screen.getByRole('button', { name: /enter event/i });
     expect(btn).not.toBeDisabled();
   });
 });

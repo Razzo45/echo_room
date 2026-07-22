@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         questId,
         eventId: user.eventId,
         status: 'OPEN',
+        isPrivate: false,
       },
       include: {
         members: {

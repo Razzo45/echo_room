@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import QuestReviewModal from '@/components/QuestReviewModal';
+import {
+  EMPTY_SCENARIO_SLOTS,
+  buildScenarioBriefFromSlots,
+  normalizeScenarioSlots,
+  type ScenarioSlots,
+} from '@/lib/ai/scenarioSlots';
 
 type EventCode = {
   id: string;
@@ -19,14 +25,17 @@ type Event = {
   name: string;
   description: string | null;
   aiBrief: string | null;
+  aiScenarioSlots?: ScenarioSlots | null;
   debugMode: boolean;
   aiGenerationStatus: 'IDLE' | 'GENERATING' | 'DRAFT' | 'READY' | 'FAILED';
   aiGeneratedAt: string | null;
   aiGenerationVersion: string | null;
   startDate: string | null;
+  endDate: string | null;
   timezone: string;
   brandColor: string;
   logoUrl: string | null;
+  offerPrivateRoomOnAccept: boolean;
   eventCodes: EventCode[];
   regions: Array<{
     id: string;
@@ -47,56 +56,6 @@ type Event = {
   };
 };
 
-type ScenarioSlots = {
-  eventType: string;
-  audienceType: string;
-  toneMood: string;
-  playfulnessLevel: string;
-  endingFeel: string;
-  outputStyle: string;
-  gameplayFeel: string;
-  themesMotifs: string;
-  constraints: string;
-  brandContext: string;
-  forbiddenDirections: string;
-  customNotes: string;
-};
-
-const DEFAULT_SCENARIO_SLOTS: ScenarioSlots = {
-  eventType: '',
-  audienceType: '',
-  toneMood: '',
-  playfulnessLevel: '',
-  endingFeel: '',
-  outputStyle: '',
-  gameplayFeel: '',
-  themesMotifs: '',
-  constraints: '',
-  brandContext: '',
-  forbiddenDirections: '',
-  customNotes: '',
-};
-
-function buildScenarioBrief(slots: ScenarioSlots): string {
-  return [
-    'Scenario generation slots:',
-    `- Event type: ${slots.eventType || 'Not specified'}`,
-    `- Audience type: ${slots.audienceType || 'Not specified'}`,
-    `- Tone/mood: ${slots.toneMood || 'Not specified'}`,
-    `- Playfulness level: ${slots.playfulnessLevel || 'Not specified'}`,
-    `- Desired ending feel: ${slots.endingFeel || 'Not specified'}`,
-    `- Output style: ${slots.outputStyle || 'Not specified'}`,
-    `- Gameplay feel: ${slots.gameplayFeel || 'Not specified'}`,
-    `- Themes/motifs: ${slots.themesMotifs || 'Not specified'}`,
-    `- Constraints: ${slots.constraints || 'None'}`,
-    `- Brand context: ${slots.brandContext || 'None'}`,
-    `- Forbidden tones/directions: ${slots.forbiddenDirections || 'None'}`,
-    `- Custom notes: ${slots.customNotes || 'None'}`,
-    '',
-    'Generate a 5-beat collaborative storytelling scenario suitable for live multiplayer play.',
-  ].join('\n');
-}
-
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -115,12 +74,17 @@ export default function EventDetailPage() {
     error?: string;
   } | null>(null);
   const [reviewDraft, setReviewDraft] = useState<any>(null);
-  const [scenarioSlots, setScenarioSlots] = useState<ScenarioSlots>(DEFAULT_SCENARIO_SLOTS);
+  const [scenarioSlots, setScenarioSlots] = useState<ScenarioSlots>(EMPTY_SCENARIO_SLOTS);
+  const [twoPassGenerate, setTwoPassGenerate] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
   const [deletingQuestId, setDeletingQuestId] = useState<string | null>(null);
   const [deletingRegionId, setDeletingRegionId] = useState<string | null>(null);
   const [deletingDistrictId, setDeletingDistrictId] = useState<string | null>(null);
+  const [campaignStart, setCampaignStart] = useState('');
+  const [campaignEnd, setCampaignEnd] = useState('');
+  const [offerPlayOnAccept, setOfferPlayOnAccept] = useState(false);
+  const [savingCampaign, setSavingCampaign] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -158,6 +122,18 @@ export default function EventDetailPage() {
 
       setEvent(data.event);
       setAiBrief(data.event.aiBrief || '');
+      setScenarioSlots(normalizeScenarioSlots(data.event.aiScenarioSlots));
+      setOfferPlayOnAccept(Boolean(data.event.offerPrivateRoomOnAccept));
+      setCampaignStart(
+        data.event.startDate
+          ? new Date(data.event.startDate).toISOString().slice(0, 16)
+          : ''
+      );
+      setCampaignEnd(
+        data.event.endDate
+          ? new Date(data.event.endDate).toISOString().slice(0, 16)
+          : ''
+      );
       setLoading(false);
     } catch (error) {
       console.error('Load event error:', error);
@@ -170,7 +146,7 @@ export default function EventDetailPage() {
   };
 
   const applyScenarioSlotsToBrief = () => {
-    setAiBrief(buildScenarioBrief(scenarioSlots));
+    setAiBrief(buildScenarioBriefFromSlots(scenarioSlots));
   };
 
   const deleteQuest = async (quest: { id: string; name: string; _count?: { rooms: number } }) => {
@@ -350,7 +326,7 @@ export default function EventDetailPage() {
       const res = await fetch(`/api/organiser/events/${eventId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aiBrief }),
+        body: JSON.stringify({ aiBrief, aiScenarioSlots: scenarioSlots }),
       });
 
       if (res.ok) {
@@ -360,6 +336,32 @@ export default function EventDetailPage() {
       console.error('Save AI brief error:', error);
     }
     setSavingBrief(false);
+  };
+
+  const saveCampaignSettings = async () => {
+    setSavingCampaign(true);
+    try {
+      const res = await fetch(`/api/organiser/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startDate: campaignStart || null,
+          endDate: campaignEnd || null,
+          offerPrivateRoomOnAccept: offerPlayOnAccept,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to save campaign settings');
+        return;
+      }
+      await loadEvent();
+    } catch (error) {
+      console.error('Save campaign error:', error);
+      alert('Failed to save campaign settings');
+    } finally {
+      setSavingCampaign(false);
+    }
   };
 
   const startGenerateRooms = () => {
@@ -392,6 +394,8 @@ export default function EventDetailPage() {
 
       const res = await fetch(`/api/organiser/events/${eventId}/generate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ twoPass: twoPassGenerate }),
       });
 
       const data = await res.json();
@@ -572,11 +576,76 @@ export default function EventDetailPage() {
                 <p className="text-sm text-violet-100/70 mt-0.5 line-clamp-1">{event.description}</p>
               )}
             </div>
+            <Link
+              href={`/organiser/events/${eventId}/forum`}
+              className="btn min-h-[40px] border border-org-border bg-transparent text-org-text hover:bg-white/5 text-sm shrink-0"
+            >
+              Forum / newsletter
+            </Link>
+            <Link
+              href={`/organiser/insights?eventId=${eventId}`}
+              className="btn min-h-[40px] border border-org-border bg-transparent text-org-text hover:bg-white/5 text-sm shrink-0"
+            >
+              Funnel & insights
+            </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom [&_.text-gray-900]:!text-org-text [&_.text-gray-800]:!text-violet-100 [&_.text-gray-700]:!text-violet-100/85 [&_.text-gray-600]:!text-violet-100/75 [&_.text-gray-500]:!text-violet-100/65 [&_.bg-gray-50]:!bg-[#151423] [&_.border-gray-200]:!border-org-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 safe-bottom org-contrast">
+        {/* Campaign window + play bridge */}
+        <div className="mb-6 rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Campaign &amp; play bridge</h3>
+          <p className="text-sm text-violet-100/70 mb-4">
+            Set the campaign window and whether connecting offers an optional private story (never auto-starts a room).
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Campaign start</label>
+              <input
+                type="datetime-local"
+                className="input w-full"
+                value={campaignStart}
+                onChange={(e) => setCampaignStart(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Campaign end</label>
+              <input
+                type="datetime-local"
+                className="input w-full"
+                value={campaignEnd}
+                onChange={(e) => setCampaignEnd(e.target.value)}
+              />
+              <p className="text-xs text-violet-100/50 mt-1">Also drives retention cleanup timing.</p>
+            </div>
+          </div>
+          <label className="flex items-start gap-3 cursor-pointer mb-4">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={offerPlayOnAccept}
+              onChange={(e) => setOfferPlayOnAccept(e.target.checked)}
+            />
+            <span>
+              <span className="text-sm font-medium text-gray-900">
+                Offer private play on network accept
+              </span>
+              <span className="block text-xs text-violet-100/65 mt-0.5">
+                Off by default. When on, accepting a connection creates a soft play invite — skippable, no auto room.
+              </span>
+            </span>
+          </label>
+          <button
+            type="button"
+            onClick={saveCampaignSettings}
+            disabled={savingCampaign}
+            className="btn btn-secondary"
+          >
+            {savingCampaign ? 'Saving…' : 'Save campaign settings'}
+          </button>
+        </div>
+
         {/* AI Generation Section */}
         <div className="mb-6 rounded-3xl border border-org-border bg-org-surface p-6 shadow-soft">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Room Generation</h3>
@@ -601,6 +670,9 @@ export default function EventDetailPage() {
               <button type="button" onClick={applyScenarioSlotsToBrief} className="btn btn-secondary mt-3">
                 Assemble prompt into AI brief
               </button>
+              <p className="text-xs text-violet-100/65 mt-2">
+                Empty slots are omitted from the prompt (no “Not specified” noise). Slots are saved with the brief and used live in play narration.
+              </p>
             </div>
 
             <div>
@@ -610,7 +682,7 @@ export default function EventDetailPage() {
               <textarea
                 value={aiBrief}
                 onChange={(e) => setAiBrief(e.target.value)}
-                placeholder="Describe your event theme, goals, and the story tension you want (e.g. tradeoffs, stakes). The AI will generate scenario scripts with five story beats and paths (A/B/C) for each beat — live play is blind actions plus d20 resolution."
+                placeholder="Describe your event theme, goals, and the story tension you want (e.g. tradeoffs, stakes). The AI will generate scenario scripts with five story beats and short path chips (A/B/C) — live play is free-text actions plus d20 resolution."
                 rows={4}
                 className="input resize-y"
                 disabled={generating || savingBrief}
@@ -620,13 +692,29 @@ export default function EventDetailPage() {
               </p>
             </div>
 
+            <label className="flex items-start gap-3 cursor-pointer select-none rounded-2xl border border-org-border bg-[#151423] p-3">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={twoPassGenerate}
+                onChange={(e) => setTwoPassGenerate(e.target.checked)}
+                disabled={generating}
+              />
+              <span>
+                <span className="block text-sm font-semibold text-org-text">Higher-quality two-pass generation</span>
+                <span className="block text-xs text-violet-100/65 mt-0.5">
+                  Outline then expand (~1.5–2× generation cost). Recommended when regenerating for a live event.
+                </span>
+              </span>
+            </label>
+
             <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={saveAiBrief}
-                disabled={savingBrief || aiBrief === event?.aiBrief || !aiBrief.trim()}
+                disabled={savingBrief || !aiBrief.trim()}
                 className="btn btn-secondary"
               >
-                {savingBrief ? 'Saving...' : 'Save Brief'}
+                {savingBrief ? 'Saving...' : 'Save Brief & slots'}
               </button>
               <button
                 onClick={startGenerateRooms}
@@ -708,12 +796,26 @@ export default function EventDetailPage() {
               <div className="space-y-3 text-sm">
                 {event.startDate && (
                   <div>
-                    <span className="text-gray-600">Start Date:</span>
+                    <span className="text-gray-600">Campaign start:</span>
                     <p className="font-medium text-gray-900">
                       {new Date(event.startDate).toLocaleString()}
                     </p>
                   </div>
                 )}
+                {event.endDate && (
+                  <div>
+                    <span className="text-gray-600">Campaign end:</span>
+                    <p className="font-medium text-gray-900">
+                      {new Date(event.endDate).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-600">Play on accept:</span>
+                  <p className="font-medium text-gray-900">
+                    {event.offerPrivateRoomOnAccept ? 'Soft invite offered' : 'Off'}
+                  </p>
+                </div>
                 <div>
                   <span className="text-gray-600">Timezone:</span>
                   <p className="font-medium text-gray-900">{event.timezone}</p>

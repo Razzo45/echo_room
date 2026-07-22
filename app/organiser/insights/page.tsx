@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import CampaignFunnelPanel from '@/components/CampaignFunnelPanel';
 
 type EventOption = {
   id: string;
@@ -72,6 +73,22 @@ type InsightsData = {
   badgeStats: BadgeStat[];
 };
 
+function roomStatusBadgeClass(status: string): string {
+  switch (status) {
+    case 'COMPLETED':
+      return 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/35';
+    case 'IN_PROGRESS':
+      return 'bg-amber-500/20 text-amber-200 border border-amber-500/35';
+    case 'OPEN':
+    case 'FULL':
+      return 'bg-sky-500/20 text-sky-200 border border-sky-500/35';
+    case 'CLOSED':
+      return 'bg-zinc-500/25 text-zinc-200 border border-zinc-500/35';
+    default:
+      return 'bg-violet-500/20 text-violet-200 border border-violet-500/35';
+  }
+}
+
 export default function OrganiserInsightsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<EventOption[]>([]);
@@ -82,6 +99,12 @@ export default function OrganiserInsightsPage() {
   const [artifactFilter, setArtifactFilter] = useState<'all' | 'archived' | 'past'>('all');
 
   useEffect(() => {
+    const fromQuery =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('eventId')
+        : null;
+    if (fromQuery) setSelectedEventId(fromQuery);
+
     (async () => {
       try {
         const res = await fetch('/api/organiser/events');
@@ -91,9 +114,11 @@ export default function OrganiserInsightsPage() {
           return;
         }
         setEvents(data.events?.map((e: { id: string; name: string }) => ({ id: e.id, name: e.name })) ?? []);
-        if (data.events?.length && !selectedEventId) {
-          setSelectedEventId(data.events[0].id);
-        }
+        setSelectedEventId((prev) => {
+          if (prev) return prev;
+          if (fromQuery) return fromQuery;
+          return data.events?.[0]?.id ?? '';
+        });
       } catch {
         router.push('/organiser');
       } finally {
@@ -216,7 +241,7 @@ export default function OrganiserInsightsPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom [&_.text-gray-900]:!text-org-text [&_.text-gray-800]:!text-violet-100 [&_.text-gray-700]:!text-violet-100/85 [&_.text-gray-600]:!text-violet-100/75 [&_.text-gray-500]:!text-violet-100/65 [&_.bg-gray-50]:!bg-[#151423] [&_.border-gray-200]:!border-org-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8 space-y-6 safe-bottom org-contrast">
         {!selectedEventId && (
           <div className="rounded-3xl border border-org-border bg-org-surface p-12 text-center shadow-soft">
             <p className="text-violet-100/75">Select an event to view insights.</p>
@@ -231,6 +256,8 @@ export default function OrganiserInsightsPage() {
 
         {selectedEventId && !loadingInsights && insights && (
           <>
+            <CampaignFunnelPanel eventId={selectedEventId} />
+
             <section className="rounded-3xl border border-org-border bg-org-surface overflow-hidden shadow-soft">
               <div className="px-4 py-3 border-b border-org-border bg-[#151423] rounded-t-3xl">
                 <h2 className="text-lg font-semibold text-org-text font-display">Participants</h2>
@@ -242,14 +269,14 @@ export default function OrganiserInsightsPage() {
                 <table className="min-w-full divide-y divide-org-border">
                   <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organisation</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Country</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">Organisation</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">Role</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">Country</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">Joined</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-org-border">
                     {insights.participants.length === 0 ? (
                       <tr>
                           <td colSpan={5} className="px-4 py-6 text-center text-violet-100/70">
@@ -279,25 +306,19 @@ export default function OrganiserInsightsPage() {
                 <h2 className="text-lg font-semibold text-org-text font-display">Room compositions</h2>
                 <p className="text-sm text-violet-100/70 mt-0.5">Who joined whom in each room</p>
               </div>
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-org-border">
                 {insights.rooms.length === 0 ? (
                   <div className="px-4 py-8 text-center text-violet-100/70">No rooms yet</div>
                 ) : (
                   insights.rooms.map((room) => (
                     <div key={room.id} className="px-4 py-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-mono text-sm font-semibold text-primary-600">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="font-mono text-sm font-semibold text-org-accent">
                           {room.roomCode}
                         </span>
-                        <span className="text-xs text-gray-500">({room.questName})</span>
+                        <span className="text-xs text-violet-100/70">({room.questName})</span>
                         <span
-                          className={`text-xs px-2 py-0.5 rounded ${
-                            room.status === 'COMPLETED'
-                              ? 'bg-green-100 text-green-800'
-                              : room.status === 'IN_PROGRESS'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-gray-100 text-gray-700'
-                          }`}
+                          className={`text-xs px-2 py-0.5 rounded font-semibold ${roomStatusBadgeClass(room.status)}`}
                         >
                           {room.status}
                         </span>
@@ -306,10 +327,10 @@ export default function OrganiserInsightsPage() {
                         {room.members.map((m) => (
                           <li
                             key={m.userId}
-                            className="text-sm text-violet-100/80 bg-[#151423] px-3 py-1.5 rounded-2xl border border-org-border"
+                            className="text-sm text-org-text bg-[#151423] px-3 py-1.5 rounded-2xl border border-org-border"
                           >
                             <span className="font-medium">{m.name}</span>
-                            <span className="text-gray-500">
+                            <span className="text-violet-100/65">
                               {' '}
                               · {m.organisation}
                               {m.role ? ` · ${m.role}` : ''}
@@ -346,12 +367,12 @@ export default function OrganiserInsightsPage() {
                         <span
                           className={`text-xs capitalize ${
                             b.rarity === 'legendary'
-                              ? 'text-amber-600'
+                              ? 'text-amber-300'
                               : b.rarity === 'epic'
-                                ? 'text-purple-600'
+                                ? 'text-purple-300'
                                 : b.rarity === 'rare'
-                                  ? 'text-blue-600'
-                                  : 'text-gray-500'
+                                  ? 'text-sky-300'
+                                  : 'text-violet-100/60'
                           }`}
                         >
                           {b.rarity}
@@ -363,10 +384,10 @@ export default function OrganiserInsightsPage() {
               </div>
             </section>
 
-            <section className="card-elevated overflow-hidden rounded-3xl">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-lg font-semibold text-gray-900">Artifacts</h2>
-                <p className="text-sm text-gray-500 mt-0.5">
+            <section className="rounded-3xl border border-org-border bg-org-surface overflow-hidden shadow-soft">
+              <div className="px-4 py-3 border-b border-org-border bg-[#151423]">
+                <h2 className="text-lg font-semibold text-org-text font-display">Artifacts</h2>
+                <p className="text-sm text-violet-100/70 mt-0.5">
                   View in browser or open as PDF (Save as PDF in the print dialog). Past generations are preserved when you re-generate rooms.
                 </p>
                 <div className="flex gap-2 mt-2 flex-wrap">
@@ -406,42 +427,42 @@ export default function OrganiserInsightsPage() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-org-border">
                   <thead>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">
                         Room
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">
                         Quest
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">
                         Completed
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-violet-100/65 uppercase">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-org-border">
                     {artifactFilter === 'past' ? (
                       (insights.archivedArtifacts ?? []).length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                          <td colSpan={4} className="px-4 py-6 text-center text-violet-100/70">
                             No artifacts from past generations
                           </td>
                         </tr>
                       ) : (
                         (insights.archivedArtifacts ?? []).map((a) => (
-                          <tr key={a.id} className="hover:bg-gray-50">
+                          <tr key={a.id} className="hover:bg-white/5">
                             <td className="px-4 py-3">
-                              <span className="font-mono text-sm text-gray-900">{a.roomCode}</span>
-                              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800">
+                              <span className="font-mono text-sm text-org-text">{a.roomCode}</span>
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
                                 Past generation
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{a.questName}</td>
-                            <td className="px-4 py-3 text-sm text-gray-500">
+                            <td className="px-4 py-3 text-sm text-violet-100/75">{a.questName}</td>
+                            <td className="px-4 py-3 text-sm text-violet-100/65">
                               {new Date(a.createdAt).toLocaleString()}
                             </td>
                             <td className="px-4 py-3">
@@ -450,14 +471,14 @@ export default function OrganiserInsightsPage() {
                                   href={`/organiser/archived-artifact/${a.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                                  className="text-org-accent hover:underline text-sm font-medium"
                                 >
                                   View
                                 </Link>
                                 <button
                                   type="button"
                                   onClick={() => handlePrintArchivedArtifact(a)}
-                                  className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                                  className="text-org-accent hover:underline text-sm font-medium"
                                 >
                                   PDF
                                 </button>
@@ -473,7 +494,7 @@ export default function OrganiserInsightsPage() {
                           : insights.artifacts;
                       return filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                          <td colSpan={4} className="px-4 py-6 text-center text-violet-100/70">
                             {artifactFilter === 'archived'
                               ? 'No archived artifacts'
                               : 'No artifacts yet'}
@@ -481,17 +502,17 @@ export default function OrganiserInsightsPage() {
                         </tr>
                       ) : (
                         filtered.map((a) => (
-                        <tr key={a.id} className="hover:bg-gray-50">
+                        <tr key={a.id} className="hover:bg-white/5">
                           <td className="px-4 py-3">
-                            <span className="font-mono text-sm text-gray-900">{a.roomCode}</span>
+                            <span className="font-mono text-sm text-org-text">{a.roomCode}</span>
                             {a.roomStatus === 'CLOSED' && (
-                              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-gray-200 text-gray-700">
+                              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-zinc-700 text-zinc-200">
                                 Archived
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{a.questName}</td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-violet-100/75">{a.questName}</td>
+                          <td className="px-4 py-3 text-sm text-violet-100/65">
                             {a.completedAt
                               ? new Date(a.completedAt).toLocaleString()
                               : '—'}
@@ -502,14 +523,14 @@ export default function OrganiserInsightsPage() {
                                 href={`/artifact/${a.id}?from=insights`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                                className="text-org-accent hover:underline text-sm font-medium"
                               >
                                 View
                               </Link>
                               <button
                                 type="button"
                                 onClick={() => handlePrintArtifact(a)}
-                                className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                                className="text-org-accent hover:underline text-sm font-medium"
                               >
                                 PDF
                               </button>

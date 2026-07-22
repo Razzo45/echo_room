@@ -11,6 +11,7 @@ import {
   stripInternalStoryState,
 } from '@/lib/story-runtime';
 import { generateFinalSynthesisWithFallback } from '@/lib/story-synthesis';
+import { normalizeScenarioSlots } from '@/lib/ai/scenarioSlots';
 
 export async function POST(
   request: NextRequest,
@@ -101,6 +102,7 @@ export async function POST(
           {
             name: room.quest.name || 'Collaborative Scenario',
             description: room.quest.description || room.event?.aiBrief || '',
+            slots: normalizeScenarioSlots(room.event?.aiScenarioSlots),
           }
         );
         state.finalSynthesis = {

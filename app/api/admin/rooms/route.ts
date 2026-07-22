@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         id: room.id,
         roomCode: room.roomCode,
         status: room.status,
+        isPrivate: room.isPrivate,
+        contentVersionId: room.contentVersionId,
         currentDecision: room.currentDecision,
         questName: room.quest.name,
         members: room.members.map((m) => ({
@@ -294,11 +296,8 @@ export async function POST(request: NextRequest) {
         if (!room) {
           return NextResponse.json({ error: 'Room not found' }, { status: 404 });
         }
-        if (room.status !== 'IN_PROGRESS' && room.status !== 'COMPLETED') {
-          return NextResponse.json(
-            { error: 'Only IN_PROGRESS or COMPLETED rooms can be closed' },
-            { status: 400 }
-          );
+        if (room.status === 'CLOSED') {
+          return NextResponse.json({ error: 'Room is already closed' }, { status: 400 });
         }
         const now = new Date();
         await prisma.room.update({
@@ -312,6 +311,72 @@ export async function POST(request: NextRequest) {
           resourceId: roomId,
         });
         return NextResponse.json({ success: true, message: 'Room closed' });
+      }
+
+      case 'delete_room': {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          select: { id: true, roomCode: true },
+        });
+        if (!room) {
+          return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+        }
+        await prisma.room.delete({ where: { id: roomId } });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.delete',
+          resourceType: 'room',
+          resourceId: roomId,
+          details: { roomCode: room.roomCode },
+        });
+        return NextResponse.json({ success: true, message: 'Room deleted' });
+      }
+
+      case 'bulk_close': {
+        const roomIds: string[] = Array.isArray(body.roomIds) ? body.roomIds : [];
+        if (roomIds.length === 0) {
+          return NextResponse.json({ error: 'No rooms selected' }, { status: 400 });
+        }
+        const now = new Date();
+        const result = await prisma.room.updateMany({
+          where: {
+            id: { in: roomIds },
+            status: { not: 'CLOSED' },
+          },
+          data: { status: 'CLOSED', closedAt: now },
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.bulk_close',
+          resourceType: 'room',
+          details: { requested: roomIds.length, closed: result.count },
+        });
+        return NextResponse.json({
+          success: true,
+          closed: result.count,
+          message: `Closed ${result.count} room(s)`,
+        });
+      }
+
+      case 'bulk_delete': {
+        const roomIds: string[] = Array.isArray(body.roomIds) ? body.roomIds : [];
+        if (roomIds.length === 0) {
+          return NextResponse.json({ error: 'No rooms selected' }, { status: 400 });
+        }
+        const result = await prisma.room.deleteMany({
+          where: { id: { in: roomIds } },
+        });
+        await logAdminAction({
+          organiserId: organiser.id,
+          action: 'room.bulk_delete',
+          resourceType: 'room',
+          details: { requested: roomIds.length, deleted: result.count },
+        });
+        return NextResponse.json({
+          success: true,
+          deleted: result.count,
+          message: `Deleted ${result.count} room(s)`,
+        });
       }
 
       case 'move_user': {

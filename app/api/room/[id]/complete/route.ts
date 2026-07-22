@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { generateArtifact } from '@/lib/artifact';
 import { isStoryStateColumnMissing, normalizeStoryState } from '@/lib/story-runtime';
 import { generateFinalSynthesisWithFallback } from '@/lib/story-synthesis';
+import { normalizeScenarioSlots } from '@/lib/ai/scenarioSlots';
 import { checkRoomCompletionBadges } from '@/lib/badges';
 
 /**
@@ -112,6 +113,7 @@ export async function POST(
             {
               name: roomFresh.quest.name || 'Collaborative Scenario',
               description: roomFresh.quest.description || roomFresh.event?.aiBrief || '',
+              slots: normalizeScenarioSlots(roomFresh.event?.aiScenarioSlots),
             }
           );
           currentState.finalSynthesis = {

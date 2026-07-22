@@ -11,6 +11,7 @@ export default function NewEventPage() {
     description: '',
     aiBrief: '',
     startDate: '',
+    endDate: '',
     timezone: 'UTC',
     brandColor: '#0ea5e9',
     logoUrl: '',
@@ -119,7 +120,7 @@ export default function NewEventPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">Start date</label>
+              <label className="label">Campaign start</label>
               <input
                 type="datetime-local"
                 value={formData.startDate}
@@ -128,6 +129,16 @@ export default function NewEventPage() {
               />
             </div>
             <div>
+              <label className="label">Campaign end</label>
+              <input
+                type="datetime-local"
+                value={formData.endDate}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                className="input"
+              />
+              <p className="text-xs text-violet-100/65 mt-1.5">Used for retention timing after the event.</p>
+            </div>
+            <div className="md:col-span-2">
               <label className="label">Timezone</label>
               <select
                 value={formData.timezone}

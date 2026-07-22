@@ -90,10 +90,12 @@ export async function POST(request: Request) {
       description,
       aiBrief,
       startDate,
+      endDate,
       timezone,
       brandColor,
       logoUrl,
       sponsorLogos,
+      offerPrivateRoomOnAccept,
     } = body;
 
     if (!name) {
@@ -110,10 +112,15 @@ export async function POST(request: Request) {
         description: description || null,
         aiBrief: aiBrief || null,
         startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
         timezone: timezone || 'UTC',
         brandColor: brandColor || '#0ea5e9',
         logoUrl: logoUrl || null,
         sponsorLogos: sponsorLogos ? JSON.stringify(sponsorLogos) : null,
+        offerPrivateRoomOnAccept:
+          typeof offerPrivateRoomOnAccept === 'boolean'
+            ? offerPrivateRoomOnAccept
+            : false,
       },
     });
 

@@ -151,7 +151,7 @@ export default function QuestReviewModal({
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 [&_.text-gray-900]:!text-org-text [&_.text-gray-800]:!text-violet-100 [&_.text-gray-700]:!text-violet-100/85 [&_.text-gray-600]:!text-violet-100/75 [&_.text-gray-500]:!text-violet-100/65 [&_.bg-gray-50]:!bg-[#151423] [&_.border-gray-200]:!border-org-border">
+          <div className="flex-1 overflow-y-auto p-6 org-contrast">
             {currentRegion && currentQuest ? (
               <div className="space-y-6">
                 {/* Region Info */}

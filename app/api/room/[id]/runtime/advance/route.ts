@@ -14,6 +14,8 @@ import {
   generateBeatConsequenceWithFallback,
   generateFinalSynthesisWithFallback,
 } from '@/lib/story-synthesis';
+import { adaptNextBeatScene } from '@/lib/ai/adaptNextBeat';
+import { normalizeScenarioSlots } from '@/lib/ai/scenarioSlots';
 
 /** Transaction branch that advanced to beat_consequence with full room context for post-tx AI. */
 type AdvanceBeatConsequenceOk = {
@@ -123,8 +125,14 @@ export async function POST(
           return { name: m.user.name, value: r?.value ?? 0, band: r?.band ?? 'mixed' };
         });
 
+        const decisionForBeat = room.quest.decisions?.find((d) => d.decisionNumber === beat);
+        const adapted = state.adaptedScenes?.[beatKey];
+        const beatScene =
+          adapted?.context || decisionForBeat?.context || '';
+
         const deterministic = buildDeterministicBeatConsequence({
           beat,
+          beatScene,
           submissions: submissionList,
           rolls: rollList,
           averageRoll,
@@ -237,6 +245,7 @@ export async function POST(
       const { quest, event: txEvent, members, beat: advancedBeat } = result as AdvanceBeatConsequenceOk;
       const scenarioName = quest.name || 'Collaborative Scenario';
       const scenarioDescription = quest.description || txEvent?.aiBrief || '';
+      const slots = normalizeScenarioSlots(txEvent?.aiScenarioSlots);
       void (async () => {
         try {
           const room = await prisma.room.findUnique({
@@ -247,31 +256,44 @@ export async function POST(
           const playerIds = room.members.map((m) => m.userId);
           const state = normalizeStoryState(room.storyState, playerIds);
           const bk = String(advancedBeat) as BeatKey;
-          const decision = quest.decisions?.find((d: any) => d.decisionNumber === advancedBeat);
+          const decision = quest.decisions?.find((d) => d.decisionNumber === advancedBeat);
+          const adaptedScene = state.adaptedScenes?.[bk];
+          const beatScene = adaptedScene?.context || decision?.context || '';
+          const priorKey = advancedBeat > 1 ? (String(advancedBeat - 1) as BeatKey) : null;
+          const priorConsequence = priorKey
+            ? state.beats[priorKey]?.consequence?.text || null
+            : null;
+
+          const averageRoll = (() => {
+            const vals = Object.values(state.beats[bk].rolls).map((r) => r.value);
+            return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+          })();
+
+          const submissions = room.members.map((m) => ({
+            name: m.user.name,
+            text: state.beats[bk].submissions[m.userId] || '',
+          }));
 
           const aiResult = await generateBeatConsequenceWithFallback({
             beat: advancedBeat,
-            beatTitle: decision?.title || `Beat ${advancedBeat}`,
-            beatScene: decision?.context || '',
+            beatTitle: adaptedScene?.title || decision?.title || `Beat ${advancedBeat}`,
+            beatScene,
             scenarioName,
             scenarioDescription,
-            paths: (decision?.options || []).map((o: any) => ({
+            slots,
+            priorConsequence,
+            paths: (decision?.options || []).map((o) => ({
               key: o.optionKey,
               label: o.title,
-              summary: o.tradeoff || o.description || '',
+              summary: o.description || o.tradeoff || '',
+              impact: o.impact || '',
             })),
-            submissions: room.members.map((m) => ({
-              name: m.user.name,
-              text: state.beats[bk].submissions[m.userId] || '',
-            })),
+            submissions,
             rolls: room.members.map((m) => {
               const r = state.beats[bk].rolls[m.userId];
               return { name: m.user.name, value: r?.value ?? 0, band: r?.band ?? 'mixed' };
             }),
-            averageRoll: (() => {
-              const vals = Object.values(state.beats[bk].rolls).map((r) => r.value);
-              return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-            })(),
+            averageRoll,
           });
 
           if (aiResult.mode === 'ai') {
@@ -282,11 +304,45 @@ export async function POST(
             };
           }
 
-          if (advancedBeat === (state.totalBeats ?? 5)) {
+          const consequenceText = state.beats[bk].consequence?.text || '';
+          const totalBeats = state.totalBeats ?? 5;
+
+          // Adapt the next beat scene so the story reacts (mini) — fail-open.
+          if (advancedBeat < totalBeats && consequenceText) {
+            const nextBeat = (advancedBeat + 1) as BeatNumber;
+            const nextKey = String(nextBeat) as BeatKey;
+            const nextDecision = quest.decisions?.find((d) => d.decisionNumber === nextBeat);
+            const adapted = await adaptNextBeatScene({
+              scenarioName,
+              scenarioDescription,
+              slots,
+              completedBeat: advancedBeat,
+              completedBeatTitle: decision?.title || `Beat ${advancedBeat}`,
+              consequenceText,
+              submissions,
+              averageRoll,
+              nextBeatNumber: nextBeat,
+              nextBeatTitle: nextDecision?.title || `Beat ${nextBeat}`,
+              nextBeatScene: nextDecision?.context || '',
+            });
+            if (adapted?.context) {
+              state.adaptedScenes = {
+                ...(state.adaptedScenes || {}),
+                [nextKey]: {
+                  title: adapted.title,
+                  context: adapted.context,
+                  adaptedAt: new Date().toISOString(),
+                  fromBeat: advancedBeat,
+                },
+              };
+            }
+          }
+
+          if (advancedBeat === totalBeats) {
             const synthesis = await generateFinalSynthesisWithFallback(
               state,
               room.members.map((m) => ({ id: m.userId, name: m.user.name })),
-              { name: scenarioName, description: scenarioDescription }
+              { name: scenarioName, description: scenarioDescription, slots }
             );
             state.finalSynthesis = { status: 'done', text: synthesis.text, mode: synthesis.mode };
           }

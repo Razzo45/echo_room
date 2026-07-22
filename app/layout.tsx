@@ -1,16 +1,19 @@
-import type { Metadata } from 'next';
-import { DM_Sans, Inter, JetBrains_Mono } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { IBM_Plex_Sans, JetBrains_Mono, Oxanium } from 'next/font/google';
 import './globals.css';
 import DebugBanner from '@/components/DebugBanner';
+import ThemeProvider from '@/components/ThemeProvider';
 
-const dmSans = DM_Sans({
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
-  variable: '--font-dm-sans',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-plex-sans',
 });
 
-const inter = Inter({
+const oxanium = Oxanium({
   subsets: ['latin'],
-  variable: '--font-inter',
+  weight: ['500', '600', '700'],
+  variable: '--font-oxanium',
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -19,21 +22,26 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Echo Room - AI Powered Decision Environment',
-  description: 'You don\'t leave with slides. You leave with a decision map.',
+  title: 'Echo Room — Pre-event companion',
+  description:
+    'Bridge cold corporate networking with warm collaborative storytelling. Arrive already bonded.',
   manifest: '/manifest.json',
-  themeColor: '#0ea5e9',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Echo Room',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#0b1f3a' },
+    { media: '(prefers-color-scheme: dark)', color: '#05070d' },
+  ],
 };
 
 export default function RootLayout({
@@ -44,11 +52,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      data-theme="corridor"
+      className={`${ibmPlexSans.variable} ${oxanium.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-        <DebugBanner />
-        <main className="min-h-screen">{children}</main>
+        <ThemeProvider>
+          <DebugBanner />
+          <main className="min-h-screen">{children}</main>
+        </ThemeProvider>
       </body>
     </html>
   );

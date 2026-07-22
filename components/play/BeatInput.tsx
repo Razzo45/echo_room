@@ -35,6 +35,8 @@ type Props = {
   currentBeat: BeatNumber;
   totalBeats: BeatNumber;
   currentMeta: QuestDecisionData | null;
+  previousConsequence?: string | null;
+  actionPlaceholder?: string;
   mySubmittedAction?: string;
   actionText: string;
   actionSubmitting: boolean;
@@ -48,6 +50,8 @@ export function BeatInput({
   currentBeat,
   totalBeats,
   currentMeta,
+  previousConsequence,
+  actionPlaceholder = 'I name the pressure and take one concrete action.',
   mySubmittedAction,
   actionText,
   actionSubmitting,
@@ -60,6 +64,15 @@ export function BeatInput({
 
   return (
     <div className="space-y-4">
+      {previousConsequence && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-800/80 mb-1">
+            What just happened
+          </p>
+          <p className="text-sm text-stone-700 whitespace-pre-wrap line-clamp-5">{previousConsequence}</p>
+        </div>
+      )}
+
       <div className="bg-white rounded-3xl border border-amber-100 shadow p-5 space-y-3">
         {currentMeta ? (
           <>
@@ -77,10 +90,10 @@ export function BeatInput({
       {pathKeys.length > 0 && (
         <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/40 p-4">
           <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">
-            Paths (reference only)
+            Paths (inspiration only)
           </p>
           <p className="text-xs text-stone-500 mb-3">
-            These are not votes — use them as inspiration, then write your own line.
+            Not votes — steal a direction if it helps, then write your own line.
           </p>
           <div className="grid gap-2">
             {pathKeys.map((key) => (
@@ -106,13 +119,16 @@ export function BeatInput({
         ) : (
           <>
             <label className="label">Your action (one sentence)</label>
+            <p className="text-xs text-stone-500 mb-2">
+              Tip: name who or what you touch, and what you risk.
+            </p>
             <textarea
               rows={3}
               maxLength={ACTION_MAX_CHARS}
               className="input min-h-[100px]"
               value={actionText}
               onChange={(e) => onActionTextChange(e.target.value.slice(0, ACTION_MAX_CHARS))}
-              placeholder="I redirect power to shields while we cross."
+              placeholder={actionPlaceholder}
             />
             <p className="mt-1 text-xs text-stone-500">{actionText.length}/{ACTION_MAX_CHARS}</p>
             <button
@@ -133,3 +149,4 @@ export function BeatInput({
     </div>
   );
 }
+

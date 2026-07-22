@@ -82,11 +82,14 @@ export async function PUT(
       name,
       description,
       aiBrief,
+      aiScenarioSlots,
       startDate,
+      endDate,
       timezone,
       brandColor,
       logoUrl,
       sponsorLogos,
+      offerPrivateRoomOnAccept,
     } = body;
 
     const activeEvent = await requireOrganiserEventAccess(organiser, params.id);
@@ -99,11 +102,20 @@ export async function PUT(
         ...(name && { name }),
         ...(description !== undefined && { description }),
         ...(aiBrief !== undefined && { aiBrief }),
-        ...(startDate && { startDate: new Date(startDate) }),
+        ...(aiScenarioSlots !== undefined && { aiScenarioSlots }),
+        ...(startDate !== undefined && {
+          startDate: startDate ? new Date(startDate) : null,
+        }),
+        ...(endDate !== undefined && {
+          endDate: endDate ? new Date(endDate) : null,
+        }),
         ...(timezone && { timezone }),
         ...(brandColor && { brandColor }),
         ...(logoUrl !== undefined && { logoUrl }),
         ...(sponsorLogos && { sponsorLogos: JSON.stringify(sponsorLogos) }),
+        ...(typeof offerPrivateRoomOnAccept === 'boolean' && {
+          offerPrivateRoomOnAccept,
+        }),
       },
     });
 

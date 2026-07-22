@@ -25,6 +25,8 @@ model Event {
   description         String?
   organiserId         String?
   aiBrief             String?            // AI generation brief/description
+  /// Structured scenario slots (JSON ScenarioSlots) — feeds gen + live voice
+  aiScenarioSlots     Json?
   aiGenerationStatus AIGenerationStatus  @default(IDLE)
   aiGeneratedAt       DateTime?
   aiGenerationVersion String?
@@ -34,6 +36,8 @@ model Event {
   brandColor          String             @default("#0ea5e9")
   logoUrl             String?
   sponsorLogos        String?            // JSON array of logo URLs
+  /// Soft play offer after network-accept (off by default — no auto-room)
+  offerPrivateRoomOnAccept Boolean       @default(false)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   // Data retention: 2 weeks after endDate = auto cleanup unless override
@@ -58,6 +62,10 @@ model Event {
   generations         EventGeneration[]
   retentionLogs       RetentionCleanupLog[]
   archivedArtifacts   EventArtifactArchive[]
+  networkRequests     NetworkRequest[]
+  directMessages      DirectMessage[]
+  forumPosts          EventForumPost[]
+  playInvites         PlayInvite[]
 }
 
 model EventCode {
@@ -85,6 +93,8 @@ model User {
   headline       String?  // Optional tagline for networking directory
   linkedinUrl    String?  // Optional LinkedIn profile URL
   isDiscoverable Boolean  @default(false) // If true, show in /people networking search
+  /// Partner-platform user id (addon GTM identity handoff)
+  externalUserId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -94,9 +104,16 @@ model User {
   votes       Vote[]
   badges      UserBadge[]
   pushSubscriptions PushSubscription[]
+  networkRequestsSent     NetworkRequest[] @relation("NetworkRequestFrom")
+  networkRequestsReceived NetworkRequest[] @relation("NetworkRequestTo")
+  messagesSent            DirectMessage[]  @relation("MessageSender")
+  messagesReceived        DirectMessage[]  @relation("MessageRecipient")
+  playInvitesSent         PlayInvite[]     @relation("PlayInviteFrom")
+  playInvitesReceived     PlayInvite[]     @relation("PlayInviteTo")
 
   @@index([eventId])
   @@index([eventId, isDiscoverable])
+  @@unique([eventId, externalUserId])
 }
 
 model Session {
@@ -239,25 +256,31 @@ model Room {
   status          RoomStatus  @default(OPEN)
   currentDecision Int         @default(1)
   storyState      Json?
+  isPrivate       Boolean     @default(false) // 1:1 / invite-only playspace room
+  contentVersionId String?    // EventForumPost id snapshot — never mutate mid-play
   startedAt       DateTime?
   completedAt     DateTime?
-  lastActivityAt  DateTime?   // Updated on vote, commit, start, join, complete
-  closedAt        DateTime?   // Set when room is closed (manual or auto)
+  lastActivityAt  DateTime?
+  closedAt        DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   
   event          Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   quest          Quest      @relation(fields: [questId], references: [id], onDelete: Cascade)
+  contentVersion EventForumPost? @relation(fields: [contentVersionId], references: [id], onDelete: SetNull)
   members        RoomMember[]
   votes          Vote[]
   commits        DecisionCommit[]
   artifact       Artifact?
-  badges         UserBadge[] // Badges earned in this room (relation defined on UserBadge)
+  badges         UserBadge[]
+  playInvites    PlayInvite[]
   
   @@index([status, questId])
   @@index([eventId, status])
   @@index([completedAt])
   @@index([status, lastActivityAt])
+  @@index([contentVersionId])
+  @@index([isPrivate])
 }
 
 model RoomMember {
@@ -370,6 +393,7 @@ model Organiser {
   events       Event[]
   sessions     OrganiserSession[]
   adminAuditLogs AdminAuditLog[]
+  forumPosts   EventForumPost[]
 
   @@index([email])
   @@index([role])
@@ -502,4 +526,108 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+enum NetworkRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+/// Event-scoped networking request (Layer 1 social skeleton).
+model NetworkRequest {
+  id         String               @id @default(cuid())
+  eventId    String
+  fromUserId String
+  toUserId   String
+  status     NetworkRequestStatus @default(PENDING)
+  note       String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  event    Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fromUser User  @relation("NetworkRequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User  @relation("NetworkRequestTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, fromUserId, toUserId])
+  @@index([eventId, toUserId, status])
+  @@index([eventId, fromUserId, status])
+}
+
+/// Direct messages between accepted connections (IM MVP; poll-based).
+model DirectMessage {
+  id          String    @id @default(cuid())
+  eventId     String
+  senderId    String
+  recipientId String
+  body        String
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sender    User  @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User  @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, senderId, recipientId, createdAt])
+  @@index([eventId, recipientId, readAt])
+}
+
+enum ForumPostType {
+  UPDATE
+  SPEAKER
+  PANEL
+  NEWSLETTER
+}
+
+/// Organiser-authored event feed (Layer 2). Post id is the content version for room seeding.
+model EventForumPost {
+  id              String        @id @default(cuid())
+  eventId         String
+  organiserId     String
+  type            ForumPostType @default(UPDATE)
+  title           String
+  body            String
+  pinned          Boolean       @default(false)
+  published       Boolean       @default(true)
+  seedPlayspace   Boolean       @default(false) // when true on publish, spawn new quest/room (never mutate open rooms)
+  seededQuestId   String?
+  publishedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  organiser Organiser @relation(fields: [organiserId], references: [id], onDelete: Cascade)
+  rooms     Room[]
+
+  @@index([eventId, published, publishedAt])
+  @@index([eventId, pinned])
+}
+
+enum PlayInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+/// Play-together invite → private story room (Layer 3 bridge).
+model PlayInvite {
+  id         String           @id @default(cuid())
+  eventId    String
+  fromUserId String
+  toUserId   String
+  questId    String?
+  roomId     String?
+  status     PlayInviteStatus @default(PENDING)
+  note       String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fromUser User   @relation("PlayInviteFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User   @relation("PlayInviteTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  room     Room?  @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, toUserId, status])
+  @@index([eventId, fromUserId, status])
 }

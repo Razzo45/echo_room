@@ -1,46 +1,93 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth-organiser';
+import { logAdminAction } from '@/lib/admin-audit';
 
 const INACTIVE_DAYS = 7;
 
+/** Prefer real play timestamps over updatedAt (which bumps on any write). */
+function activityAt(room: {
+  lastActivityAt: Date | null;
+  completedAt: Date | null;
+  startedAt: Date | null;
+  createdAt: Date;
+}): Date {
+  return (
+    room.lastActivityAt ??
+    room.completedAt ??
+    room.startedAt ??
+    room.createdAt
+  );
+}
+
 /**
  * POST /api/admin/rooms/close-inactive
- * Close IN_PROGRESS rooms with no activity for 1 week.
- * Safe to call from a cron job (e.g. daily) or manually from admin.
+ * Close stale rooms (private + open playspace):
+ * - OPEN / FULL / IN_PROGRESS with no real activity for 1 week
+ * - COMPLETED left hanging for 1 week (archive them)
  */
 export async function POST() {
   try {
-    await requireAdminAuth();
+    const organiser = await requireAdminAuth();
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - INACTIVE_DAYS);
 
-    // Close rooms that are IN_PROGRESS and (lastActivityAt or updatedAt) is before cutoff
-    const toClose = await prisma.room.findMany({
+    const candidates = await prisma.room.findMany({
       where: {
-        status: 'IN_PROGRESS',
-        OR: [
-          { lastActivityAt: { lt: cutoff } },
-          {
-            lastActivityAt: null,
-            updatedAt: { lt: cutoff },
-          },
-        ],
+        status: { in: ['OPEN', 'FULL', 'IN_PROGRESS', 'COMPLETED'] },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        isPrivate: true,
+        status: true,
+        lastActivityAt: true,
+        completedAt: true,
+        startedAt: true,
+        createdAt: true,
+      },
     });
 
+    const stale = candidates.filter((r) => activityAt(r) < cutoff);
+    const ids = stale.map((r) => r.id);
+
     const now = new Date();
-    await prisma.room.updateMany({
-      where: { id: { in: toClose.map((r) => r.id) } },
-      data: { status: 'CLOSED', closedAt: now },
-    });
+    if (ids.length > 0) {
+      await prisma.room.updateMany({
+        where: { id: { in: ids } },
+        data: { status: 'CLOSED', closedAt: now },
+      });
+      await logAdminAction({
+        organiserId: organiser.id,
+        action: 'room.close_inactive',
+        resourceType: 'room',
+        details: {
+          closed: ids.length,
+          cutoff: cutoff.toISOString(),
+          inactiveDays: INACTIVE_DAYS,
+        },
+      });
+    }
+
+    const privateClosed = stale.filter((r) => r.isPrivate).length;
+    const openClosed = stale.filter((r) => !r.isPrivate).length;
 
     return NextResponse.json({
       success: true,
-      closed: toClose.length,
-      message: `Closed ${toClose.length} inactive room(s).`,
+      closed: ids.length,
+      privateClosed,
+      openClosed,
+      byStatus: {
+        OPEN: stale.filter((r) => r.status === 'OPEN').length,
+        FULL: stale.filter((r) => r.status === 'FULL').length,
+        IN_PROGRESS: stale.filter((r) => r.status === 'IN_PROGRESS').length,
+        COMPLETED: stale.filter((r) => r.status === 'COMPLETED').length,
+      },
+      cutoff: cutoff.toISOString(),
+      message:
+        ids.length === 0
+          ? `No rooms inactive since ${cutoff.toLocaleDateString()} (checked lastActivityAt → completedAt → startedAt → createdAt).`
+          : `Closed ${ids.length} inactive room(s) (${privateClosed} private, ${openClosed} open).`,
     });
   } catch (error) {
     console.error('Close inactive rooms error:', error);

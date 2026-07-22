@@ -3,6 +3,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DualSurfaceNav from '@/components/DualSurfaceNav';
+import {
+  Avatar,
+  AvatarLabelGroup,
+  Badge,
+  EmptyState,
+  FeaturedIcon,
+  PageHeader,
+} from '@/components/ui/untitled';
 
 type Person = {
   id: string;
@@ -11,6 +20,12 @@ type Person = {
   role: string;
   headline: string | null;
   linkedinUrl: string | null;
+};
+
+type RequestRow = {
+  id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  user: { id: string; name: string; organisation: string; role: string };
 };
 
 function LinkedInIcon({ className }: { className?: string }) {
@@ -27,9 +42,37 @@ export default function PeoplePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [levelLabel, setLevelLabel] = useState<string | null>(null);
-  const [neighbours, setNeighbours] = useState<Array<{ name: string; agreementPercent: number }>>([]);
-  const [collabStats, setCollabStats] = useState<{ uniqueCollaborators: number; countriesCollaborated: number } | null>(null);
+  const [incoming, setIncoming] = useState<RequestRow[]>([]);
+  const [outgoing, setOutgoing] = useState<RequestRow[]>([]);
+  const [playIncoming, setPlayIncoming] = useState<RequestRow[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const statusFor = useCallback(
+    (personId: string): 'none' | 'pending_out' | 'pending_in' | 'connected' | 'declined' => {
+      const out = outgoing.find((r) => r.user.id === personId);
+      const inn = incoming.find((r) => r.user.id === personId);
+      if (out?.status === 'ACCEPTED' || inn?.status === 'ACCEPTED') return 'connected';
+      if (out?.status === 'PENDING') return 'pending_out';
+      if (inn?.status === 'PENDING') return 'pending_in';
+      if (out?.status === 'DECLINED' || inn?.status === 'DECLINED') return 'declined';
+      return 'none';
+    },
+    [incoming, outgoing]
+  );
+
+  const loadRequests = useCallback(async () => {
+    const [net, play] = await Promise.all([
+      fetch('/api/network/requests').then((r) => r.json()),
+      fetch('/api/play-invites').then((r) => r.json()),
+    ]);
+    if (net.incoming) setIncoming(net.incoming);
+    if (net.outgoing) setOutgoing(net.outgoing);
+    if (play.incoming) {
+      setPlayIncoming(
+        (play.incoming as RequestRow[]).filter((r) => r.status === 'PENDING')
+      );
+    }
+  }, []);
 
   const fetchPeople = useCallback(async (q: string) => {
     const url = q.trim() ? `/api/people?q=${encodeURIComponent(q.trim())}` : '/api/people';
@@ -42,23 +85,17 @@ export default function PeoplePage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/auth/me').then((r) => r.json()),
-      fetch('/api/me').then((r) => r.json()),
-      fetch('/api/people/neighbours').then((r) => r.json()),
+      loadRequests(),
     ])
-      .then(([authData, meData, neighData]) => {
+      .then(([authData]) => {
         if (authData.error || authData.needsProfile) {
           router.push(authData.needsProfile ? '/profile' : '/');
           return;
         }
-        if (meData.levelLabel) setLevelLabel(meData.levelLabel);
-        if (neighData.neighbours) {
-          setNeighbours(neighData.neighbours.map((n: { name: string; agreementPercent: number }) => ({ name: n.name, agreementPercent: n.agreementPercent })));
-        }
-        if (neighData.stats) setCollabStats(neighData.stats);
         setLoading(false);
       })
       .catch(() => router.push('/'));
-  }, [router]);
+  }, [router, loadRequests]);
 
   useEffect(() => {
     if (loading) return;
@@ -70,107 +107,324 @@ export default function PeoplePage() {
     setSearch(searchInput.trim());
   };
 
+  const sendRequest = async (toUserId: string) => {
+    setBusyId(toUserId);
+    try {
+      const res = await fetch('/api/network/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toUserId }),
+      });
+      await loadRequests();
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Could not send request');
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const respond = async (requestId: string, action: 'accept' | 'decline') => {
+    setBusyId(requestId);
+    try {
+      const res = await fetch(`/api/network/requests/${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      await loadRequests();
+      if (action === 'accept' && data.playInviteOffered) {
+        alert(
+          'Connected. An optional play invite was suggested — accept it from People when you’re ready (or skip).'
+        );
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--quest-cream)]">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--theme-bg)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-amber-200 border-t-amber-600 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading…</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-[var(--theme-border)] border-t-[var(--theme-ink)] mx-auto mb-4" />
+          <p className="text-[var(--theme-muted)] text-sm">Loading…</p>
         </div>
       </div>
     );
   }
 
+  const pendingIncoming = incoming.filter((r) => r.status === 'PENDING');
+
   return (
-    <div className="min-h-screen bg-[var(--quest-cream)] pb-8">
-      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-amber-100 px-4 py-3 flex items-center gap-3">
-        <Link href="/world" className="p-2 -ml-2 rounded-xl text-amber-700 hover:bg-amber-50 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="font-medium text-sm">World</span>
-        </Link>
-        <h1 className="text-lg font-bold text-gray-900 flex-1 font-display">People</h1>
-      </div>
-
-      <main className="max-w-lg mx-auto px-4 py-4">
-        <p className="text-sm text-stone-500 mb-3">Find participants who opted into the directory.</p>
-        {levelLabel && (
-          <span className="inline-flex items-center mb-3 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-            Level: {levelLabel}
-          </span>
-        )}
-        {collabStats && (collabStats.uniqueCollaborators > 0 || collabStats.countriesCollaborated > 0) && (
-          <div className="mb-3 p-3 rounded-2xl bg-gray-100 text-sm text-gray-700">
-            You’ve worked with {collabStats.uniqueCollaborators} professional{collabStats.uniqueCollaborators !== 1 ? 's' : ''}
-            {collabStats.countriesCollaborated > 0 && <> in {collabStats.countriesCollaborated} countr{collabStats.countriesCollaborated !== 1 ? 'ies' : 'y'}</>}.
+    <div className="min-h-screen bg-[var(--theme-bg)] pb-8">
+      <DualSurfaceNav />
+      <PageHeader
+        title="People"
+        subtitle="Search professionals, connect, then chat — storytelling lives in Echo Room."
+        actions={
+          <div className="flex items-center gap-3 text-sm">
+            <Link href="/messages" className="text-corridor-signal font-semibold hover:underline">
+              Messages
+            </Link>
+            <Link href="/profile" className="text-[var(--theme-muted)] font-medium">
+              Profile
+            </Link>
           </div>
-        )}
-        {neighbours.length > 0 && (
-          <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200">
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Decision neighbours</p>
-            <p className="text-sm text-amber-900">
-              {neighbours.slice(0, 3).map((n, i) => (
-                <span key={i}>{n.name} ({n.agreementPercent}%){i < Math.min(2, neighbours.length - 1) ? ', ' : ''}</span>
-              ))}
-            </p>
-          </div>
+        }
+      />
+
+      <main className="surface-shell py-5">
+        {pendingIncoming.length > 0 && (
+          <section className="mb-5 space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--theme-muted)] mb-2">
+              Incoming requests
+            </h2>
+            {pendingIncoming.map((r) => (
+              <div key={r.id} className="card !p-3.5 flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <AvatarLabelGroup
+                    name={r.user.name}
+                    subtitle={`${r.user.role} at ${r.user.organisation}`}
+                    size="md"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === r.id}
+                  onClick={() => respond(r.id, 'accept')}
+                  className="btn btn-primary btn-sm"
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  disabled={busyId === r.id}
+                  onClick={() => respond(r.id, 'decline')}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Decline
+                </button>
+              </div>
+            ))}
+          </section>
         )}
 
-        <form onSubmit={handleSearchSubmit} className="mb-4 flex gap-2">
+        {playIncoming.length > 0 && (
+          <section className="mb-5 space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--theme-muted)] mb-2">
+              Play invites
+            </h2>
+            {playIncoming.map((r) => (
+              <div key={r.id} className="card !p-3.5 flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <AvatarLabelGroup
+                    name={r.user.name}
+                    subtitle="~15 min private story room"
+                    size="md"
+                  />
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === r.id}
+                  onClick={async () => {
+                    setBusyId(r.id);
+                    try {
+                      const res = await fetch(`/api/play-invites/${r.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'accept' }),
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.roomId) {
+                        router.push(`/room/${data.roomId}`);
+                        return;
+                      }
+                      alert(data.error || 'Could not accept');
+                      await loadRequests();
+                    } finally {
+                      setBusyId(null);
+                    }
+                  }}
+                  className="btn btn-primary btn-sm"
+                >
+                  Play
+                </button>
+                <button
+                  type="button"
+                  disabled={busyId === r.id}
+                  onClick={async () => {
+                    setBusyId(r.id);
+                    try {
+                      await fetch(`/api/play-invites/${r.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'decline' }),
+                      });
+                      await loadRequests();
+                    } finally {
+                      setBusyId(null);
+                    }
+                  }}
+                  className="btn btn-ghost btn-sm"
+                >
+                  Decline
+                </button>
+              </div>
+            ))}
+          </section>
+        )}
+
+        <form onSubmit={handleSearchSubmit} className="mb-5 flex gap-2">
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Name, org, role…"
-            className="input flex-1 min-h-[48px]"
+            placeholder="Search name, org, role…"
+            className="input flex-1"
             maxLength={100}
           />
-          <button type="submit" className="btn btn-primary shrink-0">Search</button>
+          <button type="submit" className="btn btn-primary shrink-0">
+            Search
+          </button>
         </form>
 
         {people.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-amber-100 p-8 text-center">
-            <p className="text-stone-500">
-              {search ? 'No matches.' : 'No one in the directory yet.'}
-            </p>
-            <p className="text-sm text-stone-400 mt-1">
-              {search ? 'Try another search.' : 'Opt in from your profile.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={
+              <FeaturedIcon color="gray">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.75}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </FeaturedIcon>
+            }
+            title={search ? 'No matches found' : 'Directory is quiet'}
+            description={
+              search
+                ? 'Try another name, organisation, or role.'
+                : 'Make yourself discoverable from Profile so others can find you.'
+            }
+            actions={
+              !search ? (
+                <Link href="/profile" className="btn btn-secondary btn-sm">
+                  Open profile
+                </Link>
+              ) : undefined
+            }
+          />
         ) : (
-          <ul className="space-y-3">
-            {people.map((person) => (
-              <li key={person.id}>
-                <div className="bg-white rounded-3xl shadow-lg border border-amber-100 p-4 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg shrink-0">
-                    {person.name.charAt(0).toUpperCase()}
+          <ul className="surface-card-grid list-none p-0 m-0">
+            {people.map((person) => {
+              const st = statusFor(person.id);
+              const inn = incoming.find((r) => r.user.id === person.id && r.status === 'PENDING');
+              return (
+                <li key={person.id} className="card !p-3.5 !shadow-none hover:shadow-soft transition-shadow h-full">
+                  <div className="flex items-start gap-3">
+                    <Avatar name={person.name} size="lg" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-[var(--theme-text)] truncate">{person.name}</p>
+                        {st === 'connected' && (
+                          <Badge color="success" size="sm" dot>
+                            Connected
+                          </Badge>
+                        )}
+                        {st === 'pending_out' && (
+                          <Badge color="gray" size="sm">
+                            Pending
+                          </Badge>
+                        )}
+                      </div>
+                      {person.headline && (
+                        <p className="text-sm text-[var(--theme-muted)] line-clamp-2 mt-0.5">
+                          {person.headline}
+                        </p>
+                      )}
+                      <p className="text-xs text-[var(--theme-muted)] mt-1">
+                        {person.role} · {person.organisation}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                      {st === 'none' || st === 'declined' ? (
+                        <button
+                          type="button"
+                          disabled={busyId === person.id}
+                          onClick={() => sendRequest(person.id)}
+                          className="btn btn-primary btn-sm"
+                        >
+                          Connect
+                        </button>
+                      ) : null}
+                      {st === 'pending_in' && inn && (
+                        <button
+                          type="button"
+                          disabled={busyId === inn.id}
+                          onClick={() => respond(inn.id, 'accept')}
+                          className="btn btn-primary btn-sm"
+                        >
+                          Accept
+                        </button>
+                      )}
+                      {st === 'connected' && (
+                        <>
+                          <Link
+                            href={`/messages?with=${person.id}`}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            Message
+                          </Link>
+                          <button
+                            type="button"
+                            disabled={busyId === `play-${person.id}`}
+                            onClick={async () => {
+                              setBusyId(`play-${person.id}`);
+                              try {
+                                const res = await fetch('/api/play-invites', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ toUserId: person.id }),
+                                });
+                                const data = await res.json();
+                                if (!res.ok) alert(data.error || 'Could not send play invite');
+                                else
+                                  alert(
+                                    'Play invite sent — they can accept from People or Messages.'
+                                  );
+                              } finally {
+                                setBusyId(null);
+                              }
+                            }}
+                            className="btn btn-primary btn-sm"
+                          >
+                            Play together
+                          </button>
+                        </>
+                      )}
+                      {person.linkedinUrl && (
+                        <a
+                          href={person.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-ghost btn-sm !px-2"
+                          aria-label="LinkedIn"
+                        >
+                          <LinkedInIcon className="w-4 h-4 text-[#0A66C2]" />
+                        </a>
+                      )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-gray-900 truncate font-display">{person.name}</p>
-                    {person.headline && <p className="text-sm text-stone-600 line-clamp-1">{person.headline}</p>}
-                    <p className="text-xs text-stone-500">{person.role} at {person.organisation}</p>
-                  </div>
-                  {person.linkedinUrl && (
-                    <a
-                      href={person.linkedinUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 p-2 rounded-xl bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2]/20"
-                      aria-label="LinkedIn"
-                    >
-                      <LinkedInIcon className="w-5 h-5" />
-                    </a>
-                  )}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
-
-        <p className="text-center text-sm text-stone-500 mt-4">
-          <Link href="/profile" className="text-amber-700 font-medium">Profile</Link> to show or hide yourself here.
-        </p>
       </main>
     </div>
   );

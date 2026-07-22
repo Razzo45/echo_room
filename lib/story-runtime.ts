@@ -25,6 +25,13 @@ type BeatState = {
   resolved: boolean;
 };
 
+type AdaptedScene = {
+  title?: string;
+  context: string;
+  adaptedAt: string;
+  fromBeat: number;
+};
+
 type StoryState = {
   phase: RoomPhase;
   currentBeat: BeatNumber;
@@ -35,6 +42,8 @@ type StoryState = {
     readyByPlayerId: Record<string, boolean>;
   };
   beats: Record<BeatKey, BeatState>;
+  /** Live-adapted next-beat scenes (overrides authored quest context in play UI). */
+  adaptedScenes?: Partial<Record<BeatKey, AdaptedScene>>;
   finalSynthesis: {
     status: 'idle' | 'pending' | 'done';
     text: string;
@@ -192,4 +201,4 @@ export function isStoryStateColumnMissing(error: unknown): boolean {
   );
 }
 
-export type { StoryState, RoomPhase, RollBand };
+export type { StoryState, RoomPhase, RollBand, BeatState, AdaptedScene };

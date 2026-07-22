@@ -21,6 +21,7 @@ export async function generateArtifact(roomId: string) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
+      event: true,
       quest: {
         include: {
           decisions: {
@@ -99,7 +100,37 @@ export async function generateArtifact(roomId: string) {
       consequence: { text: string; mode: string } | null;
     }>;
 
-    const finalText = String(storyState?.finalSynthesis?.text || '').trim();
+    let finalText = String(storyState?.finalSynthesis?.text || '').trim();
+    const highlightActions = teamMembers
+      .map((m) => {
+        let best = { action: '', value: -1 };
+        for (const beat of beats) {
+          const roll = beat.rolls[m.id]?.value ?? 0;
+          const action = beat.submissions[m.id] || '';
+          if (action && roll >= best.value) best = { action, value: roll };
+        }
+        return best.action ? { name: m.name, action: best.action } : null;
+      })
+      .filter(Boolean) as Array<{ name: string; action: string }>;
+
+    try {
+      const { polishArtifactNarrative } = await import('@/lib/ai/polishArtifact');
+      const { normalizeScenarioSlots } = await import('@/lib/ai/scenarioSlots');
+      const slots = normalizeScenarioSlots(room.event?.aiScenarioSlots);
+      if (finalText) {
+        const polished = await polishArtifactNarrative({
+          questName: room.quest.name,
+          questDescription: room.quest.description || '',
+          slots,
+          synthesisText: finalText,
+          highlightActions,
+        });
+        if (polished) finalText = polished;
+      }
+    } catch (e) {
+      console.error('Artifact polish skipped:', e);
+    }
+
     const finalSummary = finalText || 'The team completed the scenario.';
 
     const narrativeHtml = generateStoryHTML({

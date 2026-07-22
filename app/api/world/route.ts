@@ -77,6 +77,11 @@ export async function GET() {
         questCount: r.quests.length,
         completed,
         nextQuestName: nextQuest?.name ?? null,
+        quests: r.quests.map((q) => ({
+          id: q.id,
+          name: q.name,
+          completed: completedQuestIds.has(q.id),
+        })),
       };
     });
 

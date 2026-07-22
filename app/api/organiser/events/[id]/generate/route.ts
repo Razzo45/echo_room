@@ -6,6 +6,7 @@ import { requireOrganiserEventAccess } from '@/lib/event-access';
 import { fetchEventRoomsRaw } from '@/lib/ai/generateEventRooms';
 import { getMockEventRooms } from '@/lib/ai/mockEventRooms';
 import { EventGenerationOutputSchema, type EventGenerationOutput } from '@/lib/ai/schemas';
+import { normalizeScenarioSlots } from '@/lib/ai/scenarioSlots';
 
 /** Close truncated JSON by appending brackets in correct order (stack-based). Inlined in route so deploy always has fix. */
 function closeTruncatedJson(str: string): string {
@@ -148,6 +149,15 @@ export async function POST(
     });
 
     // Create EventGeneration record with input snapshot
+    let body: { twoPass?: boolean } = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+    const twoPass = Boolean(body.twoPass);
+    const slots = normalizeScenarioSlots(event.aiScenarioSlots);
+
     const generation = await prisma.eventGeneration.create({
       data: {
         eventId,
@@ -156,8 +166,10 @@ export async function POST(
           brief: event.aiBrief,
           eventName: event.name,
           eventDescription: event.description,
+          slots,
+          twoPass,
         },
-        model: 'gpt-4o',
+        model: twoPass ? 'gpt-4o-two-pass' : 'gpt-4o',
       },
     });
 
@@ -170,6 +182,8 @@ export async function POST(
           brief: event.aiBrief!,
           eventName: event.name,
           eventDescription: event.description || undefined,
+          slots,
+          twoPass,
         });
         generated = await parseGeneratedJson(raw);
       }

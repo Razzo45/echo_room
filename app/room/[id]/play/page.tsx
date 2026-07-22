@@ -36,10 +36,29 @@ function isSingleSentence(input: string): boolean {
   return compact.split(/[.!?]+/).filter((p) => p.trim().length > 0).length <= 1;
 }
 
-function getBeatMeta(data: DecisionsPayload | null | undefined, beat: number): QuestDecisionData | null {
+function getBeatMeta(
+  data: DecisionsPayload | null | undefined,
+  beat: number,
+  adapted?: { title?: string; context: string } | null
+): QuestDecisionData | null {
   if (!data?.decisions?.length) return null;
-  return data.decisions.find((d) => d.number === beat) ?? null;
+  const base = data.decisions.find((d) => d.number === beat) ?? null;
+  if (!base) return null;
+  if (!adapted?.context) return base;
+  return {
+    ...base,
+    title: adapted.title?.trim() || base.title,
+    description: adapted.context,
+  };
 }
+
+const ACTION_PLACEHOLDERS: Record<number, string> = {
+  1: 'I name the immediate risk and who must hear it first.',
+  2: 'I change one constraint — time, budget, or access — to buy us room.',
+  3: 'I challenge the assumption we just made and propose the alternative.',
+  4: 'I commit us to one irreversible move and own the downside.',
+  5: 'I lock the closing outcome we can still stand behind tomorrow.',
+};
 
 export default function QuestPlayPage() {
   const router = useRouter();
@@ -102,7 +121,19 @@ export default function QuestPlayPage() {
   const currentBeatKey = String(storyState?.currentBeat ?? 1) as BeatKey;
   const currentBeat = storyState?.beats?.[currentBeatKey];
   const players = room?.members ?? [];
-  const currentMeta = storyState ? getBeatMeta(room?.decisionsData, storyState.currentBeat) : null;
+  const currentMeta = storyState
+    ? getBeatMeta(
+        room?.decisionsData,
+        storyState.currentBeat,
+        storyState.adaptedScenes?.[currentBeatKey] ?? null
+      )
+    : null;
+  const previousConsequence =
+    storyState && storyState.currentBeat > 1
+      ? storyState.beats[String(storyState.currentBeat - 1) as BeatKey]?.consequence?.text || null
+      : null;
+  const actionPlaceholder =
+    ACTION_PLACEHOLDERS[storyState?.currentBeat ?? 1] || ACTION_PLACEHOLDERS[1];
 
   const mySubmittedAction = useMemo(
     () => (myUserId && currentBeat ? currentBeat.submissions[myUserId] : undefined),
@@ -134,7 +165,7 @@ export default function QuestPlayPage() {
 
   // ── AI grace period for consequence ──
 
-  const AI_GRACE_MS = 10_000;
+  const AI_GRACE_MS = 14_000;
   useEffect(() => {
     if (storyState?.phase === 'beat_consequence') {
       if (currentBeat?.consequence?.mode === 'ai') { setAiGracePeriodDone(true); return; }
@@ -324,6 +355,8 @@ export default function QuestPlayPage() {
             currentBeat={storyState.currentBeat}
             totalBeats={storyState.totalBeats}
             currentMeta={currentMeta}
+            previousConsequence={previousConsequence}
+            actionPlaceholder={actionPlaceholder}
             mySubmittedAction={mySubmittedAction}
             actionText={actionText}
             actionSubmitting={actionSubmitting}
