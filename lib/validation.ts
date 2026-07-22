@@ -9,6 +9,23 @@ export const eventCodeSchema = z.object({
   rememberMe: z.boolean().optional().default(false),
 });
 
+export const participantLoginSchema = z.object({
+  code: z
+    .string()
+    .min(1, 'Event code is required')
+    .transform((v) => sanitizeText(v).toUpperCase()),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100)
+    .transform((v) => sanitizeText(v)),
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(100),
+  rememberMe: z.boolean().optional().default(false),
+});
+
 export const profileSchema = z.object({
   name: z
     .string()
@@ -52,6 +69,12 @@ export const profileSchema = z.object({
     .optional()
     .refine((v) => !v || v.trim() === '' || /^https?:\/\/.+/i.test(v.trim()), 'Please enter a valid URL'),
   isDiscoverable: z.boolean().optional(),
+  /** Required on first profile; optional later to change password */
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(100)
+    .optional(),
 });
 
 export const joinRoomSchema = z.object({
@@ -120,6 +143,7 @@ export const adminMoveUserSchema = z.object({
 });
 
 export type EventCodeInput = z.infer<typeof eventCodeSchema>;
+export type ParticipantLoginInput = z.infer<typeof participantLoginSchema>;
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
 export type VoteInput = z.infer<typeof voteSchema>;

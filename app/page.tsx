@@ -5,9 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Badge, FeaturedIcon } from '@/components/ui/untitled';
 
+type Mode = 'join' | 'login';
+
 export default function LandingPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>('join');
   const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -33,19 +38,35 @@ export default function LandingPage() {
       });
   }, [router]);
 
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setError('');
+    setPassword('');
+    if (next === 'join') setName('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/start', {
+      const endpoint = mode === 'join' ? '/api/auth/start' : '/api/auth/login';
+      const body =
+        mode === 'join'
+          ? { code: code.trim(), rememberMe }
+          : { code: code.trim(), name: name.trim(), password, rememberMe };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim(), rememberMe }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Invalid event code');
+        setError(
+          data.error ||
+            (mode === 'join' ? 'Invalid event code' : 'Could not log in')
+        );
         setLoading(false);
         return;
       }
@@ -102,21 +123,89 @@ export default function LandingPage() {
               </svg>
             </FeaturedIcon>
           </div>
+
+          <div className="flex rounded-xl bg-[var(--theme-bg)] border border-[var(--theme-border)] p-1 mb-5">
+            <button
+              type="button"
+              onClick={() => switchMode('join')}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                mode === 'join'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-[var(--theme-muted)] hover:text-stone-700'
+              }`}
+            >
+              Join event
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+                mode === 'login'
+                  ? 'bg-white text-stone-900 shadow-sm'
+                  : 'text-[var(--theme-muted)] hover:text-stone-700'
+              }`}
+            >
+              Log in
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <label htmlFor="event-code" className="label text-center block !mb-2">
-              Enter event code
-            </label>
-            <input
-              id="event-code"
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="e.g. TEST2"
-              className="input text-center text-xl font-mono tracking-[0.25em] uppercase !min-h-[52px]"
-              required
-              maxLength={20}
-              autoFocus
-            />
+            <div>
+              <label htmlFor="event-code" className="label text-center block !mb-2">
+                Event code
+              </label>
+              <input
+                id="event-code"
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="e.g. TEST2"
+                className="input text-center text-xl font-mono tracking-[0.25em] uppercase !min-h-[52px]"
+                required
+                maxLength={20}
+                autoFocus={mode === 'join'}
+              />
+            </div>
+
+            {mode === 'login' && (
+              <>
+                <div>
+                  <label htmlFor="login-name" className="label">
+                    Name
+                  </label>
+                  <input
+                    id="login-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="The name you used"
+                    className="input"
+                    required
+                    minLength={2}
+                    maxLength={100}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label htmlFor="login-password" className="label">
+                    Password
+                  </label>
+                  <input
+                    id="login-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Your password"
+                    className="input"
+                    required
+                    minLength={6}
+                    maxLength={100}
+                    autoComplete="current-password"
+                  />
+                </div>
+              </>
+            )}
+
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
                 <p className="text-sm text-rose-800 font-medium text-center">{error}</p>
@@ -124,10 +213,20 @@ export default function LandingPage() {
             )}
             <button
               type="submit"
-              disabled={loading || !code.trim()}
+              disabled={
+                loading ||
+                !code.trim() ||
+                (mode === 'login' && (!name.trim() || password.length < 6))
+              }
               className="btn btn-primary w-full"
             >
-              {loading ? 'Verifying…' : 'Enter event'}
+              {loading
+                ? mode === 'join'
+                  ? 'Verifying…'
+                  : 'Logging in…'
+                : mode === 'join'
+                  ? 'Enter event'
+                  : 'Log in'}
             </button>
             <label className="flex items-center justify-center gap-2 cursor-pointer pt-1">
               <input
@@ -139,6 +238,12 @@ export default function LandingPage() {
               <span className="text-sm text-[var(--theme-muted)]">Remember me (30 days)</span>
             </label>
           </form>
+
+          <p className="text-center text-xs text-[var(--theme-muted)] mt-4 leading-relaxed">
+            {mode === 'join'
+              ? 'New here? Enter the code, then set your name and a password on your profile.'
+              : 'Returning? Use the same event code, name, and password. Accounts unused for 30 days are removed.'}
+          </p>
         </div>
         <p className="text-center text-sm text-[var(--theme-muted)] mt-6 pb-2">
           Don&apos;t have a code? Contact your event organiser.

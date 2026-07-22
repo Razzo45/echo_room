@@ -21,8 +21,11 @@ export default function ProfilePage() {
     headline: '',
     linkedinUrl: '',
     isDiscoverable: false,
+    password: '',
+    confirmPassword: '',
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
   const [levelLabel, setLevelLabel] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
@@ -33,11 +36,18 @@ export default function ProfilePage() {
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
-        if (data.user && !data.needsProfile) {
+        if (!data.user) {
+          router.push('/');
+          return;
+        }
+        const pw = Boolean(data.user.hasPassword);
+        setHasPassword(pw);
+        if (!data.needsProfile) {
           setIsEditing(true);
           if (data.user.profileUpdatedAt) setProfileUpdatedAt(data.user.profileUpdatedAt);
           if (data.user.levelLabel) setLevelLabel(data.user.levelLabel);
-          setFormData({
+          setFormData((prev) => ({
+            ...prev,
             name: data.user.name,
             organisation: data.user.organisation,
             role: data.user.role,
@@ -47,7 +57,23 @@ export default function ProfilePage() {
             headline: data.user.headline ?? '',
             linkedinUrl: data.user.linkedinUrl ?? '',
             isDiscoverable: data.user.isDiscoverable ?? false,
-          });
+            password: '',
+            confirmPassword: '',
+          }));
+        } else if (data.user.name && data.user.name !== 'Unnamed') {
+          // Legacy cookie user finishing password setup
+          setFormData((prev) => ({
+            ...prev,
+            name: data.user.name === 'Unnamed' ? '' : data.user.name,
+            organisation: data.user.organisation === 'Not set' ? '' : data.user.organisation,
+            role: data.user.role === 'Not set' ? '' : data.user.role,
+            country: data.user.country === 'Not set' ? '' : data.user.country,
+            skill: data.user.skill === 'Not set' ? '' : data.user.skill,
+            curiosity: data.user.curiosity === 'Not set' ? '' : data.user.curiosity,
+            headline: data.user.headline ?? '',
+            linkedinUrl: data.user.linkedinUrl ?? '',
+            isDiscoverable: data.user.isDiscoverable ?? false,
+          }));
         }
       })
       .catch(() => router.push('/'));
@@ -58,11 +84,41 @@ export default function ProfilePage() {
     setError('');
     setLoading(true);
     setSaveSuccess(false);
+
+    const needsPasswordNow = !hasPassword;
+    if (needsPasswordNow || formData.password) {
+      if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters');
+        setLoading(false);
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
+      const payload: Record<string, unknown> = {
+        name: formData.name,
+        organisation: formData.organisation,
+        role: formData.role,
+        country: formData.country,
+        skill: formData.skill,
+        curiosity: formData.curiosity,
+        headline: formData.headline,
+        linkedinUrl: formData.linkedinUrl,
+        isDiscoverable: formData.isDiscoverable,
+      };
+      if (needsPasswordNow || formData.password) {
+        payload.password = formData.password;
+      }
+
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -71,7 +127,9 @@ export default function ProfilePage() {
         return;
       }
       setIsEditing(true);
+      setHasPassword(Boolean(data.user?.hasPassword) || hasPassword || Boolean(payload.password));
       if (data.user?.profileUpdatedAt) setProfileUpdatedAt(data.user.profileUpdatedAt);
+      setFormData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
       setSaveSuccess(true);
       if (!isEditing) router.push('/world');
       else setLoading(false);
@@ -144,7 +202,9 @@ export default function ProfilePage() {
       </div>
       <div className="max-w-lg mx-auto px-4 pt-4">
         <p className="text-stone-500 text-sm mb-4">
-            {isEditing ? 'Update your details anytime.' : 'Tell us about yourself to get started.'}
+            {isEditing
+              ? 'Update your details anytime. You can also change your login password below.'
+              : 'Tell us about yourself and choose a password so you can log back in after logout.'}
         </p>
         {isEditing && profileUpdatedAt && (
             <p className="mt-2 text-xs text-stone-500">
@@ -168,6 +228,7 @@ export default function ProfilePage() {
             <div className="sm:col-span-2">
               <label className="label">Name *</label>
               <input type="text" name="name" value={formData.name} onChange={handleChange} className="input" required placeholder="Your full name" />
+              <p className="mt-1.5 text-xs text-stone-500">Use this exact name with your password to log back in.</p>
             </div>
             <div>
               <label className="label">Organisation *</label>
@@ -176,6 +237,49 @@ export default function ProfilePage() {
             <div>
               <label className="label">Role *</label>
               <input type="text" name="role" value={formData.role} onChange={handleChange} className="input" required placeholder="Job title or position" />
+            </div>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 p-4 rounded-xl bg-amber-50/80 border border-amber-100">
+            <div className="sm:col-span-2">
+              <p className="text-sm font-medium text-stone-900">
+                {hasPassword ? 'Change password (optional)' : 'Login password *'}
+              </p>
+              <p className="text-xs text-stone-500 mt-1">
+                {hasPassword
+                  ? 'Leave blank to keep your current password. Minimum 6 characters if changing.'
+                  : 'Required so you can return after logging out. Minimum 6 characters. Unused accounts are removed after 30 days.'}
+              </p>
+            </div>
+            <div>
+              <label className="label">{hasPassword ? 'New password' : 'Password *'}</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="input"
+                required={!hasPassword}
+                minLength={hasPassword ? undefined : 6}
+                maxLength={100}
+                autoComplete={hasPassword ? 'new-password' : 'new-password'}
+                placeholder={hasPassword ? 'Leave blank to keep current' : 'Choose a password'}
+              />
+            </div>
+            <div>
+              <label className="label">{hasPassword ? 'Confirm new password' : 'Confirm password *'}</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="input"
+                required={!hasPassword || formData.password.length > 0}
+                minLength={hasPassword ? undefined : 6}
+                maxLength={100}
+                autoComplete="new-password"
+                placeholder="Repeat password"
+              />
             </div>
           </div>
 
@@ -254,7 +358,7 @@ export default function ProfilePage() {
             <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-sm text-red-800">{accountError}</div>
           )}
           <p className="text-xs text-stone-500">
-            Log out ends your session on this device. Deleting your data permanently removes your profile and related activity for this event (rooms, votes, badges, and sessions), then logs you out.
+            Log out ends your session on this device. Use <span className="font-medium text-stone-700">Log in</span> on the home page with your event code, name, and password to return. Deleting your data permanently removes your profile and related activity for this event (rooms, votes, badges, and sessions), then logs you out. Accounts with no login for 30 days are removed automatically.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button
@@ -331,10 +435,10 @@ export default function ProfilePage() {
               </button>
             </div>
             <div className="px-6 py-4 overflow-y-auto text-sm text-gray-700 space-y-4">
-              <p>Echo Room is an event-based decision experience. When you create a profile, we collect the information you provide (name, organisation, role, country, one skill, one curiosity) to run the experience, form teams, and generate anonymised insights.</p>
+              <p>Echo Room is an event-based decision experience. When you create a profile, we collect the information you provide (name, organisation, role, country, one skill, one curiosity) and a password hash so you can log back in. We use this to run the experience, form teams, and generate anonymised insights.</p>
               <p>Your profile is linked to your participation in rooms, votes, and decision artifacts. This is used to operate the session, support facilitator and organiser insights, and improve the experience.</p>
               <p>We do not sell your personal data. Data may be processed by our technical providers only as necessary to provide this service. Where possible, analytics and reporting are aggregated or anonymised.</p>
-              <p>We store your profile and participation data for the event and a limited period afterwards. You can delete your data at any time from your profile page (Delete all my data).</p>
+              <p>We store your profile and participation data for the event and a limited period afterwards. Participant accounts with no successful login for 30 days are deleted. You can also delete your data at any time from your profile page (Delete all my data).</p>
               <p>If you have questions or wish to exercise GDPR rights (access, correction, deletion), contact the event organiser or the admin contact provided with your invitation.</p>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 shrink-0">

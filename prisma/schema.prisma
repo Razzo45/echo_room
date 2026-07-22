@@ -95,6 +95,10 @@ model User {
   isDiscoverable Boolean  @default(false) // If true, show in /people networking search
   /// Partner-platform user id (addon GTM identity handoff)
   externalUserId String?
+  /// bcrypt hash for participant login (event code + name + password)
+  passwordHash   String?
+  /// Updated on successful login / session create; inactive users purged after 30 days
+  lastLoginAt    DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -113,6 +117,7 @@ model User {
 
   @@index([eventId])
   @@index([eventId, isDiscoverable])
+  @@index([lastLoginAt])
   @@unique([eventId, externalUserId])
 }
 

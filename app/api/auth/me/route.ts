@@ -11,7 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const needsProfile = user.name === 'Unnamed';
+    const hasPassword = Boolean(user.passwordHash);
+    const needsProfile = user.name === 'Unnamed' || !hasPassword;
 
     const [event, levelInfo, badgeCount] = await Promise.all([
       user.eventId
@@ -40,6 +41,7 @@ export async function GET() {
         level: levelInfo.level,
         levelLabel: levelInfo.label,
         badgeCount,
+        hasPassword,
       },
       needsProfile,
       event,

@@ -24,6 +24,9 @@ jest.mock('@/lib/rate-limit', () => ({
   rateLimit: jest.fn().mockReturnValue(true),
   getRateLimitKey: jest.fn().mockReturnValue('test-key'),
 }));
+jest.mock('@/lib/data-retention', () => ({
+  purgeInactiveUsers: jest.fn().mockResolvedValue(0),
+}));
 
 const prisma = require('@/lib/db').prisma;
 

@@ -2,11 +2,50 @@
  * Data deprecation: 2 weeks after event endDate, cleanup participant/activity data.
  * Event structure (Event, Region, Quest, EventCode) is kept; Sessions, Room, Vote,
  * DecisionCommit, Artifact, User, UserBadge, AnalyticsEvent are hard-deleted.
+ *
+ * Also: participants inactive for 30 days (no lastLoginAt within window) are deleted.
  */
 
 import { prisma } from './db';
 
 const RETENTION_WEEKS = 2;
+/** Delete participant rows with no successful login in this many days. */
+export const INACTIVE_USER_DAYS = 30;
+
+export type CleanupResult = {
+  eventId: string;
+  eventName: string;
+  deletedSessions: number;
+  deletedVotes: number;
+  deletedDecisionCommits: number;
+  deletedArtifacts: number;
+  deletedUserBadges: number;
+  deletedRoomMembers: number;
+  deletedRooms: number;
+  deletedUsers: number;
+  deletedAnalyticsEvents: number;
+  logId: string;
+};
+
+/**
+ * Hard-delete users who have not logged in for INACTIVE_USER_DAYS.
+ * Uses lastLoginAt when set; otherwise createdAt (never completed a login touch).
+ */
+export async function purgeInactiveUsers(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - INACTIVE_USER_DAYS);
+
+  const result = await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { lastLoginAt: { lt: cutoff } },
+        { lastLoginAt: null, createdAt: { lt: cutoff } },
+      ],
+    },
+  });
+
+  return result.count;
+}
 
 export type CleanupResult = {
   eventId: string;
@@ -137,6 +176,7 @@ export async function runCleanupForEvent(
 export async function runCleanupForAllEligible(
   triggeredBy: string | null = null
 ): Promise<CleanupResult[]> {
+  await purgeInactiveUsers();
   const eligible = await getEligibleEventIds();
   const results: CleanupResult[] = [];
   for (const e of eligible) {

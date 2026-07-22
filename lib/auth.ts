@@ -12,14 +12,20 @@ export async function createSession(userId: string, eventCodeId: string, remembe
   const durationDays = rememberMe ? REMEMBER_ME_DURATION_DAYS : SESSION_DURATION_DAYS;
   expiresAt.setDate(expiresAt.getDate() + durationDays);
 
-  const session = await prisma.session.create({
-    data: {
-      token,
-      userId,
-      eventCodeId,
-      expiresAt,
-    },
-  });
+  const [session] = await prisma.$transaction([
+    prisma.session.create({
+      data: {
+        token,
+        userId,
+        eventCodeId,
+        expiresAt,
+      },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    }),
+  ]);
 
   // Set httpOnly cookie
   cookies().set(SESSION_COOKIE_NAME, token, {

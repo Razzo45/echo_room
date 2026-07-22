@@ -3,9 +3,14 @@ import { prisma } from '@/lib/db';
 import { createSession } from '@/lib/auth';
 import { eventCodeSchema } from '@/lib/validation';
 import { rateLimit, getRateLimitKey } from '@/lib/rate-limit';
+import { purgeInactiveUsers } from '@/lib/data-retention';
 
 export async function POST(request: NextRequest) {
   try {
+    void purgeInactiveUsers().catch((err) =>
+      console.error('Inactive user purge failed:', err)
+    );
+
     // Rate limiting by IP (skip when E2E sends x-e2e header so tests don't hit limit)
     const isE2E = request.headers.get('x-e2e') === 'true';
     if (!isE2E) {
@@ -52,7 +57,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create temporary user (will be updated with profile later)
+    // Create temporary user (will be updated with profile + password later)
+    const now = new Date();
     const tempUser = await prisma.user.create({
       data: {
         eventId: eventCode.eventId,
@@ -62,6 +68,7 @@ export async function POST(request: NextRequest) {
         country: 'Not set',
         skill: 'Not set',
         curiosity: 'Not set',
+        lastLoginAt: now,
       },
     });
 
